@@ -42,3 +42,23 @@ npm run dev
 ```
 npm run build
 ```
+
+## Deploy (Vercel)
+
+`vercel.json` is set up for a single-page app (all paths fall back to `index.html`, which
+`react-router` needs since routes like `/app/loads/L-40218` only exist client-side).
+
+To deploy:
+
+1. Go to [vercel.com/new](https://vercel.com/new) and import the `Notmashiat/Runtruck` GitHub repo.
+2. Set **Root Directory** to `app` (the repo root is the Claude Design handoff bundle, not the app).
+3. Framework preset should auto-detect as **Vite** — build command `npm run build`, output
+   directory `dist`. Leave as-is.
+4. Deploy. Every push to `main` will redeploy automatically after this.
+
+Or from the CLI, from inside `app/`:
+
+```
+npx vercel        # first deploy, follow the prompts (set root directory questions as above)
+npx vercel --prod # promote to production
+```
