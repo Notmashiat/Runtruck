@@ -1,0 +1,43 @@
+/* Shared across the app shell (RunTruck Live) and the marketing site — the
+   small additions each .dc.html prototype layered on top of the Industry
+   design system's styles.css. */
+
+html, body, #root { height: 100%; margin: 0; padding: 0; }
+body { background: var(--color-bg); }
+h1, h2, h3, h4, h5, h6 { margin: 0; }
+
+.num {
+  font-family: "Barlow Condensed", system-ui, sans-serif;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.lbl {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.sect { border-bottom: 1px solid var(--color-accent-900); padding-bottom: 8px; }
+.row-link { cursor: pointer; }
+.row-link:hover td { background: var(--color-accent-100); }
+a { color: var(--color-accent-700); }
+a:hover { color: var(--color-accent-900); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--color-neutral-300); }
+
+/* — marketing site — */
+html { scroll-behavior: smooth; }
+body { text-wrap: pretty; }
+.kick {
+  display: block; font-size: 13px; line-height: 12px; letter-spacing: 0.08em;
+  text-transform: uppercase; font-weight: 600; color: var(--color-accent-700);
+  margin-bottom: 12px;
+}
+.rule { height: 1px; border: 0; margin: 0 0 24px; background: var(--color-divider); }
+.disp {
+  font-family: "Barlow Condensed", system-ui, sans-serif;
+  font-weight: 600; text-transform: uppercase; letter-spacing: 0.01em;
+}
+.site a { color: var(--color-accent-700); text-decoration: none; }
+.site a:hover { color: var(--color-accent-900); }
