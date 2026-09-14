@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/industry-7af03cd3-5d16-402a-b2c2-589bcbdf5b77/styles.css" />
+<script src="_ds/industry-7af03cd3-5d16-402a-b2c2-589bcbdf5b77/_ds_bundle.js"></script>
+<style>
+  html, body { margin:0; padding:0; background:var(--color-bg); }
+  h1,h2,h3,h4,h5,h6 { margin:0; }
+  .num { font-family:"Barlow Condensed", system-ui, sans-serif; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:-0.01em; }
+  .lbl { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; }
+  .sect { border-bottom:1px solid var(--color-accent-900); padding-bottom:8px; }
+  .row-link { cursor:pointer; }
+  .row-link:hover td { background:var(--color-accent-100); }
+  a { color:var(--color-accent-700); }
+  a:hover { color:var(--color-accent-900); }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb { background:var(--color-neutral-300); }
+</style>
+</helmet>
+
+<div style="display:flex;height:100vh;overflow:hidden;background:var(--color-bg);color:var(--color-text)">
+
+  <div style="width:232px;flex:none;background:var(--color-accent-900);color:var(--color-bg);padding:26px 0;display:flex;flex-direction:column;overflow-y:auto">
+    <div style="padding:0 22px 32px 22px;display:flex;align-items:center;gap:10px">
+      <div style="width:16px;height:16px;background:var(--color-accent-400)"></div>
+      <div class="num" style="font-size:19px;letter-spacing:0.06em">RUNTRUCK</div>
+    </div>
+    <sc-for list="{{ nav }}" as="n" hint-placeholder-count="10">
+      <div onClick="{{ n.go }}" class="lbl" style="padding:{{ n.pad }};color:{{ n.color }};background:{{ n.bg }};font-size:{{ n.size }};letter-spacing:{{ n.tracking }};text-transform:{{ n.transform }};font-weight:{{ n.weight }};cursor:{{ n.cursor }};display:flex;gap:10px;align-items:center">
+        <div style="flex:1">{{ n.label }}</div>
+        <div class="num" style="font-size:13px;opacity:0.7">{{ n.count }}</div>
+      </div>
+    </sc-for>
+    <div style="flex:1;min-height:24px"></div>
+    <div style="margin:0 22px;padding-top:16px;border-top:1px solid var(--color-accent-700);font-size:13px">
+      <div style="font-weight:500">Rosa Medina</div>
+      <div style="font-size:12px;color:var(--color-accent-300)">Dispatch · Sunridge Freight</div>
+    </div>
+  </div>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+
+    <div style="display:flex;align-items:center;gap:16px;padding:20px 40px;border-bottom:1px solid var(--color-divider);flex:none">
+      <sc-if value="{{ showBack }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ back }}" class="btn btn-ghost" type="button">← Loads</button>
+      </sc-if>
+      <div>
+        <div class="lbl" style="color:var(--color-accent-700)">{{ headKicker }}</div>
+        <h1 style="font-size:30px;margin-top:5px">{{ headTitle }}</h1>
+      </div>
+      <div style="flex:1"></div>
+      <sc-if value="{{ showSearch }}" hint-placeholder-val="{{ true }}">
+        <input class="input" value="{{ query }}" onChange="{{ onQuery }}" placeholder="Search loads, drivers, customers" style="width:250px" />
+      </sc-if>
+      <sc-for list="{{ headActions }}" as="a" hint-placeholder-count="2">
+        <button onClick="{{ a.go }}" class="btn {{ a.cls }}" type="button">{{ a.label }}</button>
+      </sc-for>
+    </div>
+
+    <div style="flex:1;overflow-y:auto;padding:34px 40px">
+
+      <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:34px">
+          <div class="blueprint" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--color-neutral-100)">
+            <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+              <div onClick="{{ k.go }}" style="padding:22px 24px;border-right:1px solid var(--color-divider);cursor:pointer">
+                <div class="lbl" style="color:var(--color-neutral-600)">{{ k.label }}</div>
+                <div class="num" style="font-size:46px;line-height:1;margin-top:14px">{{ k.value }}</div>
+                <div style="font-size:12px;color:var(--color-accent-700);margin-top:8px">{{ k.delta }}</div>
+              </div>
+            </sc-for>
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:40px;align-items:start">
+            <div style="min-width:0;display:flex;flex-direction:column;gap:16px">
+              <div class="sect" style="display:flex;align-items:baseline;gap:12px">
+                <h4 style="font-size:19px">Active loads</h4>
+                <div style="flex:1"></div>
+                <div onClick="{{ goLoads }}" class="lbl" style="color:var(--color-accent-700);cursor:pointer">View all</div>
+              </div>
+              <div style="min-width:0;overflow-x:auto">
+                <table class="table">
+                  <thead>
+                    <tr><th>Load</th><th>Customer</th><th>Route</th><th style="text-align:right">Rate</th><th style="text-align:right">Status</th></tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ activeLoads }}" as="al" hint-placeholder-count="5">
+                      <tr onClick="{{ al.open }}" class="row-link">
+                        <td class="num" style="font-size:14px">{{ al.id }}</td>
+                        <td>{{ al.customer }}</td>
+                        <td style="color:var(--color-neutral-700)">{{ al.route }}</td>
+                        <td class="num" style="text-align:right;font-size:15px">{{ al.rate }}</td>
+                        <td style="text-align:right"><span class="tag {{ al.tagClass }}">{{ al.status }}</span></td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:34px">
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div class="sect"><h4 style="font-size:19px">Revenue, last 7 days</h4></div>
+                <div style="display:flex;align-items:flex-end;gap:10px;height:132px">
+                  <sc-for list="{{ chart }}" as="c" hint-placeholder-count="7">
+                    <div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:8px">
+                      <div style="width:100%;height:{{ c.h }};background:{{ c.fill }}"></div>
+                      <div style="font-size:11px;color:var(--color-neutral-600)">{{ c.day }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div class="sect"><h4 style="font-size:19px">Drivers</h4></div>
+                <sc-for list="{{ driverDots }}" as="d" hint-placeholder-count="6">
+                  <div onClick="{{ goDrivers }}" style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--color-divider);font-size:14px;cursor:pointer">
+                    <div style="width:8px;height:8px;background:{{ d.dot }};flex:none"></div>
+                    <div style="flex:1">{{ d.name }}</div>
+                    <div style="font-size:12px;color:var(--color-neutral-600)">{{ d.note }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isLoads }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:22px">
+          <div style="display:flex;align-items:center;gap:16px">
+            <div class="seg">
+              <sc-for list="{{ loadTabs }}" as="t" hint-placeholder-count="4">
+                <label class="seg-opt" onClick="{{ t.go }}"><input type="radio" name="loadtab" checked="{{ t.on }}" onChange="{{ t.go }}" />{{ t.label }}</label>
+              </sc-for>
+            </div>
+            <div style="font-size:13px;color:var(--color-neutral-700)">{{ loadCount }}</div>
+          </div>
+          <div style="min-width:0;overflow-x:auto">
+          <table class="table">
+            <thead>
+              <tr><th>Load</th><th>Customer</th><th>Route</th><th>Pickup</th><th>Delivery</th><th>Driver / unit</th><th style="text-align:right">Rate</th><th style="text-align:right">Status</th></tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ loadRows }}" as="l" hint-placeholder-count="8">
+                <tr onClick="{{ l.open }}" class="row-link">
+                  <td class="num" style="font-size:14px">{{ l.id }}</td>
+                  <td>{{ l.customer }}</td>
+                  <td style="color:var(--color-neutral-700)">{{ l.route }}</td>
+                  <td class="num" style="font-size:14px">{{ l.pickup }}</td>
+                  <td class="num" style="font-size:14px">{{ l.delivery }}</td>
+                  <td>{{ l.driver }} <span class="num" style="color:var(--color-neutral-600)">{{ l.unit }}</span></td>
+                  <td class="num" style="text-align:right;font-size:15px">{{ l.rate }}</td>
+                  <td style="text-align:right"><span class="tag {{ l.tagClass }}">{{ l.status }}</span></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          </div>
+          <sc-if value="{{ noLoads }}" hint-placeholder-val="{{ false }}">
+            <div class="blueprint" style="padding:44px;text-align:center;font-size:14px;color:var(--color-neutral-700)">
+              Nothing matches that filter.
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isLoadDetail }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:44px;align-items:start">
+          <div style="min-width:0;display:flex;flex-direction:column;gap:22px">
+            <div class="sect"><h4 style="font-size:19px">Stops</h4></div>
+            <sc-for list="{{ detail.stops }}" as="s" hint-placeholder-count="3">
+              <div style="display:grid;grid-template-columns:18px minmax(0,1fr);gap:16px">
+                <div style="display:flex;flex-direction:column;align-items:center">
+                  <div style="width:10px;height:10px;margin-top:5px;background:{{ s.fill }};border:1px solid var(--color-accent)"></div>
+                  <div style="width:1px;flex:1;background:var(--color-divider)"></div>
+                </div>
+                <div style="padding-bottom:18px">
+                  <div class="lbl" style="color:var(--color-accent-700)">{{ s.kind }}</div>
+                  <div style="font-size:17px;font-weight:500;margin-top:5px">{{ s.name }}</div>
+                  <div style="font-size:13px;color:var(--color-neutral-700);margin-top:3px">{{ s.address }}</div>
+                  <div class="num" style="font-size:15px;margin-top:6px">{{ s.window }}</div>
+                </div>
+              </div>
+            </sc-for>
+            <div class="blueprint duotone" style="height:150px;background:repeating-linear-gradient(135deg,var(--color-neutral-300) 0 6px,var(--color-neutral-200) 6px 12px);display:flex;align-items:center;justify-content:center">
+              <div class="lbl" style="color:var(--color-neutral-700);font-size:11px">Live map / ELD trace</div>
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            </div>
+          </div>
+
+          <div style="min-width:0;display:flex;flex-direction:column;gap:24px">
+            <div class="blueprint" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--color-neutral-100)">
+              <sc-for list="{{ detail.facts }}" as="f" hint-placeholder-count="5">
+                <div style="padding:14px 12px;border-right:1px solid var(--color-divider)">
+                  <div class="lbl" style="color:var(--color-neutral-600);font-size:9px">{{ f.k }}</div>
+                  <div class="num" style="font-size:22px;margin-top:6px;line-height:1.1">{{ f.v }}</div>
+                </div>
+              </sc-for>
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div class="sect"><h4 style="font-size:19px">Freight &amp; pay</h4></div>
+              <sc-for list="{{ detail.freight }}" as="f" hint-placeholder-count="5">
+                <div style="display:flex;gap:16px;padding:9px 0;border-bottom:1px solid var(--color-divider);font-size:14px">
+                  <div style="flex:1;color:var(--color-neutral-700)">{{ f.k }}</div>
+                  <div class="num" style="font-size:15px">{{ f.v }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div class="sect"><h4 style="font-size:19px">Documents</h4></div>
+              <sc-for list="{{ detail.docs }}" as="d" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--color-divider)">
+                  <div style="width:26px;height:32px;background:repeating-linear-gradient(135deg,var(--color-neutral-200) 0 5px,transparent 5px 10px);border:1px solid var(--color-divider);flex:none"></div>
+                  <div style="flex:1;font-size:14px">{{ d.name }}</div>
+                  <div style="font-size:12px;color:var(--color-neutral-600)">{{ d.state }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div class="sect"><h4 style="font-size:19px">Activity</h4></div>
+              <sc-for list="{{ detail.activity }}" as="a" hint-placeholder-count="4">
+                <div style="display:flex;gap:16px;padding:9px 0;border-bottom:1px solid var(--color-divider);font-size:14px">
+                  <div class="num" style="width:96px;color:var(--color-neutral-600);font-size:14px">{{ a.when }}</div>
+                  <div style="flex:1">{{ a.what }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isDrivers }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:34px">
+          <div style="display:flex;align-items:center;gap:16px">
+            <div class="seg">
+              <sc-for list="{{ driverTabs }}" as="t" hint-placeholder-count="3">
+                <label class="seg-opt" onClick="{{ t.go }}"><input type="radio" name="drvtab" checked="{{ t.on }}" onChange="{{ t.go }}" />{{ t.label }}</label>
+              </sc-for>
+            </div>
+          </div>
+          <div class="blueprint" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--color-neutral-100)">
+            <sc-for list="{{ driverKpis }}" as="k" hint-placeholder-count="4">
+              <div style="padding:20px 24px;border-right:1px solid var(--color-divider)">
+                <div class="lbl" style="color:var(--color-neutral-600)">{{ k.label }}</div>
+                <div class="num" style="font-size:40px;line-height:1;margin-top:12px">{{ k.value }}</div>
+                <div style="font-size:12px;color:var(--color-accent-700);margin-top:8px">{{ k.delta }}</div>
+              </div>
+            </sc-for>
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          </div>
+          <div style="min-width:0;display:flex;flex-direction:column;gap:16px">
+            <div class="sect"><h4 style="font-size:19px">Roster</h4></div>
+            <div style="min-width:0;overflow-x:auto">
+            <table class="table">
+              <thead>
+                <tr><th>Driver</th><th>Status</th><th>Unit</th><th>Current load</th><th style="text-align:right">Hours left</th><th style="text-align:right">CDL</th><th style="text-align:right">Pay YTD</th></tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{ driverRows }}" as="d" hint-placeholder-count="6">
+                  <tr>
+                    <td style="font-weight:500">{{ d.name }}</td>
+                    <td><span class="tag {{ d.tagClass }}">{{ d.status }}</span></td>
+                    <td class="num" style="font-size:14px">{{ d.unit }}</td>
+                    <td style="color:var(--color-neutral-700)">{{ d.load }}</td>
+                    <td class="num" style="text-align:right;font-size:15px">{{ d.hos }}</td>
+                    <td class="num" style="text-align:right;font-size:15px">{{ d.cdl }}</td>
+                    <td class="num" style="text-align:right;font-size:15px">{{ d.pay }}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:40px;align-items:start">
+            <div style="min-width:0;display:flex;flex-direction:column;gap:16px">
+              <div class="sect"><h4 style="font-size:19px">Compliance watchlist</h4></div>
+              <sc-for list="{{ compliance }}" as="c" hint-placeholder-count="3">
+                <div style="display:flex;gap:16px;padding:11px 0;border-bottom:1px solid var(--color-divider);font-size:14px">
+                  <div style="width:150px;font-weight:500">{{ c.name }}</div>
+                  <div style="flex:1;color:var(--color-neutral-700)">{{ c.item }}</div>
+                  <div class="num" style="font-size:15px">{{ c.due }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="min-width:0;display:flex;flex-direction:column;gap:16px">
+              <div class="sect"><h4 style="font-size:19px">Miles per driver, this week</h4></div>
+              <sc-for list="{{ driverMiles }}" as="m" hint-placeholder-count="6">
+                <div style="display:flex;align-items:center;gap:14px;padding:8px 0;font-size:14px">
+                  <div style="width:132px">{{ m.name }}</div>
+                  <div style="flex:1;height:14px;background:var(--color-neutral-200)">
+                    <div style="height:100%;width:{{ m.w }};background:{{ m.fill }}"></div>
+                  </div>
+                  <div class="num" style="width:58px;text-align:right;font-size:15px">{{ m.miles }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isTrucks }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:34px">
+          <div class="blueprint" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--color-neutral-100)">
+            <sc-for list="{{ truckKpis }}" as="k" hint-placeholder-count="4">
+              <div style="padding:20px 24px;border-right:1px solid var(--color-divider)">
+                <div class="lbl" style="color:var(--color-neutral-600)">{{ k.label }}</div>
+                <div class="num" style="font-size:40px;line-height:1;margin-top:12px">{{ k.value }}</div>
+                <div style="font-size:12px;color:var(--color-accent-700);margin-top:8px">{{ k.delta }}</div>
+              </div>
+            </sc-for>
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="sect"><h4 style="font-size:19px">Power units</h4></div>
+            <div style="min-width:0;overflow-x:auto">
+            <table class="table">
+              <thead>
+                <tr><th>Unit</th><th>Make / year</th><th>Plate</th><th>Assigned to</th><th style="text-align:right">Odometer</th><th style="text-align:right">Next service</th><th style="text-align:right">Status</th></tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{ truckRows }}" as="t" hint-placeholder-count="6">
+                  <tr>
+                    <td class="num" style="font-size:15px;font-weight:600">{{ t.unit }}</td>
+                    <td>{{ t.make }}</td>
+                    <td class="num" style="font-size:14px;color:var(--color-neutral-700)">{{ t.plate }}</td>
+                    <td>{{ t.driver }}</td>
+                    <td class="num" style="text-align:right;font-size:15px">{{ t.odo }}</td>
+                    <td class="num" style="text-align:right;font-size:15px">{{ t.service }}</td>
+                    <td style="text-align:right"><span class="tag {{ t.tagClass }}">{{ t.status }}</span></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="sect"><h4 style="font-size:19px">Trailers</h4></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:26px">
+              <sc-for list="{{ trailers }}" as="t" hint-placeholder-count="8">
+                <div class="blueprint" style="padding:16px">
+                  <div class="num" style="font-size:22px">{{ t.unit }}</div>
+                  <div style="font-size:13px;color:var(--color-neutral-700);margin-top:4px">{{ t.kind }}</div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap">
+                    <span class="tag {{ t.tagClass }}">{{ t.status }}</span>
+                    <div style="font-size:12px;color:var(--color-neutral-600)">{{ t.where }}</div>
+                  </div>
+                  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isCustomers }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:34px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:26px">
+            <sc-for list="{{ topAccounts }}" as="a" hint-placeholder-count="3">
+              <div class="blueprint" style="padding:20px">
+                <div class="lbl" style="color:var(--color-accent-700)">{{ a.tier }}</div>
+                <div style="font-size:21px;font-family:var(--font-heading);font-weight:600;margin-top:8px">{{ a.name }}</div>
+                <div style="font-size:13px;color:var(--color-neutral-700);margin-top:4px">{{ a.contact }}</div>
+                <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid var(--color-divider)">
+                  <div>
+                    <div class="lbl" style="color:var(--color-neutral-600);font-size:9px">Loads</div>
+                    <div class="num" style="font-size:24px;margin-top:4px">{{ a.loads }}</div>
+                  </div>
+                  <div>
+                    <div class="lbl" style="color:var(--color-neutral-600);font-size:9px">Revenue</div>
+                    <div class="num" style="font-size:24px;margin-top:4px">{{ a.revenue }}</div>
+                  </div>
+                  <div>
+                    <div class="lbl" style="color:var(--color-neutral-600);font-size:9px">On time</div>
+                    <div class="num" style="font-size:24px;margin-top:4px">{{ a.onTime }}</div>
+                  </div>
+                </div>
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="sect"><h4 style="font-size:19px">All accounts</h4></div>
+            <div style="min-width:0;overflow-x:auto">
+            <table class="table">
+              <thead>
+                <tr><th>Customer</th><th>Primary contact</th><th style="text-align:right">Loads YTD</th><th style="text-align:right">Revenue</th><th style="text-align:right">On time</th><th style="text-align:right">Terms</th><th style="text-align:right">AR balance</th><th style="text-align:right">Standing</th></tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{ customerRows }}" as="c" hint-placeholder-count="6">
+                  <tr>
+                    <td style="font-weight:500">{{ c.name }}</td>
+                    <td style="color:var(--color-neutral-700)">{{ c.contact }}</td>
+                    <td class="num" style="text-align:right;font-size:15px">{{ c.loads }}</td>
+                    <td class="num" style="text-align:right;font-size:15px">{{ c.revenue }}</td>
+                    <td class="num" style="text-align:right;font-size:15px">{{ c.onTime }}</td>
+                    <td class="num" style="text-align:right;font-size:15px">{{ c.terms }}</td>
+                    <td class="num" style="text-align:right;font-size:15px">{{ c.ar }}</td>
+                    <td style="text-align:right"><span class="tag {{ c.tagClass }}">{{ c.tier }}</span></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isInvoices }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:34px">
+          <div class="blueprint" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--color-neutral-100)">
+            <sc-for list="{{ ar }}" as="a" hint-placeholder-count="4">
+              <div style="padding:20px 24px;border-right:1px solid var(--color-divider)">
+                <div class="lbl" style="color:var(--color-neutral-600)">{{ a.label }}</div>
+                <div class="num" style="font-size:38px;line-height:1;margin-top:12px">{{ a.value }}</div>
+                <div style="font-size:12px;color:var(--color-neutral-600);margin-top:8px">{{ a.note }}</div>
+              </div>
+            </sc-for>
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="sect" style="display:flex;align-items:baseline;gap:12px">
+              <h4 style="font-size:19px">Invoices</h4>
+              <div style="flex:1"></div>
+              <div class="lbl" style="color:var(--color-accent-700)">Aging report</div>
+            </div>
+            <div style="min-width:0;overflow-x:auto">
+            <table class="table">
+              <thead>
+                <tr><th>Invoice</th><th>Customer</th><th>Load</th><th>Issued</th><th style="text-align:right">Amount</th><th style="text-align:right">Age</th><th style="text-align:right">Status</th></tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{ invoiceRows }}" as="i" hint-placeholder-count="6">
+                  <tr>
+                    <td class="num" style="font-size:14px">{{ i.id }}</td>
+                    <td>{{ i.customer }}</td>
+                    <td class="num" style="font-size:14px;color:var(--color-neutral-700)">{{ i.load }}</td>
+                    <td style="color:var(--color-neutral-700)">{{ i.issued }}</td>
+                    <td class="num" style="text-align:right;font-size:15px">{{ i.amount }}</td>
+                    <td class="num" style="text-align:right;font-size:15px">{{ i.age }}</td>
+                    <td style="text-align:right"><span class="tag {{ i.tagClass }}">{{ i.status }}</span></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isSettlements }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="sect" style="display:flex;align-items:baseline;gap:12px">
+            <h4 style="font-size:19px">Driver settlements · week of Sep 1</h4>
+            <div style="flex:1"></div>
+            <div onClick="{{ approveAll }}" class="lbl" style="color:var(--color-accent-700);cursor:pointer">{{ approveLabel }}</div>
+          </div>
+          <div style="min-width:0;overflow-x:auto">
+          <table class="table">
+            <thead>
+              <tr><th>Driver</th><th>Pay basis</th><th style="text-align:right">Loads</th><th style="text-align:right">Miles</th><th style="text-align:right">Gross</th><th style="text-align:right">Deductions</th><th style="text-align:right">Net</th><th style="text-align:right">Status</th></tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ settlementRows }}" as="s" hint-placeholder-count="5">
+                <tr>
+                  <td style="font-weight:500">{{ s.name }}</td>
+                  <td style="color:var(--color-neutral-700)">{{ s.basis }}</td>
+                  <td class="num" style="text-align:right;font-size:15px">{{ s.loads }}</td>
+                  <td class="num" style="text-align:right;font-size:15px">{{ s.miles }}</td>
+                  <td class="num" style="text-align:right;font-size:15px">{{ s.gross }}</td>
+                  <td class="num" style="text-align:right;font-size:15px">{{ s.ded }}</td>
+                  <td class="num" style="text-align:right;font-size:15px;font-weight:600">{{ s.net }}</td>
+                  <td style="text-align:right"><span class="tag {{ s.tagClass }}">{{ s.status }}</span></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          </div>
+          <div style="display:flex;gap:16px;padding-top:8px;font-size:14px">
+            <div style="flex:1"></div>
+            <div style="color:var(--color-neutral-700)">Net payable this week</div>
+            <div class="num" style="font-size:22px">{{ settlementTotal }}</div>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+const NAV = [
+  { group:'Operations' },
+  { key:'dashboard', label:'Dashboard' },
+  { key:'loads', label:'Loads' },
+  { key:'drivers', label:'Drivers' },
+  { key:'trucks', label:'Trucks & trailers' },
+  { key:'customers', label:'Customers' },
+  { group:'Money' },
+  { key:'invoices', label:'Invoicing' },
+  { key:'settlements', label:'Settlements' }
+];
+
+const LOADS = [
+  { id:'L-40218', customer:'Northgate Foods', route:'Fresno, CA → Reno, NV', pickup:'Sep 3', delivery:'Sep 4', driver:'Marcus Hale', unit:'T-114 / RF-88', rate:'$2,450', status:'In transit', tagClass:'tag-accent',
+    miles:'478', rpm:'$5.13', pay:'$612', margin:'$1,214', commodity:'Frozen produce', weight:'41,200 lb', equip:'Reefer, 53 ft', temp:'-10 °F', ref:'PO 88-41207',
+    from:'Northgate Cold Storage', fromAddr:'4120 S Golden State Blvd, Fresno, CA', to:'Reno Grocers DC', toAddr:'1855 E Greg St, Sparks, NV' },
+  { id:'L-40219', customer:'Bayline Distribution', route:'Stockton, CA → Salt Lake City, UT', pickup:'Sep 3', delivery:'Sep 5', driver:'Dara Whitfield', unit:'T-107 / DV-51', rate:'$3,180', status:'At pickup', tagClass:'tag-neutral',
+    miles:'736', rpm:'$4.32', pay:'$795', margin:'$1,540', commodity:'Palletized dry goods', weight:'38,500 lb', equip:'Dry van, 53 ft', temp:'Ambient', ref:'PO 55-90114',
+    from:'Bayline DC 4', fromAddr:'2900 Navy Dr, Stockton, CA', to:'Wasatch Crossdock', toAddr:'1740 S 4130 W, Salt Lake City, UT' },
+  { id:'L-40220', customer:'Cascade Building Supply', route:'Sacramento, CA → Boise, ID', pickup:'Sep 2', delivery:'Sep 4', driver:'Ellis Nakamura', unit:'T-121 / FB-12', rate:'$2,910', status:'Delayed', tagClass:'tag-outline',
+    miles:'602', rpm:'$4.83', pay:'$728', margin:'$1,388', commodity:'Lumber', weight:'44,000 lb', equip:'Flatbed, tarped', temp:'Ambient', ref:'SO 7741',
+    from:'Cascade Yard 2', fromAddr:'8300 Elder Creek Rd, Sacramento, CA', to:'Boise Builders Depot', toAddr:'440 E Corporate Dr, Meridian, ID' },
+  { id:'L-40221', customer:'Harbor Point Retail', route:'Oakland, CA → Portland, OR', pickup:'Sep 4', delivery:'Sep 6', driver:'Unassigned', unit:'—', rate:'$3,540', status:'Needs driver', tagClass:'tag-outline',
+    miles:'632', rpm:'$5.60', pay:'—', margin:'—', commodity:'Consumer goods', weight:'30,100 lb', equip:'Dry van, 53 ft', temp:'Ambient', ref:'PO 31-2280',
+    from:'Port of Oakland, Berth 22', fromAddr:'1599 Maritime St, Oakland, CA', to:'Harbor Point DC', toAddr:'6200 N Basin Ave, Portland, OR' },
+  { id:'L-40214', customer:'Northgate Foods', route:'Bakersfield, CA → Phoenix, AZ', pickup:'Sep 1', delivery:'Sep 2', driver:'Priya Raman', unit:'T-103 / RF-27', rate:'$1,980', status:'Needs POD', tagClass:'tag-outline',
+    miles:'389', rpm:'$5.09', pay:'$495', margin:'$986', commodity:'Dairy', weight:'36,800 lb', equip:'Reefer, 53 ft', temp:'34 °F', ref:'PO 88-41190',
+    from:'Northgate Creamery', fromAddr:'3011 Buck Owens Blvd, Bakersfield, CA', to:'Valley Foods DC', toAddr:'2240 W Buckeye Rd, Phoenix, AZ' },
+  { id:'L-40212', customer:'Bayline Distribution', route:'Los Angeles, CA → Las Vegas, NV', pickup:'Aug 31', delivery:'Sep 1', driver:'Marcus Hale', unit:'T-114 / DV-88', rate:'$1,640', status:'Delivered', tagClass:'tag-neutral',
+    miles:'271', rpm:'$6.05', pay:'$410', margin:'$842', commodity:'Beverages', weight:'42,000 lb', equip:'Dry van, 53 ft', temp:'Ambient', ref:'PO 55-89902',
+    from:'Bayline LA Annex', fromAddr:'5200 S Boyle Ave, Vernon, CA', to:'Sunset Beverage DC', toAddr:'3900 W Cheyenne Ave, North Las Vegas, NV' },
+  { id:'L-40210', customer:'Sierra Ag Partners', route:'Modesto, CA → Denver, CO', pickup:'Aug 29', delivery:'Sep 1', driver:'Tobias Frey', unit:'T-118 / DV-14', rate:'$4,120', status:'Delivered', tagClass:'tag-neutral',
+    miles:'1,142', rpm:'$3.61', pay:'$1,030', margin:'$1,904', commodity:'Almonds', weight:'43,500 lb', equip:'Dry van, 53 ft', temp:'Ambient', ref:'SO 2214',
+    from:'Sierra Ag Huller 3', fromAddr:'1901 Crows Landing Rd, Modesto, CA', to:'Front Range Foods', toAddr:'5400 Havana St, Denver, CO' },
+  { id:'L-40222', customer:'Cascade Building Supply', route:'Redding, CA → Seattle, WA', pickup:'Sep 5', delivery:'Sep 6', driver:'Ana Cortez', unit:'T-109 / FB-04', rate:'$2,760', status:'Dispatched', tagClass:'tag-neutral',
+    miles:'578', rpm:'$4.78', pay:'$690', margin:'$1,312', commodity:'Steel coil', weight:'46,000 lb', equip:'Flatbed, 48 ft', temp:'Ambient', ref:'SO 7802',
+    from:'Cascade Mill', fromAddr:'3400 Airport Rd, Redding, CA', to:'Duwamish Steel Yard', toAddr:'8100 E Marginal Way S, Seattle, WA' }
+];
+
+const DRIVERS = [
+  { name:'Marcus Hale', status:'On duty', tagClass:'tag-accent', unit:'T-114', load:'L-40218 · Fresno → Reno', hos:'6h 20m', cdl:'04/2028', pay:'$61,400', miles:2140 },
+  { name:'Dara Whitfield', status:'On duty', tagClass:'tag-accent', unit:'T-107', load:'L-40219 · Stockton → SLC', hos:'9h 05m', cdl:'11/2027', pay:'$58,900', miles:1980 },
+  { name:'Ellis Nakamura', status:'On duty', tagClass:'tag-accent', unit:'T-121', load:'L-40220 · Sacramento → Boise', hos:'1h 45m', cdl:'02/2027', pay:'$55,120', miles:1760 },
+  { name:'Priya Raman', status:'Available', tagClass:'tag-neutral', unit:'T-103', load:'—', hos:'11h 00m', cdl:'07/2026', pay:'$52,480', miles:1420 },
+  { name:'Ana Cortez', status:'Available', tagClass:'tag-neutral', unit:'T-109', load:'L-40222 · tomorrow', hos:'11h 00m', cdl:'09/2029', pay:'$48,300', miles:1180 },
+  { name:'Tobias Frey', status:'Home time', tagClass:'tag-outline', unit:'T-118', load:'—', hos:'—', cdl:'01/2028', pay:'$63,750', miles:640 }
+];
+
+const TRUCKS = [
+  { unit:'T-103', make:'Freightliner Cascadia · 2022', plate:'CA 8HJ2019', driver:'Priya Raman', odo:'318,440', service:'342,000', status:'In service', tagClass:'tag-accent' },
+  { unit:'T-107', make:'Volvo VNL 760 · 2021', plate:'CA 7RD8842', driver:'Dara Whitfield', odo:'402,190', service:'425,000', status:'In service', tagClass:'tag-accent' },
+  { unit:'T-109', make:'Kenworth T680 · 2023', plate:'CA 9KM1174', driver:'Ana Cortez', odo:'141,220', service:'165,000', status:'In service', tagClass:'tag-accent' },
+  { unit:'T-114', make:'Peterbilt 579 · 2020', plate:'CA 6PL4408', driver:'Marcus Hale', odo:'528,900', service:'529,800', status:'Service due', tagClass:'tag-outline' },
+  { unit:'T-118', make:'Freightliner Cascadia · 2019', plate:'CA 5TT9930', driver:'Tobias Frey', odo:'611,780', service:'—', status:'In shop', tagClass:'tag-outline' },
+  { unit:'T-121', make:'International LT · 2022', plate:'CA 8WQ2251', driver:'Ellis Nakamura', odo:'275,610', service:'298,000', status:'In service', tagClass:'tag-accent' }
+];
+
+const CUSTOMERS = [
+  { name:'Northgate Foods', contact:'Dana Ruiz', loads:'184', revenue:'$412K', onTime:'96%', terms:'Net 30', ar:'$18,400', tier:'Key account', tagClass:'tag-accent' },
+  { name:'Bayline Distribution', contact:'Owen Petrakis', loads:'151', revenue:'$338K', onTime:'94%', terms:'Net 30', ar:'$12,900', tier:'Key account', tagClass:'tag-accent' },
+  { name:'Cascade Building Supply', contact:'Marta Lind', loads:'77', revenue:'$196K', onTime:'91%', terms:'Net 45', ar:'$21,300', tier:'Growing', tagClass:'tag-neutral' },
+  { name:'Harbor Point Retail', contact:'Jules Amari', loads:'44', revenue:'$121K', onTime:'89%', terms:'Net 30', ar:'$6,100', tier:'Growing', tagClass:'tag-neutral' },
+  { name:'Sierra Ag Partners', contact:'Ben Okafor', loads:'62', revenue:'$154K', onTime:'82%', terms:'Net 60', ar:'$29,300', tier:'At risk', tagClass:'tag-outline' },
+  { name:'Vantage Home Goods', contact:'Iris Chen', loads:'29', revenue:'$74K', onTime:'93%', terms:'Net 30', ar:'$3,850', tier:'Growing', tagClass:'tag-neutral' }
+];
+
+const INVOICES = [
+  { id:'INV-8845', customer:'Northgate Foods', load:'L-40218', issued:'—', amount:'$2,450', age:'—', status:'Draft', tagClass:'tag-outline' },
+  { id:'INV-8841', customer:'Northgate Foods', load:'L-40214', issued:'Sep 1', amount:'$1,980', age:'2 d', status:'Sent', tagClass:'tag-accent' },
+  { id:'INV-8840', customer:'Bayline Distribution', load:'L-40212', issued:'Aug 31', amount:'$1,640', age:'3 d', status:'Sent', tagClass:'tag-accent' },
+  { id:'INV-8829', customer:'Cascade Building Supply', load:'L-40198', issued:'Aug 16', amount:'$2,880', age:'18 d', status:'Sent', tagClass:'tag-accent' },
+  { id:'INV-8824', customer:'Harbor Point Retail', load:'L-40191', issued:'Aug 7', amount:'$3,410', age:'27 d', status:'Paid', tagClass:'tag-neutral' },
+  { id:'INV-8836', customer:'Sierra Ag Partners', load:'L-40210', issued:'Jul 24', amount:'$4,120', age:'41 d', status:'Overdue', tagClass:'tag-outline' }
+];
+
+const SETTLEMENTS = [
+  { name:'Marcus Hale', basis:'$0.62 / mi', loads:'4', miles:'2,140', gross:'$1,326', ded:'-$142', net:'$1,184', status:'Ready' },
+  { name:'Dara Whitfield', basis:'$0.60 / mi', loads:'3', miles:'1,980', gross:'$1,188', ded:'-$96', net:'$1,092', status:'Ready' },
+  { name:'Ellis Nakamura', basis:'25% of line haul', loads:'3', miles:'1,760', gross:'$1,455', ded:'-$210', net:'$1,245', status:'Hold · fuel' },
+  { name:'Priya Raman', basis:'$0.58 / mi', loads:'2', miles:'1,420', gross:'$824', ded:'-$64', net:'$760', status:'Ready' },
+  { name:'Ana Cortez', basis:'$0.58 / mi', loads:'2', miles:'1,180', gross:'$684', ded:'—', net:'$684', status:'Paid' }
+];
+
+const SETTLE_TAG = { 'Ready':'tag-accent', 'Paid':'tag-neutral', 'Approved':'tag-accent', 'Hold · fuel':'tag-outline' };
+const ACTIVE_STATUSES = ['In transit','At pickup','Dispatched','Delayed','Needs driver'];
+const HEAD = {
+  dashboard:['Wednesday, September 3','Today'],
+  loads:['Dispatch board','Loads'],
+  drivers:['Availability and compliance','Drivers'],
+  trucks:['Fleet and maintenance','Trucks & trailers'],
+  customers:['Accounts and shipping history','Customers'],
+  invoices:['Accounts receivable','Invoicing'],
+  settlements:['Week of September 1','Settlements']
+};
+
+class Component extends DCLogic {
+  state = { view:'dashboard', query:'', tab:'Active', driverTab:'All', loadId:null, approved:false };
+
+  componentDidMount() {
+    const saved = localStorage.getItem('runtruck.view');
+    if (saved && HEAD[saved]) this.setState({ view: saved });
+    window.addEventListener('hashchange', this.onHash);
+  }
+  componentWillUnmount() { window.removeEventListener('hashchange', this.onHash); }
+  onHash = () => {
+    const h = location.hash.replace('#', '');
+    if (HEAD[h]) this.go(h)();
+  };
+
+  go = (view) => () => {
+    this.setState({ view, loadId:null, query:'' });
+    try { localStorage.setItem('runtruck.view', view); } catch (e) {}
+  };
+
+  renderVals() {
+    const s = this.state;
+    const q = s.query.trim().toLowerCase();
+    const searching = q.length > 0;
+    const view = s.loadId ? 'loadDetail' : s.view;
+
+    const matches = (l) => (l.id + ' ' + l.customer + ' ' + l.route + ' ' + l.driver).toLowerCase().indexOf(q) >= 0;
+
+    let loadRows = LOADS;
+    if (searching) loadRows = LOADS.filter(matches);
+    else if (s.tab === 'Active') loadRows = LOADS.filter((l) => ACTIVE_STATUSES.indexOf(l.status) >= 0);
+    else if (s.tab === 'Needs POD') loadRows = LOADS.filter((l) => l.status === 'Needs POD');
+    else if (s.tab === 'Delivered') loadRows = LOADS.filter((l) => l.status === 'Delivered');
+
+    const open = (l) => () => this.setState({ loadId: l.id });
+    const withOpen = (list) => list.map((l) => Object.assign({}, l, { open: open(l) }));
+
+    const sel = LOADS.filter((l) => l.id === s.loadId)[0] || LOADS[0];
+    const delivered = sel.status === 'Delivered';
+    const detail = {
+      stops: [
+        { kind: sel.status === 'At pickup' ? 'Pickup · at shipper' : 'Pickup · complete', name: sel.from, address: sel.fromAddr, window: 'Pickup ' + sel.pickup + ' · 08:00–14:00', fill:'var(--color-accent)' },
+        { kind:'Fuel stop', name:'Planned · 92 gal, DEF top-off', address:'Routed automatically on the lane', window: sel.pickup + ' · 16:40', fill:'transparent' },
+        { kind: delivered ? 'Delivery · complete' : 'Delivery', name: sel.to, address: sel.toAddr, window: 'Deliver ' + sel.delivery + ' · 06:00–12:00', fill: delivered ? 'var(--color-accent)' : 'transparent' }
+      ],
+      facts: [
+        { k:'Miles', v:sel.miles }, { k:'Line haul', v:sel.rate }, { k:'Rate / mile', v:sel.rpm },
+        { k:'Driver pay', v:sel.pay }, { k:'Margin', v:sel.margin }
+      ],
+      freight: [
+        { k:'Commodity', v:sel.commodity }, { k:'Weight', v:sel.weight }, { k:'Equipment', v:sel.equip },
+        { k:'Temperature', v:sel.temp }, { k:'Reference', v:sel.ref }
+      ],
+      docs: [
+        { name:'Rate confirmation', state:'Attached' },
+        { name:'Bill of lading', state: delivered || sel.status === 'Needs POD' ? 'Attached' : 'Pending' },
+        { name:'Proof of delivery', state: delivered ? 'Attached' : 'Pending' }
+      ],
+      activity: [
+        { when:'Today 07:12', what:'Driver accepted the load in the app' },
+        { when:'Today 08:41', what:'Arrived at ' + sel.from },
+        { when:'Today 10:05', what:'Bill of lading uploaded from the cab' },
+        { when:'Today 10:06', what: delivered ? 'Invoice queued for billing' : 'Dispatch notified the consignee' }
+      ]
+    };
+
+    const bars = [42, 58, 51, 66, 74, 38, 29];
+    const max = Math.max.apply(null, bars);
+    const maxMiles = Math.max.apply(null, DRIVERS.map((d) => d.miles));
+
+    let driverRows = DRIVERS;
+    if (s.driverTab === 'On duty') driverRows = DRIVERS.filter((d) => d.status === 'On duty');
+    if (s.driverTab === 'Available') driverRows = DRIVERS.filter((d) => d.status === 'Available');
+
+    const settlementRows = SETTLEMENTS.map((x) => {
+      const status = s.approved && x.status === 'Ready' ? 'Approved' : x.status;
+      return Object.assign({}, x, { status, tagClass: SETTLE_TAG[status] });
+    });
+    const net = settlementRows.reduce((sum, x) => sum + Number(x.net.replace(/[$,]/g, '')), 0);
+
+    const counts = {
+      dashboard:'', loads:String(LOADS.length), drivers:String(DRIVERS.length),
+      trucks:String(TRUCKS.length), customers:String(CUSTOMERS.length),
+      invoices:String(INVOICES.length), settlements:String(SETTLEMENTS.length)
+    };
+
+    const headKey = s.loadId ? 'loads' : s.view;
+    const actionsFor = {
+      dashboard: [{ label:'New load', cls:'btn-primary', go: this.go('loads') }],
+      loads: [{ label:'New load', cls:'btn-primary', go: this.go('loads') }],
+      loadDetail: [{ label:'Message driver', cls:'btn-secondary', go: () => {} }, { label:'Update status', cls:'btn-primary', go: () => {} }],
+      drivers: [{ label:'Add driver', cls:'btn-primary', go: () => {} }],
+      trucks: [{ label:'Log service', cls:'btn-secondary', go: () => {} }, { label:'Add unit', cls:'btn-primary', go: () => {} }],
+      customers: [{ label:'Add customer', cls:'btn-primary', go: () => {} }],
+      invoices: [{ label:'Export batch', cls:'btn-secondary', go: () => {} }, { label:'Invoice 11 loads', cls:'btn-primary', go: this.go('settlements') }],
+      settlements: [{ label:'Run settlements', cls:'btn-primary', go: () => this.setState({ approved:true }) }]
+    };
+
+    return {
+      nav: NAV.map((n) => {
+        if (n.group) return { label:n.group, count:'', pad:'30px 22px 12px 22px', color:'var(--color-accent-400)', bg:'transparent', size:'10px', tracking:'0.12em', transform:'uppercase', weight:'400', cursor:'default', go: () => {} };
+        const on = n.key === headKey;
+        return {
+          label:n.label, count:counts[n.key], pad:'10px 22px',
+          color: on ? 'var(--color-bg)' : 'var(--color-accent-200)',
+          bg: on ? 'var(--color-accent)' : 'transparent',
+          size:'14px', tracking:'0', transform:'none', weight: on ? '500' : '400',
+          cursor:'pointer', go: this.go(n.key)
+        };
+      }),
+
+      headKicker: view === 'loadDetail' ? 'Load ' + sel.id + ' · ' + sel.customer : HEAD[s.view][0],
+      headTitle: view === 'loadDetail' ? sel.route : HEAD[s.view][1],
+      showBack: view === 'loadDetail',
+      back: () => this.setState({ loadId:null }),
+      showSearch: view === 'dashboard' || view === 'loads',
+      query: s.query,
+      onQuery: (e) => this.setState({ query: e.target.value, loadId:null }),
+      headActions: actionsFor[view] || [],
+
+      isDashboard: view === 'dashboard', isLoads: view === 'loads', isLoadDetail: view === 'loadDetail',
+      isDrivers: view === 'drivers', isTrucks: view === 'trucks', isCustomers: view === 'customers',
+      isInvoices: view === 'invoices', isSettlements: view === 'settlements',
+
+      kpis: [
+        { label:'Active loads', value:String(LOADS.filter((l) => ACTIVE_STATUSES.indexOf(l.status) >= 0).length), delta:'+4 vs. last week', go: this.go('loads') },
+        { label:'Revenue this week', value:'$168K', delta:'+9.2%', go: this.go('invoices') },
+        { label:'Deadhead miles', value:'7.8%', delta:'1.4 pts better', go: this.go('trucks') },
+        { label:'Unbilled loads', value:'11', delta:'$34,900 waiting', go: this.go('invoices') }
+      ],
+      activeLoads: withOpen(searching ? LOADS.filter(matches) : LOADS.filter((l) => ACTIVE_STATUSES.indexOf(l.status) >= 0)).slice(0, 6),
+      chart: bars.map((v, i) => ({
+        day:['Thu','Fri','Sat','Sun','Mon','Tue','Wed'][i],
+        h: Math.round((v / max) * 100) + '%',
+        fill: v === max ? 'var(--color-accent)' : 'var(--color-accent-300)'
+      })),
+      driverDots: DRIVERS.map((d) => ({
+        name:d.name,
+        note: d.status === 'On duty' ? 'On duty · ' + d.hos + ' left' : d.status,
+        dot: d.status === 'On duty' ? 'var(--color-accent)' : (d.status === 'Available' ? 'var(--color-neutral-400)' : 'var(--color-neutral-300)')
+      })),
+      goLoads: this.go('loads'),
+      goDrivers: this.go('drivers'),
+
+      loadTabs: ['Active','Needs POD','Delivered','All'].map((label) => ({
+        label, on: !searching && s.tab === label, go: () => this.setState({ tab: label, query:'' })
+      })),
+      loadRows: withOpen(loadRows),
+      loadCount: searching ? loadRows.length + ' matching “' + s.query + '”' : loadRows.length + ' loads',
+      noLoads: loadRows.length === 0,
+
+      detail,
+
+      driverTabs: ['All','On duty','Available'].map((label) => ({
+        label, on: s.driverTab === label, go: () => this.setState({ driverTab: label })
+      })),
+      driverKpis: [
+        { label:'On the roster', value:String(DRIVERS.length), delta:'1 in orientation' },
+        { label:'Available now', value:String(DRIVERS.filter((d) => d.status === 'Available').length), delta:'Both reset today' },
+        { label:'Hours at risk', value:'1', delta:'Nakamura · 1h 45m' },
+        { label:'Docs expiring', value:'2', delta:'Within 60 days' }
+      ],
+      driverRows,
+      compliance: [
+        { name:'Priya Raman', item:'CDL renewal', due:'Jul 2026' },
+        { name:'Ellis Nakamura', item:'Medical card', due:'Oct 12' },
+        { name:'Ana Cortez', item:'Annual MVR review', due:'Sep 24' }
+      ],
+      driverMiles: DRIVERS.map((d) => ({
+        name:d.name, miles:d.miles.toLocaleString(),
+        w: Math.round((d.miles / maxMiles) * 100) + '%',
+        fill: d.miles === maxMiles ? 'var(--color-accent)' : 'var(--color-accent-300)'
+      })),
+
+      truckKpis: [
+        { label:'Power units', value:String(TRUCKS.length), delta:'4 in service' },
+        { label:'Trailers', value:'8', delta:'3 reefer · 5 dry' },
+        { label:'In shop', value:'1', delta:'T-118 · turbo' },
+        { label:'Service due', value:'1', delta:'T-114 in 900 mi' }
+      ],
+      truckRows: TRUCKS,
+      trailers: [
+        { unit:'RF-27', kind:'Reefer · 53 ft', status:'Loaded', tagClass:'tag-accent', where:'Bakersfield, CA' },
+        { unit:'RF-09', kind:'Reefer · 53 ft', status:'Empty', tagClass:'tag-neutral', where:'Yard · Modesto' },
+        { unit:'RF-88', kind:'Reefer · 53 ft', status:'Loaded', tagClass:'tag-accent', where:'En route · I-80' },
+        { unit:'DV-51', kind:'Dry van · 53 ft', status:'Loaded', tagClass:'tag-accent', where:'Stockton, CA' },
+        { unit:'DV-88', kind:'Dry van · 53 ft', status:'Empty', tagClass:'tag-neutral', where:'Yard · Modesto' },
+        { unit:'DV-14', kind:'Dry van · 53 ft', status:'Empty', tagClass:'tag-neutral', where:'Las Vegas, NV' },
+        { unit:'FB-04', kind:'Flatbed · 48 ft', status:'Loaded', tagClass:'tag-accent', where:'Redding, CA' },
+        { unit:'FB-12', kind:'Flatbed · 48 ft', status:'Inspection', tagClass:'tag-outline', where:'Yard · Modesto' }
+      ],
+
+      topAccounts: [
+        { tier:'Key account', name:'Northgate Foods', contact:'Dana Ruiz · dana@northgate.com', loads:'184', revenue:'$412K', onTime:'96%' },
+        { tier:'Key account', name:'Bayline Distribution', contact:'Owen Petrakis · ops@bayline.co', loads:'151', revenue:'$338K', onTime:'94%' },
+        { tier:'At risk', name:'Sierra Ag Partners', contact:'Ben Okafor · ben@sierraag.com', loads:'62', revenue:'$154K', onTime:'82%' }
+      ],
+      customerRows: CUSTOMERS,
+
+      ar: [
+        { label:'Current', value:'$96,400', note:'32 invoices' },
+        { label:'1–30 days', value:'$41,200', note:'14 invoices' },
+        { label:'31–60 days', value:'$18,750', note:'5 invoices' },
+        { label:'60+ days', value:'$7,900', note:'2 invoices · collections' }
+      ],
+      invoiceRows: INVOICES,
+
+      settlementRows,
+      settlementTotal: '$' + net.toLocaleString(),
+      approveAll: () => this.setState({ approved:true }),
+      approveLabel: s.approved ? 'Approved' : 'Approve all'
+    };
+  }
+}
+</script>
+</body>
+</html>

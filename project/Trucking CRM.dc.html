@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.975 0.004 250); }
+  body { font-family:"Helvetica Neue", Helvetica, Arial, sans-serif; -webkit-font-smoothing:antialiased; color:oklch(0.26 0.015 258); }
+  a { color:oklch(0.52 0.13 250); text-decoration:none; }
+  a:hover { color:oklch(0.44 0.13 250); }
+  input, button, select { font-family:inherit; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb { background:oklch(0.88 0.006 258); border-radius:8px; border:3px solid transparent; background-clip:content-box; }
+</style>
+</helmet>
+<div style="display:flex;height:100vh;overflow:hidden;background:oklch(0.975 0.004 250)">
+
+  <div style="width:236px;flex:0 0 236px;display:flex;flex-direction:column;background:#fff;border-right:1px solid oklch(0.915 0.006 258)">
+    <div style="padding:20px 18px 14px 18px;display:flex;align-items:center;gap:10px">
+      <div style="width:26px;height:26px;border-radius:7px;background:{{ accent }}"></div>
+      <div style="font-size:15px;font-weight:600;letter-spacing:-0.2px">Haulyard</div>
+    </div>
+
+    <div style="padding:0 12px 14px 12px">
+      <div onClick="{{ toggleTenant }}" style="border:1px solid oklch(0.915 0.006 258);border-radius:10px;padding:9px 11px;cursor:pointer;display:flex;align-items:center;gap:9px;background:oklch(0.985 0.003 258)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tenant.name }}</div>
+          <div style="font-size:11px;color:oklch(0.56 0.012 258);margin-top:2px">{{ tenant.sub }}</div>
+        </div>
+        <div style="font-size:10px;color:oklch(0.6 0.012 258)">▾</div>
+      </div>
+      <sc-if value="{{ tenantOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:6px;border:1px solid oklch(0.915 0.006 258);border-radius:10px;background:#fff;box-shadow:0 8px 24px -12px oklch(0.4 0.02 258 / 0.28);overflow:hidden">
+          <sc-for list="{{ tenantOptions }}" as="o" hint-placeholder-count="3">
+            <div onClick="{{ o.select }}" style="padding:9px 11px;cursor:pointer;display:flex;align-items:center;gap:8px;background:{{ o.bg }}">
+              <div style="flex:1">
+                <div style="font-size:12.5px;font-weight:500">{{ o.name }}</div>
+                <div style="font-size:11px;color:oklch(0.58 0.012 258);margin-top:1px">{{ o.sub }}</div>
+              </div>
+              <div style="font-size:11px;color:{{ accent }}">{{ o.check }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="flex:1;overflow-y:auto;padding:0 12px 12px 12px;display:flex;flex-direction:column;gap:2px">
+      <div style="font-size:10.5px;font-weight:600;letter-spacing:0.08em;color:oklch(0.62 0.012 258);padding:10px 10px 6px 10px">OPERATIONS</div>
+      <sc-for list="{{ navOps }}" as="n" hint-placeholder-count="5">
+        <div onClick="{{ n.select }}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:500;color:{{ n.color }};background:{{ n.bg }}">
+          <div style="flex:1">{{ n.label }}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:{{ n.countColor }}">{{ n.count }}</div>
+        </div>
+      </sc-for>
+      <div style="font-size:10.5px;font-weight:600;letter-spacing:0.08em;color:oklch(0.62 0.012 258);padding:16px 10px 6px 10px">MONEY &amp; ADMIN</div>
+      <sc-for list="{{ navAdmin }}" as="n" hint-placeholder-count="3">
+        <div onClick="{{ n.select }}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13.5px;font-weight:500;color:{{ n.color }};background:{{ n.bg }}">
+          <div style="flex:1">{{ n.label }}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:{{ n.countColor }}">{{ n.count }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="padding:12px;border-top:1px solid oklch(0.94 0.005 258)">
+      <div style="display:flex;align-items:center;gap:9px;padding:6px 4px">
+        <div style="width:28px;height:28px;border-radius:50%;background:oklch(0.9 0.02 258);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:oklch(0.4 0.03 258)">RM</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:500">Rosa Medina</div>
+          <div style="font-size:11px;color:oklch(0.58 0.012 258)">Dispatch lead</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <div style="height:60px;flex:0 0 60px;background:#fff;border-bottom:1px solid oklch(0.915 0.006 258);display:flex;align-items:center;gap:14px;padding:0 22px">
+      <div style="font-size:17px;font-weight:600;letter-spacing:-0.3px">{{ viewTitle }}</div>
+      <div style="font-size:12.5px;color:oklch(0.58 0.012 258)">{{ viewSub }}</div>
+      <div style="flex:1"></div>
+      <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="Search loads, drivers, customers" style="width:270px;padding:8px 11px;border:1px solid oklch(0.915 0.006 258);border-radius:8px;font-size:13px;outline:none;background:oklch(0.985 0.003 258);color:inherit" style-focus="border-color:oklch(0.72 0.05 250);background:#fff" />
+      <div style="padding:8px 14px;border-radius:8px;background:{{ accent }};color:#fff;font-size:13px;font-weight:500;cursor:pointer">New load</div>
+    </div>
+
+    <div style="flex:1;overflow-y:auto;padding:22px">
+
+      <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:18px;max-width:1240px">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+            <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+              <div style="background:#fff;border:1px solid oklch(0.915 0.006 258);border-radius:12px;padding:16px">
+                <div style="font-size:12px;color:oklch(0.56 0.012 258);font-weight:500">{{ k.label }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:500;letter-spacing:-1px;margin-top:10px">{{ k.value }}</div>
+                <div style="font-size:11.5px;margin-top:6px;color:{{ k.deltaColor }}">{{ k.delta }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:14px;align-items:start">
+            <div style="background:#fff;border:1px solid oklch(0.915 0.006 258);border-radius:12px">
+              <div style="padding:14px 16px;border-bottom:1px solid oklch(0.94 0.005 258);display:flex;align-items:center">
+                <div style="font-size:13.5px;font-weight:600;flex:1">Needs attention today</div>
+                <div onClick="{{ goLoads }}" style="font-size:12.5px;color:{{ accent }};cursor:pointer">All loads</div>
+              </div>
+              <sc-for list="{{ attention }}" as="a" hint-placeholder-count="4">
+                <div onClick="{{ a.select }}" style="display:grid;grid-template-columns:88px 1fr 132px 104px;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid oklch(0.965 0.004 258);cursor:pointer;font-size:13px" style-hover="background:oklch(0.982 0.004 250)">
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:oklch(0.5 0.012 258)">{{ a.id }}</div>
+                  <div>
+                    <div style="font-weight:500">{{ a.route }}</div>
+                    <div style="font-size:11.5px;color:oklch(0.58 0.012 258);margin-top:2px">{{ a.customer }}</div>
+                  </div>
+                  <div style="font-size:12px;color:oklch(0.5 0.012 258)">{{ a.note }}</div>
+                  <div style="display:flex;justify-content:flex-end">
+                    <div style="font-size:11.5px;font-weight:500;padding:3px 9px;border-radius:20px;background:{{ a.statusBg }};color:{{ a.statusFg }}">{{ a.status }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div style="background:#fff;border:1px solid oklch(0.915 0.006 258);border-radius:12px;padding:16px">
+                <div style="font-size:13.5px;font-weight:600">Revenue, last 7 days</div>
+                <div style="display:flex;align-items:flex-end;gap:8px;height:104px;margin-top:16px">
+                  <sc-for list="{{ chart }}" as="c" hint-placeholder-count="7">
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end">
+                      <div style="width:100%;border-radius:5px 5px 0 0;height:{{ c.h }};background:{{ c.fill }}"></div>
+                      <div style="font-size:10.5px;color:oklch(0.6 0.012 258)">{{ c.day }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="background:#fff;border:1px solid oklch(0.915 0.006 258);border-radius:12px">
+                <div style="padding:14px 16px;border-bottom:1px solid oklch(0.94 0.005 258);font-size:13.5px;font-weight:600">Driver availability</div>
+                <sc-for list="{{ availability }}" as="d" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid oklch(0.965 0.004 258);font-size:13px">
+                    <div style="width:7px;height:7px;border-radius:50%;background:{{ d.dot }}"></div>
+                    <div style="flex:1">{{ d.name }}</div>
+                    <div style="font-size:12px;color:oklch(0.55 0.012 258)">{{ d.note }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isLoads }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#fff;border:1px solid oklch(0.915 0.006 258);border-radius:12px;overflow:hidden;max-width:1400px">
+          <div style="display:flex;gap:6px;padding:12px 14px;border-bottom:1px solid oklch(0.94 0.005 258)">
+            <sc-for list="{{ loadTabs }}" as="t" hint-placeholder-count="4">
+              <div onClick="{{ t.select }}" style="font-size:12.5px;font-weight:500;padding:6px 12px;border-radius:20px;cursor:pointer;background:{{ t.bg }};color:{{ t.color }}">{{ t.label }}</div>
+            </sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:92px 1.15fr 1.5fr 96px 96px 1.05fr 92px 112px;gap:12px;padding:10px 16px;background:oklch(0.982 0.004 250);border-bottom:1px solid oklch(0.94 0.005 258);font-size:11px;font-weight:600;letter-spacing:0.05em;color:oklch(0.55 0.012 258)">
+            <div>LOAD</div><div>CUSTOMER</div><div>ROUTE</div><div>PICKUP</div><div>DELIVERY</div><div>DRIVER / UNIT</div><div style="text-align:right">RATE</div><div style="text-align:right">STATUS</div>
+          </div>
+          <sc-for list="{{ loads }}" as="l" hint-placeholder-count="8">
+            <div onClick="{{ l.select }}" style="display:grid;grid-template-columns:92px 1.15fr 1.5fr 96px 96px 1.05fr 92px 112px;gap:12px;align-items:center;padding:{{ rowPad }};border-bottom:1px solid oklch(0.965 0.004 258);font-size:13px;cursor:pointer" style-hover="background:oklch(0.982 0.004 250)">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:oklch(0.5 0.012 258)">{{ l.id }}</div>
+              <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ l.customer }}</div>
+              <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ l.route }}</div>
+              <div style="font-size:12px;color:oklch(0.5 0.012 258)">{{ l.pickup }}</div>
+              <div style="font-size:12px;color:oklch(0.5 0.012 258)">{{ l.delivery }}</div>
+              <div style="min-width:0">
+                <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ l.driver }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:oklch(0.58 0.012 258);margin-top:2px">{{ l.unit }}</div>
+              </div>
+              <div style="font-family:'IBM Plex Mono',monospace;text-align:right;font-size:12.5px">{{ l.rate }}</div>
+              <div style="display:flex;justify-content:flex-end">
+                <div style="font-size:11.5px;font-weight:500;padding:3px 9px;border-radius:20px;background:{{ l.statusBg }};color:{{ l.statusFg }}">{{ l.status }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ noLoads }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:40px;text-align:center;font-size:13px;color:oklch(0.58 0.012 258)">No loads match “{{ query }}”.</div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isDrivers }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#fff;border:1px solid oklch(0.915 0.006 258);border-radius:12px;overflow:hidden;max-width:1240px">
+          <div style="display:grid;grid-template-columns:1.2fr 110px 100px 1fr 120px 110px;gap:12px;padding:10px 16px;background:oklch(0.982 0.004 250);border-bottom:1px solid oklch(0.94 0.005 258);font-size:11px;font-weight:600;letter-spacing:0.05em;color:oklch(0.55 0.012 258)">
+            <div>DRIVER</div><div>STATUS</div><div>UNIT</div><div>CURRENT LOAD</div><div>HOURS LEFT</div><div>CDL EXPIRES</div>
+          </div>
+          <sc-for list="{{ drivers }}" as="d" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:1.2fr 110px 100px 1fr 120px 110px;gap:12px;align-items:center;padding:{{ rowPad }};border-bottom:1px solid oklch(0.965 0.004 258);font-size:13px">
+              <div style="display:flex;align-items:center;gap:9px">
+                <div style="width:26px;height:26px;border-radius:50%;background:oklch(0.93 0.015 258);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;color:oklch(0.42 0.03 258)">{{ d.initials }}</div>
+                <div>{{ d.name }}</div>
+              </div>
+              <div><div style="display:inline-block;font-size:11.5px;font-weight:500;padding:3px 9px;border-radius:20px;background:{{ d.statusBg }};color:{{ d.statusFg }}">{{ d.status }}</div></div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px">{{ d.unit }}</div>
+              <div style="font-size:12.5px;color:oklch(0.45 0.012 258)">{{ d.load }}</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:{{ d.hosColor }}">{{ d.hos }}</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:oklch(0.5 0.012 258)">{{ d.cdl }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isTrucks }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#fff;border:1px solid oklch(0.915 0.006 258);border-radius:12px;overflow:hidden;max-width:1240px">
+          <div style="display:grid;grid-template-columns:100px 1fr 110px 1fr 120px 130px;gap:12px;padding:10px 16px;background:oklch(0.982 0.004 250);border-bottom:1px solid oklch(0.94 0.005 258);font-size:11px;font-weight:600;letter-spacing:0.05em;color:oklch(0.55 0.012 258)">
+            <div>UNIT</div><div>MAKE / YEAR</div><div>PLATE</div><div>ASSIGNED TO</div><div style="text-align:right">ODOMETER</div><div style="text-align:right">STATUS</div>
+          </div>
+          <sc-for list="{{ trucks }}" as="t" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:100px 1fr 110px 1fr 120px 130px;gap:12px;align-items:center;padding:{{ rowPad }};border-bottom:1px solid oklch(0.965 0.004 258);font-size:13px">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:500">{{ t.unit }}</div>
+              <div>{{ t.make }}</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:oklch(0.5 0.012 258)">{{ t.plate }}</div>
+              <div style="font-size:12.5px">{{ t.driver }}</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;text-align:right">{{ t.odo }}</div>
+              <div style="display:flex;justify-content:flex-end">
+                <div style="font-size:11.5px;font-weight:500;padding:3px 9px;border-radius:20px;background:{{ t.statusBg }};color:{{ t.statusFg }}">{{ t.status }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isCustomers }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;max-width:1300px">
+          <sc-for list="{{ customers }}" as="c" hint-placeholder-count="6">
+            <div style="background:#fff;border:1px solid oklch(0.915 0.006 258);border-radius:12px;padding:16px">
+              <div style="display:flex;align-items:flex-start;gap:10px">
+                <div style="flex:1">
+                  <div style="font-size:14px;font-weight:600">{{ c.name }}</div>
+                  <div style="font-size:12px;color:oklch(0.57 0.012 258);margin-top:3px">{{ c.contact }}</div>
+                </div>
+                <div style="font-size:11.5px;font-weight:500;padding:3px 9px;border-radius:20px;background:{{ c.statusBg }};color:{{ c.statusFg }}">{{ c.tier }}</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid oklch(0.955 0.004 258)">
+                <div>
+                  <div style="font-size:10.5px;color:oklch(0.58 0.012 258);letter-spacing:0.04em;font-weight:600">LOADS YTD</div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;margin-top:5px">{{ c.loads }}</div>
+                </div>
+                <div>
+                  <div style="font-size:10.5px;color:oklch(0.58 0.012 258);letter-spacing:0.04em;font-weight:600">REVENUE</div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;margin-top:5px">{{ c.revenue }}</div>
+                </div>
+                <div>
+                  <div style="font-size:10.5px;color:oklch(0.58 0.012 258);letter-spacing:0.04em;font-weight:600">ON TIME</div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;margin-top:5px">{{ c.onTime }}</div>
+                </div>
+              </div>
+              <div style="margin-top:14px;font-size:12px;color:oklch(0.55 0.012 258)">Terms {{ c.terms }} · Last load {{ c.last }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isInvoices }}" hint-placeholder-val="{{ false }}">
+        <div style="max-width:1240px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+            <sc-for list="{{ arBuckets }}" as="b" hint-placeholder-count="4">
+              <div style="background:#fff;border:1px solid oklch(0.915 0.006 258);border-radius:12px;padding:15px">
+                <div style="font-size:12px;color:oklch(0.56 0.012 258);font-weight:500">{{ b.label }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:21px;margin-top:8px;color:{{ b.color }}">{{ b.value }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:#fff;border:1px solid oklch(0.915 0.006 258);border-radius:12px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:110px 1fr 110px 110px 110px 120px;gap:12px;padding:10px 16px;background:oklch(0.982 0.004 250);border-bottom:1px solid oklch(0.94 0.005 258);font-size:11px;font-weight:600;letter-spacing:0.05em;color:oklch(0.55 0.012 258)">
+              <div>INVOICE</div><div>CUSTOMER</div><div>LOAD</div><div style="text-align:right">AMOUNT</div><div style="text-align:right">AGE</div><div style="text-align:right">STATUS</div>
+            </div>
+            <sc-for list="{{ invoices }}" as="i" hint-placeholder-count="6">
+              <div style="display:grid;grid-template-columns:110px 1fr 110px 110px 110px 120px;gap:12px;align-items:center;padding:{{ rowPad }};border-bottom:1px solid oklch(0.965 0.004 258);font-size:13px">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:12px">{{ i.id }}</div>
+                <div>{{ i.customer }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:oklch(0.5 0.012 258)">{{ i.load }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;text-align:right">{{ i.amount }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;text-align:right;color:{{ i.ageColor }}">{{ i.age }}</div>
+                <div style="display:flex;justify-content:flex-end">
+                  <div style="font-size:11.5px;font-weight:500;padding:3px 9px;border-radius:20px;background:{{ i.statusBg }};color:{{ i.statusFg }}">{{ i.status }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+        <div style="max-width:820px;display:flex;flex-direction:column;gap:14px">
+          <div style="background:#fff;border:1px solid oklch(0.915 0.006 258);border-radius:12px;padding:18px">
+            <div style="font-size:13.5px;font-weight:600">Company</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+              <div>
+                <div style="font-size:11.5px;color:oklch(0.56 0.012 258);font-weight:500">Company name</div>
+                <div style="margin-top:6px;padding:9px 11px;border:1px solid oklch(0.92 0.006 258);border-radius:8px;font-size:13px">{{ tenant.name }}</div>
+              </div>
+              <div>
+                <div style="font-size:11.5px;color:oklch(0.56 0.012 258);font-weight:500">MC / DOT</div>
+                <div style="margin-top:6px;padding:9px 11px;border:1px solid oklch(0.92 0.006 258);border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace">{{ tenant.dot }}</div>
+              </div>
+              <div>
+                <div style="font-size:11.5px;color:oklch(0.56 0.012 258);font-weight:500">Workspace URL</div>
+                <div style="margin-top:6px;padding:9px 11px;border:1px solid oklch(0.92 0.006 258);border-radius:8px;font-size:13px;font-family:'IBM Plex Mono',monospace;color:oklch(0.5 0.012 258)">{{ tenant.slug }}</div>
+              </div>
+              <div>
+                <div style="font-size:11.5px;color:oklch(0.56 0.012 258);font-weight:500">Plan</div>
+                <div style="margin-top:6px;padding:9px 11px;border:1px solid oklch(0.92 0.006 258);border-radius:8px;font-size:13px">{{ tenant.plan }}</div>
+              </div>
+            </div>
+          </div>
+          <div style="background:#fff;border:1px solid oklch(0.915 0.006 258);border-radius:12px;overflow:hidden">
+            <div style="padding:15px 18px;border-bottom:1px solid oklch(0.94 0.005 258);display:flex;align-items:center">
+              <div style="flex:1;font-size:13.5px;font-weight:600">Users in this workspace</div>
+              <div style="font-size:12.5px;color:{{ accent }};cursor:pointer">Invite user</div>
+            </div>
+            <sc-for list="{{ users }}" as="u" hint-placeholder-count="5">
+              <div style="display:grid;grid-template-columns:1.3fr 1fr 130px;gap:12px;align-items:center;padding:12px 18px;border-bottom:1px solid oklch(0.965 0.004 258);font-size:13px">
+                <div>
+                  <div style="font-weight:500">{{ u.name }}</div>
+                  <div style="font-size:11.5px;color:oklch(0.58 0.012 258);margin-top:2px">{{ u.email }}</div>
+                </div>
+                <div style="font-size:12.5px;color:oklch(0.45 0.012 258)">{{ u.role }}</div>
+                <div style="display:flex;justify-content:flex-end">
+                  <div style="font-size:11.5px;font-weight:500;padding:3px 9px;border-radius:20px;background:{{ u.statusBg }};color:{{ u.statusFg }}">{{ u.status }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isPlatform }}" hint-placeholder-val="{{ false }}">
+        <div style="max-width:1100px;display:flex;flex-direction:column;gap:14px">
+          <div style="font-size:12.5px;color:oklch(0.55 0.012 258);background:oklch(0.965 0.012 250);border:1px solid oklch(0.9 0.02 250);border-radius:10px;padding:11px 14px">Platform view — every tenant on Haulyard. Only staff accounts see this.</div>
+          <div style="background:#fff;border:1px solid oklch(0.915 0.006 258);border-radius:12px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:1.4fr 120px 90px 90px 110px 110px;gap:12px;padding:10px 16px;background:oklch(0.982 0.004 250);border-bottom:1px solid oklch(0.94 0.005 258);font-size:11px;font-weight:600;letter-spacing:0.05em;color:oklch(0.55 0.012 258)">
+              <div>TENANT</div><div>PLAN</div><div style="text-align:right">TRUCKS</div><div style="text-align:right">USERS</div><div style="text-align:right">MRR</div><div style="text-align:right">STATUS</div>
+            </div>
+            <sc-for list="{{ platformRows }}" as="p" hint-placeholder-count="5">
+              <div onClick="{{ p.select }}" style="display:grid;grid-template-columns:1.4fr 120px 90px 90px 110px 110px;gap:12px;align-items:center;padding:{{ rowPad }};border-bottom:1px solid oklch(0.965 0.004 258);font-size:13px;cursor:pointer" style-hover="background:oklch(0.982 0.004 250)">
+                <div>
+                  <div style="font-weight:500">{{ p.name }}</div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:oklch(0.58 0.012 258);margin-top:2px">{{ p.slug }}</div>
+                </div>
+                <div style="font-size:12.5px">{{ p.plan }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;text-align:right">{{ p.trucks }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;text-align:right">{{ p.users }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;text-align:right">{{ p.mrr }}</div>
+                <div style="display:flex;justify-content:flex-end">
+                  <div style="font-size:11.5px;font-weight:500;padding:3px 9px;border-radius:20px;background:{{ p.statusBg }};color:{{ p.statusFg }}">{{ p.status }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+
+  <sc-if value="{{ hasSelection }}" hint-placeholder-val="{{ false }}">
+    <div style="width:392px;flex:0 0 392px;background:#fff;border-left:1px solid oklch(0.915 0.006 258);display:flex;flex-direction:column;overflow-y:auto">
+      <div style="padding:18px 20px;border-bottom:1px solid oklch(0.94 0.005 258);display:flex;align-items:flex-start;gap:10px">
+        <div style="flex:1">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:oklch(0.55 0.012 258)">{{ sel.id }}</div>
+          <div style="font-size:16px;font-weight:600;margin-top:5px;letter-spacing:-0.2px">{{ sel.route }}</div>
+          <div style="font-size:12.5px;color:oklch(0.55 0.012 258);margin-top:4px">{{ sel.customer }}</div>
+        </div>
+        <div onClick="{{ closeSel }}" style="cursor:pointer;font-size:15px;color:oklch(0.6 0.012 258);padding:2px 6px">✕</div>
+      </div>
+
+      <div style="padding:16px 20px;border-bottom:1px solid oklch(0.94 0.005 258);display:flex;gap:8px">
+        <div style="flex:1;text-align:center;padding:9px;border-radius:8px;background:{{ accent }};color:#fff;font-size:12.5px;font-weight:500;cursor:pointer">Update status</div>
+        <div style="flex:1;text-align:center;padding:9px;border-radius:8px;border:1px solid oklch(0.9 0.006 258);font-size:12.5px;font-weight:500;cursor:pointer">Message driver</div>
+      </div>
+
+      <div style="padding:18px 20px;border-bottom:1px solid oklch(0.94 0.005 258)">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;color:oklch(0.55 0.012 258)">STOPS</div>
+        <div style="margin-top:14px;display:flex;flex-direction:column;gap:14px">
+          <sc-for list="{{ sel.stops }}" as="s" hint-placeholder-count="2">
+            <div style="display:flex;gap:12px">
+              <div style="width:9px;height:9px;border-radius:50%;margin-top:4px;background:{{ s.dot }};flex:0 0 9px"></div>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:500">{{ s.name }}</div>
+                <div style="font-size:12px;color:oklch(0.55 0.012 258);margin-top:3px">{{ s.address }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:oklch(0.5 0.012 258);margin-top:4px">{{ s.window }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="padding:18px 20px;border-bottom:1px solid oklch(0.94 0.005 258)">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;color:oklch(0.55 0.012 258)">ASSIGNMENT &amp; PAY</div>
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:9px">
+          <sc-for list="{{ sel.facts }}" as="f" hint-placeholder-count="6">
+            <div style="display:flex;font-size:13px;gap:12px">
+              <div style="flex:1;color:oklch(0.55 0.012 258)">{{ f.k }}</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">{{ f.v }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="padding:18px 20px">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;color:oklch(0.55 0.012 258)">DOCUMENTS</div>
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ sel.docs }}" as="d" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:10px;border:1px solid oklch(0.93 0.006 258);border-radius:9px;padding:10px 12px">
+              <div style="width:22px;height:26px;border-radius:3px;background:repeating-linear-gradient(135deg,oklch(0.93 0.008 258) 0 4px,oklch(0.965 0.004 258) 4px 8px)"></div>
+              <div style="flex:1;font-size:12.5px">{{ d.name }}</div>
+              <div style="font-size:11.5px;color:{{ d.color }}">{{ d.state }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;accentColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;oklch(0.52 0.13 250)&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;oklch(0.52 0.13 250)&quot;,&quot;oklch(0.5 0.12 175)&quot;,&quot;oklch(0.52 0.14 30)&quot;,&quot;oklch(0.45 0.05 258)&quot;],&quot;section&quot;:&quot;Theme&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;comfortable&quot;,&quot;options&quot;:[&quot;comfortable&quot;,&quot;compact&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Theme&quot;},&quot;showPlatformAdmin&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Access&quot;}}">
+const PILL = {
+  'Delivered':   ['oklch(0.95 0.035 152)', 'oklch(0.43 0.10 152)'],
+  'In transit':  ['oklch(0.95 0.03 250)',  'oklch(0.44 0.11 250)'],
+  'At pickup':   ['oklch(0.96 0.045 80)',  'oklch(0.45 0.10 68)'],
+  'Dispatched':  ['oklch(0.955 0.008 268)','oklch(0.45 0.02 268)'],
+  'Delayed':     ['oklch(0.95 0.04 25)',   'oklch(0.47 0.14 25)'],
+  'Needs POD':   ['oklch(0.96 0.045 80)',  'oklch(0.45 0.10 68)'],
+  'Available':   ['oklch(0.95 0.035 152)', 'oklch(0.43 0.10 152)'],
+  'On duty':     ['oklch(0.95 0.03 250)',  'oklch(0.44 0.11 250)'],
+  'Off duty':    ['oklch(0.955 0.008 268)','oklch(0.45 0.02 268)'],
+  'Home time':   ['oklch(0.955 0.008 268)','oklch(0.45 0.02 268)'],
+  'In service':  ['oklch(0.95 0.035 152)', 'oklch(0.43 0.10 152)'],
+  'In shop':     ['oklch(0.95 0.04 25)',   'oklch(0.47 0.14 25)'],
+  'Service due': ['oklch(0.96 0.045 80)',  'oklch(0.45 0.10 68)'],
+  'Paid':        ['oklch(0.95 0.035 152)', 'oklch(0.43 0.10 152)'],
+  'Sent':        ['oklch(0.95 0.03 250)',  'oklch(0.44 0.11 250)'],
+  'Overdue':     ['oklch(0.95 0.04 25)',   'oklch(0.47 0.14 25)'],
+  'Draft':       ['oklch(0.955 0.008 268)','oklch(0.45 0.02 268)'],
+  'Key account': ['oklch(0.95 0.03 250)',  'oklch(0.44 0.11 250)'],
+  'Growing':     ['oklch(0.95 0.035 152)', 'oklch(0.43 0.10 152)'],
+  'At risk':     ['oklch(0.96 0.045 80)',  'oklch(0.45 0.10 68)'],
+  'Active':      ['oklch(0.95 0.035 152)', 'oklch(0.43 0.10 152)'],
+  'Invited':     ['oklch(0.96 0.045 80)',  'oklch(0.45 0.10 68)'],
+  'Trial':       ['oklch(0.95 0.03 250)',  'oklch(0.44 0.11 250)']
+};
+const pill = (s) => PILL[s] || PILL['Dispatched'];
+
+const TENANTS = [
+  { id:'sun', name:'Sunridge Freight', sub:'Carrier · 42 trucks', plan:'Growth · 45 seats', dot:'MC 774102 / DOT 2913884', slug:'sunridge.haulyard.com', trucks:'42', users:'19', mrr:'$1,840', status:'Active' },
+  { id:'cob', name:'Cobalt Carriers',  sub:'Carrier · 18 trucks', plan:'Starter · 12 seats', dot:'MC 918330 / DOT 3410277', slug:'cobalt.haulyard.com',   trucks:'18', users:'7',  mrr:'$690',   status:'Trial' },
+  { id:'mer', name:'Meridian Logistics', sub:'Broker · 6 offices', plan:'Enterprise', dot:'MC 601188 / DOT 1928441', slug:'meridian.haulyard.com', trucks:'—', users:'54', mrr:'$4,300', status:'Active' }
+];
+
+const stops = (a, aa, aw, b, bb, bw, done) => ([
+  { name:a, address:aa, window:aw, dot: done ? 'oklch(0.55 0.13 152)' : 'oklch(0.55 0.13 250)' },
+  { name:b, address:bb, window:bw, dot:'oklch(0.85 0.01 258)' }
+]);
+
+const DATA = {
+  sun: {
+    kpis: [
+      { label:'Active loads', value:'27', delta:'+4 vs. last week', up:true },
+      { label:'Revenue this week', value:'$168K', delta:'+9.2%', up:true },
+      { label:'Deadhead miles', value:'7.8%', delta:'-1.4 pts', up:true },
+      { label:'Unbilled loads', value:'11', delta:'$34,900 waiting', up:false }
+    ],
+    chart: [42,58,51,66,74,38,29],
+    loads: [
+      { id:'L-40218', customer:'Northgate Foods', route:'Fresno, CA → Reno, NV', pickup:'Sep 3', delivery:'Sep 4', driver:'Marcus Hale', unit:'T-114 / DV-88', rate:'$2,450', status:'In transit', miles:'478', rpm:'$5.13', pay:'$612', commodity:'Frozen produce, 41,200 lb', temp:'-10°F reefer' },
+      { id:'L-40219', customer:'Bayline Distribution', route:'Stockton, CA → Salt Lake City, UT', pickup:'Sep 3', delivery:'Sep 5', driver:'Dara Whitfield', unit:'T-107 / DV-51', rate:'$3,180', status:'At pickup', miles:'736', rpm:'$4.32', pay:'$795', commodity:'Palletized dry goods, 38,500 lb', temp:'Dry van' },
+      { id:'L-40220', customer:'Cascade Building Supply', route:'Sacramento, CA → Boise, ID', pickup:'Sep 2', delivery:'Sep 4', driver:'Ellis Nakamura', unit:'T-121 / FB-12', rate:'$2,910', status:'Delayed', miles:'602', rpm:'$4.83', pay:'$728', commodity:'Lumber, 44,000 lb', temp:'Flatbed, tarped' },
+      { id:'L-40214', customer:'Northgate Foods', route:'Bakersfield, CA → Phoenix, AZ', pickup:'Sep 1', delivery:'Sep 2', driver:'Priya Raman', unit:'T-103 / RF-27', rate:'$1,980', status:'Needs POD', miles:'389', rpm:'$5.09', pay:'$495', commodity:'Dairy, 36,800 lb', temp:'34°F reefer' },
+      { id:'L-40221', customer:'Harbor Point Retail', route:'Oakland, CA → Portland, OR', pickup:'Sep 4', delivery:'Sep 6', driver:'Unassigned', unit:'—', rate:'$3,540', status:'Dispatched', miles:'632', rpm:'$5.60', pay:'—', commodity:'Consumer goods, 30,100 lb', temp:'Dry van' },
+      { id:'L-40212', customer:'Bayline Distribution', route:'Los Angeles, CA → Las Vegas, NV', pickup:'Aug 31', delivery:'Sep 1', driver:'Marcus Hale', unit:'T-114 / DV-88', rate:'$1,640', status:'Delivered', miles:'271', rpm:'$6.05', pay:'$410', commodity:'Beverages, 42,000 lb', temp:'Dry van' },
+      { id:'L-40210', customer:'Sierra Ag Partners', route:'Modesto, CA → Denver, CO', pickup:'Aug 29', delivery:'Sep 1', driver:'Tobias Frey', unit:'T-118 / RF-09', rate:'$4,120', status:'Delivered', miles:'1,142', rpm:'$3.61', pay:'$1,030', commodity:'Almonds, 43,500 lb', temp:'Dry van' },
+      { id:'L-40222', customer:'Cascade Building Supply', route:'Redding, CA → Seattle, WA', pickup:'Sep 5', delivery:'Sep 6', driver:'Ana Cortez', unit:'T-109 / FB-04', rate:'$2,760', status:'Dispatched', miles:'578', rpm:'$4.78', pay:'$690', commodity:'Steel coil, 46,000 lb', temp:'Flatbed' }
+    ],
+    drivers: [
+      { name:'Marcus Hale', status:'On duty', unit:'T-114', load:'L-40218 · Fresno → Reno', hos:'6h 20m', cdl:'04/2028' },
+      { name:'Dara Whitfield', status:'On duty', unit:'T-107', load:'L-40219 · Stockton → SLC', hos:'9h 05m', cdl:'11/2027' },
+      { name:'Ellis Nakamura', status:'On duty', unit:'T-121', load:'L-40220 · Sacramento → Boise', hos:'1h 45m', cdl:'02/2027' },
+      { name:'Priya Raman', status:'Available', unit:'T-103', load:'—', hos:'11h 00m', cdl:'07/2026' },
+      { name:'Ana Cortez', status:'Available', unit:'T-109', load:'L-40222 · tomorrow', hos:'11h 00m', cdl:'09/2029' },
+      { name:'Tobias Frey', status:'Home time', unit:'T-118', load:'—', hos:'—', cdl:'01/2028' }
+    ],
+    trucks: [
+      { unit:'T-103', make:'Freightliner Cascadia · 2022', plate:'CA 8HJ2019', driver:'Priya Raman', odo:'318,440', status:'In service' },
+      { unit:'T-107', make:'Volvo VNL 760 · 2021', plate:'CA 7RD8842', driver:'Dara Whitfield', odo:'402,190', status:'In service' },
+      { unit:'T-109', make:'Kenworth T680 · 2023', plate:'CA 9KM1174', driver:'Ana Cortez', odo:'141,220', status:'In service' },
+      { unit:'T-114', make:'Peterbilt 579 · 2020', plate:'CA 6PL4408', driver:'Marcus Hale', odo:'528,900', status:'Service due' },
+      { unit:'T-118', make:'Freightliner Cascadia · 2019', plate:'CA 5TT9930', driver:'Tobias Frey', odo:'611,780', status:'In shop' },
+      { unit:'T-121', make:'International LT · 2022', plate:'CA 8WQ2251', driver:'Ellis Nakamura', odo:'275,610', status:'In service' }
+    ],
+    customers: [
+      { name:'Northgate Foods', contact:'Dana Ruiz · dana@northgate.com', tier:'Key account', loads:'184', revenue:'$412K', onTime:'96%', terms:'Net 30', last:'Sep 1' },
+      { name:'Bayline Distribution', contact:'Owen Petrakis · ops@bayline.co', tier:'Key account', loads:'151', revenue:'$338K', onTime:'94%', terms:'Net 30', last:'Sep 3' },
+      { name:'Cascade Building Supply', contact:'Marta Lind · marta@cascadebs.com', tier:'Growing', loads:'77', revenue:'$196K', onTime:'91%', terms:'Net 45', last:'Sep 2' },
+      { name:'Harbor Point Retail', contact:'Jules Amari · logistics@harborpt.com', tier:'Growing', loads:'44', revenue:'$121K', onTime:'89%', terms:'Net 30', last:'Aug 28' },
+      { name:'Sierra Ag Partners', contact:'Ben Okafor · ben@sierraag.com', tier:'At risk', loads:'62', revenue:'$154K', onTime:'82%', terms:'Net 60', last:'Aug 29' },
+      { name:'Vantage Home Goods', contact:'Iris Chen · iris@vantagehg.com', tier:'Growing', loads:'29', revenue:'$74K', onTime:'93%', terms:'Net 30', last:'Aug 22' }
+    ],
+    ar: [
+      { label:'Current', value:'$96,400', color:'oklch(0.26 0.015 258)' },
+      { label:'1–30 days', value:'$41,200', color:'oklch(0.26 0.015 258)' },
+      { label:'31–60 days', value:'$18,750', color:'oklch(0.45 0.10 68)' },
+      { label:'60+ days', value:'$7,900', color:'oklch(0.47 0.14 25)' }
+    ],
+    invoices: [
+      { id:'INV-8841', customer:'Northgate Foods', load:'L-40214', amount:'$1,980', age:'2 d', status:'Sent' },
+      { id:'INV-8840', customer:'Bayline Distribution', load:'L-40212', amount:'$1,640', age:'3 d', status:'Sent' },
+      { id:'INV-8836', customer:'Sierra Ag Partners', load:'L-40210', amount:'$4,120', age:'41 d', status:'Overdue' },
+      { id:'INV-8829', customer:'Cascade Building Supply', load:'L-40198', amount:'$2,880', age:'18 d', status:'Sent' },
+      { id:'INV-8824', customer:'Harbor Point Retail', load:'L-40191', amount:'$3,410', age:'27 d', status:'Paid' },
+      { id:'INV-8845', customer:'Northgate Foods', load:'L-40218', amount:'$2,450', age:'—', status:'Draft' }
+    ],
+    users: [
+      { name:'Rosa Medina', email:'rosa@sunridgefreight.com', role:'Dispatch lead · full access', status:'Active' },
+      { name:'Aaron Volk', email:'aaron@sunridgefreight.com', role:'Owner · billing', status:'Active' },
+      { name:'Nina Bakke', email:'nina@sunridgefreight.com', role:'Safety · drivers + docs', status:'Active' },
+      { name:'Curtis Lane', email:'curtis@sunridgefreight.com', role:'Accounting · invoices only', status:'Active' },
+      { name:'Joy Ferrand', email:'joy@sunridgefreight.com', role:'Dispatcher · loads only', status:'Invited' }
+    ]
+  },
+  cob: {
+    kpis: [
+      { label:'Active loads', value:'9', delta:'+1 vs. last week', up:true },
+      { label:'Revenue this week', value:'$54K', delta:'+3.1%', up:true },
+      { label:'Deadhead miles', value:'12.4%', delta:'+0.8 pts', up:false },
+      { label:'Unbilled loads', value:'4', delta:'$9,600 waiting', up:false }
+    ],
+    chart: [18,24,21,27,31,14,11],
+    loads: [
+      { id:'C-2071', customer:'Great Lakes Paper', route:'Toledo, OH → Chicago, IL', pickup:'Sep 3', delivery:'Sep 3', driver:'Hank Osei', unit:'C-12 / DV-03', rate:'$980', status:'In transit', miles:'244', rpm:'$4.02', pay:'$245', commodity:'Paper rolls, 40,000 lb', temp:'Dry van' },
+      { id:'C-2072', customer:'Midwest Plastics', route:'Indianapolis, IN → Detroit, MI', pickup:'Sep 3', delivery:'Sep 4', driver:'Lena Prado', unit:'C-07 / DV-11', rate:'$1,240', status:'At pickup', miles:'288', rpm:'$4.31', pay:'$310', commodity:'Resin pellets, 43,000 lb', temp:'Dry van' },
+      { id:'C-2068', customer:'Ohio Valley Steel', route:'Cleveland, OH → Pittsburgh, PA', pickup:'Sep 1', delivery:'Sep 2', driver:'Sam Ibarra', unit:'C-04 / FB-02', rate:'$1,410', status:'Needs POD', miles:'133', rpm:'$10.60', pay:'$352', commodity:'Steel plate, 47,000 lb', temp:'Flatbed' },
+      { id:'C-2073', customer:'Great Lakes Paper', route:'Chicago, IL → Milwaukee, WI', pickup:'Sep 4', delivery:'Sep 4', driver:'Unassigned', unit:'—', rate:'$720', status:'Dispatched', miles:'92', rpm:'$7.83', pay:'—', commodity:'Cartons, 22,400 lb', temp:'Dry van' },
+      { id:'C-2064', customer:'Midwest Plastics', route:'Detroit, MI → Columbus, OH', pickup:'Aug 30', delivery:'Aug 31', driver:'Hank Osei', unit:'C-12 / DV-03', rate:'$860', status:'Delivered', miles:'204', rpm:'$4.22', pay:'$215', commodity:'Injection parts, 18,900 lb', temp:'Dry van' }
+    ],
+    drivers: [
+      { name:'Hank Osei', status:'On duty', unit:'C-12', load:'C-2071 · Toledo → Chicago', hos:'7h 40m', cdl:'06/2027' },
+      { name:'Lena Prado', status:'On duty', unit:'C-07', load:'C-2072 · Indy → Detroit', hos:'10h 15m', cdl:'03/2029' },
+      { name:'Sam Ibarra', status:'Available', unit:'C-04', load:'—', hos:'11h 00m', cdl:'12/2026' },
+      { name:'Roy Deckard', status:'Off duty', unit:'C-09', load:'—', hos:'—', cdl:'08/2028' }
+    ],
+    trucks: [
+      { unit:'C-04', make:'Kenworth W900 · 2018', plate:'OH PQR-4471', driver:'Sam Ibarra', odo:'664,300', status:'Service due' },
+      { unit:'C-07', make:'Volvo VNL 740 · 2021', plate:'OH LKD-9920', driver:'Lena Prado', odo:'331,870', status:'In service' },
+      { unit:'C-09', make:'Freightliner Cascadia · 2020', plate:'OH TBV-1188', driver:'Roy Deckard', odo:'447,510', status:'In service' },
+      { unit:'C-12', make:'Peterbilt 389 · 2019', plate:'OH GHN-7742', driver:'Hank Osei', odo:'512,660', status:'In service' }
+    ],
+    customers: [
+      { name:'Great Lakes Paper', contact:'Tim Brolin · tim@glpaper.com', tier:'Key account', loads:'61', revenue:'$74K', onTime:'95%', terms:'Net 30', last:'Sep 3' },
+      { name:'Midwest Plastics', contact:'Cara Doss · cara@mwplastics.com', tier:'Growing', loads:'38', revenue:'$46K', onTime:'92%', terms:'Net 30', last:'Sep 3' },
+      { name:'Ohio Valley Steel', contact:'Nate Kim · nate@ovsteel.com', tier:'Growing', loads:'22', revenue:'$31K', onTime:'88%', terms:'Net 45', last:'Sep 1' }
+    ],
+    ar: [
+      { label:'Current', value:'$21,300', color:'oklch(0.26 0.015 258)' },
+      { label:'1–30 days', value:'$8,900', color:'oklch(0.26 0.015 258)' },
+      { label:'31–60 days', value:'$2,150', color:'oklch(0.45 0.10 68)' },
+      { label:'60+ days', value:'$0', color:'oklch(0.55 0.012 258)' }
+    ],
+    invoices: [
+      { id:'CB-1180', customer:'Great Lakes Paper', load:'C-2064', amount:'$860', age:'3 d', status:'Sent' },
+      { id:'CB-1178', customer:'Ohio Valley Steel', load:'C-2059', amount:'$1,410', age:'12 d', status:'Sent' },
+      { id:'CB-1174', customer:'Midwest Plastics', load:'C-2051', amount:'$1,120', age:'34 d', status:'Overdue' },
+      { id:'CB-1181', customer:'Great Lakes Paper', load:'C-2071', amount:'$980', age:'—', status:'Draft' }
+    ],
+    users: [
+      { name:'Devon Marsh', email:'devon@cobaltcarriers.com', role:'Owner · full access', status:'Active' },
+      { name:'Kelly Ruiz', email:'kelly@cobaltcarriers.com', role:'Dispatcher · loads only', status:'Active' },
+      { name:'Omar Salib', email:'omar@cobaltcarriers.com', role:'Accounting · invoices only', status:'Invited' }
+    ]
+  },
+  mer: {
+    kpis: [
+      { label:'Active loads', value:'63', delta:'+11 vs. last week', up:true },
+      { label:'Gross margin', value:'$91K', delta:'+6.4%', up:true },
+      { label:'Carrier coverage', value:'94%', delta:'+2 pts', up:true },
+      { label:'Unbilled loads', value:'23', delta:'$88,200 waiting', up:false }
+    ],
+    chart: [61,72,68,84,92,55,47],
+    loads: [
+      { id:'M-9914', customer:'Atlas Home Supply', route:'Dallas, TX → Atlanta, GA', pickup:'Sep 3', delivery:'Sep 5', driver:'Redline Trans (carrier)', unit:'MC 448210', rate:'$3,050', status:'In transit', miles:'781', rpm:'$3.91', pay:'$2,600 carrier', commodity:'Tile, 42,000 lb', temp:'Dry van' },
+      { id:'M-9915', customer:'Gulf Chem Partners', route:'Houston, TX → Memphis, TN', pickup:'Sep 3', delivery:'Sep 4', driver:'Vero Freight (carrier)', unit:'MC 771903', rate:'$2,480', status:'At pickup', miles:'588', rpm:'$4.22', pay:'$2,050 carrier', commodity:'Drummed chemicals, 39,000 lb', temp:'Hazmat' },
+      { id:'M-9911', customer:'Sunbelt Grocers', route:'Laredo, TX → Oklahoma City, OK', pickup:'Sep 2', delivery:'Sep 3', driver:'Pinnacle Haul (carrier)', unit:'MC 205661', rate:'$2,190', status:'Delayed', miles:'612', rpm:'$3.58', pay:'$1,880 carrier', commodity:'Produce, 40,500 lb', temp:'36°F reefer' },
+      { id:'M-9916', customer:'Atlas Home Supply', route:'Atlanta, GA → Charlotte, NC', pickup:'Sep 5', delivery:'Sep 5', driver:'Unassigned', unit:'—', rate:'$1,120', status:'Dispatched', miles:'245', rpm:'$4.57', pay:'—', commodity:'Fixtures, 24,000 lb', temp:'Dry van' },
+      { id:'M-9902', customer:'Sunbelt Grocers', route:'Phoenix, AZ → El Paso, TX', pickup:'Aug 31', delivery:'Sep 1', driver:'Redline Trans (carrier)', unit:'MC 448210', rate:'$1,760', status:'Delivered', miles:'431', rpm:'$4.08', pay:'$1,450 carrier', commodity:'Canned goods, 44,000 lb', temp:'Dry van' }
+    ],
+    drivers: [
+      { name:'Redline Trans', status:'On duty', unit:'MC 448210', load:'M-9914 · Dallas → Atlanta', hos:'—', cdl:'Ins. 09/2027' },
+      { name:'Vero Freight', status:'On duty', unit:'MC 771903', load:'M-9915 · Houston → Memphis', hos:'—', cdl:'Ins. 01/2027' },
+      { name:'Pinnacle Haul', status:'On duty', unit:'MC 205661', load:'M-9911 · Laredo → OKC', hos:'—', cdl:'Ins. 05/2027' },
+      { name:'Bright Star Logistics', status:'Available', unit:'MC 339017', load:'—', hos:'—', cdl:'Ins. 11/2026' }
+    ],
+    trucks: [
+      { unit:'MC 448210', make:'Redline Trans · 24 power units', plate:'—', driver:'Contracted carrier', odo:'—', status:'In service' },
+      { unit:'MC 771903', make:'Vero Freight · 8 power units', plate:'—', driver:'Contracted carrier', odo:'—', status:'In service' },
+      { unit:'MC 205661', make:'Pinnacle Haul · 41 power units', plate:'—', driver:'Contracted carrier', odo:'—', status:'In service' },
+      { unit:'MC 339017', make:'Bright Star Logistics · 5 units', plate:'—', driver:'Contracted carrier', odo:'—', status:'Service due' }
+    ],
+    customers: [
+      { name:'Atlas Home Supply', contact:'Rhea Patel · rhea@atlashs.com', tier:'Key account', loads:'402', revenue:'$1.1M', onTime:'93%', terms:'Net 30', last:'Sep 3' },
+      { name:'Gulf Chem Partners', contact:'Luis Navarro · luis@gulfchem.com', tier:'Key account', loads:'218', revenue:'$690K', onTime:'95%', terms:'Net 45', last:'Sep 3' },
+      { name:'Sunbelt Grocers', contact:'Mae Dunbar · mae@sunbeltg.com', tier:'At risk', loads:'311', revenue:'$820K', onTime:'84%', terms:'Net 60', last:'Sep 2' }
+    ],
+    ar: [
+      { label:'Current', value:'$402,100', color:'oklch(0.26 0.015 258)' },
+      { label:'1–30 days', value:'$188,400', color:'oklch(0.26 0.015 258)' },
+      { label:'31–60 days', value:'$61,900', color:'oklch(0.45 0.10 68)' },
+      { label:'60+ days', value:'$29,300', color:'oklch(0.47 0.14 25)' }
+    ],
+    invoices: [
+      { id:'ML-5520', customer:'Atlas Home Supply', load:'M-9902', amount:'$1,760', age:'2 d', status:'Sent' },
+      { id:'ML-5514', customer:'Sunbelt Grocers', load:'M-9881', amount:'$2,940', age:'38 d', status:'Overdue' },
+      { id:'ML-5509', customer:'Gulf Chem Partners', load:'M-9874', amount:'$3,610', age:'21 d', status:'Sent' },
+      { id:'ML-5521', customer:'Atlas Home Supply', load:'M-9914', amount:'$3,050', age:'—', status:'Draft' }
+    ],
+    users: [
+      { name:'Priscilla Vance', email:'pvance@meridianlog.com', role:'VP Ops · full access', status:'Active' },
+      { name:'Tomas Berg', email:'tberg@meridianlog.com', role:'Broker · loads + carriers', status:'Active' },
+      { name:'Halle Dorsey', email:'hdorsey@meridianlog.com', role:'Carrier compliance', status:'Active' },
+      { name:'Ivan Petrov', email:'ipetrov@meridianlog.com', role:'Accounting · invoices only', status:'Active' }
+    ]
+  }
+};
+
+const VIEWS = {
+  dashboard: ['Today', 'Wednesday, September 3'],
+  loads:     ['Loads', 'Dispatch board'],
+  drivers:   ['Drivers', 'Availability and compliance'],
+  trucks:    ['Trucks & trailers', 'Fleet and maintenance'],
+  customers: ['Customers', 'Accounts and shipping history'],
+  invoices:  ['Invoicing', 'Accounts receivable'],
+  settings:  ['Settings', 'Workspace and users'],
+  platform:  ['Platform admin', 'All tenants']
+};
+
+class Component extends DCLogic {
+  state = { tenant: 0, view: 'dashboard', tenantOpen: false, query: '', tab: 'Active', sel: null };
+
+  pick = (v) => () => this.setState({ view: v, sel: null });
+
+  navItem(key, label, count) {
+    const active = this.state.view === key;
+    const accent = this.props.accentColor || 'oklch(0.52 0.13 250)';
+    return {
+      label, count: count || '',
+      bg: active ? 'oklch(0.955 0.014 250)' : 'transparent',
+      color: active ? accent : 'oklch(0.36 0.015 258)',
+      countColor: active ? accent : 'oklch(0.62 0.012 258)',
+      select: this.pick(key)
+    };
+  }
+
+  renderVals() {
+    const accent = this.props.accentColor || 'oklch(0.52 0.13 250)';
+    const compact = (this.props.density || 'comfortable') === 'compact';
+    const rowPad = compact ? '8px 16px' : '13px 16px';
+    const t = TENANTS[this.state.tenant];
+    const d = DATA[t.id];
+    const q = this.state.query.trim().toLowerCase();
+    const view = this.state.view;
+
+    const withPill = (o, k) => Object.assign({}, o, { statusBg: pill(o[k || 'status'])[0], statusFg: pill(o[k || 'status'])[1] });
+
+    const detail = (l) => ({
+      id: l.id, route: l.route, customer: l.customer,
+      stops: stops(
+        l.route.split(' → ')[0], l.commodity, 'Pickup ' + l.pickup + ' · 08:00–14:00', l.status === 'Delivered',
+        l.route.split(' → ')[1], l.temp, 'Deliver ' + l.delivery + ' · 06:00–12:00'
+      ),
+      facts: [
+        { k:'Status', v:l.status },
+        { k:'Driver', v:l.driver },
+        { k:'Unit', v:l.unit },
+        { k:'Miles', v:l.miles },
+        { k:'Line haul', v:l.rate },
+        { k:'Rate / mile', v:l.rpm },
+        { k:'Driver pay', v:l.pay }
+      ],
+      docs: [
+        { name:'Rate confirmation', state:'Attached', color:'oklch(0.43 0.10 152)' },
+        { name:'Bill of lading', state: l.status === 'Delivered' || l.status === 'Needs POD' ? 'Attached' : 'Pending', color: l.status === 'Delivered' || l.status === 'Needs POD' ? 'oklch(0.43 0.10 152)' : 'oklch(0.45 0.10 68)' },
+        { name:'Proof of delivery', state: l.status === 'Delivered' ? 'Attached' : 'Pending', color: l.status === 'Delivered' ? 'oklch(0.43 0.10 152)' : 'oklch(0.45 0.10 68)' }
+      ]
+    });
+
+    const openLoad = (l) => () => this.setState({ sel: detail(l) });
+
+    const ACTIVE = ['In transit','At pickup','Dispatched','Delayed'];
+    const tabName = this.state.tab;
+    let rows = d.loads.filter((l) => {
+      if (tabName === 'Active') return ACTIVE.indexOf(l.status) >= 0;
+      if (tabName === 'Needs POD') return l.status === 'Needs POD';
+      if (tabName === 'Delivered') return l.status === 'Delivered';
+      return true;
+    });
+    if (q) rows = d.loads.filter((l) => (l.id + ' ' + l.customer + ' ' + l.route + ' ' + l.driver).toLowerCase().indexOf(q) >= 0);
+
+    const chartMax = Math.max.apply(null, d.chart);
+    const maxRev = Math.max.apply(null, d.chart);
+
+    const attentionNotes = { 'Delayed':'Running 4h behind', 'At pickup':'Waiting at shipper', 'Needs POD':'POD not uploaded', 'In transit':'On schedule', 'Dispatched':'Needs a driver' };
+    const attn = d.loads
+      .filter((l) => ['Delayed','Needs POD','At pickup'].indexOf(l.status) >= 0 || l.driver === 'Unassigned')
+      .slice(0, 4)
+      .map((l) => Object.assign(withPill(l), { note: l.driver === 'Unassigned' ? 'Needs a driver' : attentionNotes[l.status], select: openLoad(l) }));
+
+    return {
+      accent, rowPad, tenant: t, query: this.state.query,
+      tenantOpen: this.state.tenantOpen,
+      toggleTenant: () => this.setState((s) => ({ tenantOpen: !s.tenantOpen })),
+      tenantOptions: TENANTS.map((o, i) => ({
+        name: o.name, sub: o.sub, check: i === this.state.tenant ? '●' : '',
+        bg: i === this.state.tenant ? 'oklch(0.975 0.008 250)' : '#fff',
+        select: () => this.setState({ tenant: i, tenantOpen: false, sel: null, query: '' })
+      })),
+
+      viewTitle: VIEWS[view][0], viewSub: VIEWS[view][1],
+      onQuery: (e) => this.setState({ query: e.target.value }),
+
+      navOps: [
+        this.navItem('dashboard', 'Today', ''),
+        this.navItem('loads', 'Loads', String(d.loads.length)),
+        this.navItem('drivers', 'Drivers', String(d.drivers.length)),
+        this.navItem('trucks', 'Trucks & trailers', String(d.trucks.length)),
+        this.navItem('customers', 'Customers', String(d.customers.length))
+      ],
+      navAdmin: (this.props.showPlatformAdmin === false
+        ? [this.navItem('invoices', 'Invoicing', String(d.invoices.length)), this.navItem('settings', 'Settings', '')]
+        : [this.navItem('invoices', 'Invoicing', String(d.invoices.length)), this.navItem('settings', 'Settings', ''), this.navItem('platform', 'Platform admin', String(TENANTS.length))]),
+
+      isDashboard: view === 'dashboard', isLoads: view === 'loads', isDrivers: view === 'drivers',
+      isTrucks: view === 'trucks', isCustomers: view === 'customers', isInvoices: view === 'invoices',
+      isSettings: view === 'settings', isPlatform: view === 'platform',
+
+      kpis: d.kpis.map((k) => Object.assign({}, k, { deltaColor: k.up ? 'oklch(0.45 0.10 152)' : 'oklch(0.45 0.10 68)' })),
+      chart: d.chart.map((v, i) => ({
+        day: ['Thu','Fri','Sat','Sun','Mon','Tue','Wed'][i],
+        h: Math.round((v / chartMax) * 88) + 'px',
+        fill: v === maxRev ? accent : 'oklch(0.9 0.02 250)'
+      })),
+      attention: attn,
+      availability: d.drivers.slice(0, 5).map((x) => ({
+        name: x.name, note: x.status === 'Available' ? 'Ready · ' + x.hos + ' left' : (x.status === 'On duty' ? x.hos + ' left' : x.status),
+        dot: x.status === 'Available' ? 'oklch(0.6 0.13 152)' : (x.status === 'On duty' ? 'oklch(0.6 0.13 250)' : 'oklch(0.82 0.01 258)')
+      })),
+      goLoads: this.pick('loads'),
+
+      loadTabs: ['Active','Needs POD','Delivered','All'].map((label) => ({
+        label,
+        bg: label === tabName ? 'oklch(0.955 0.014 250)' : 'oklch(0.975 0.004 250)',
+        color: label === tabName ? accent : 'oklch(0.45 0.012 258)',
+        select: () => this.setState({ tab: label, query: '' })
+      })),
+      loads: rows.map((l) => Object.assign(withPill(l), { select: openLoad(l) })),
+      noLoads: rows.length === 0,
+
+      drivers: d.drivers.map((x) => Object.assign(withPill(x), {
+        initials: x.name.split(' ').map((p) => p[0]).slice(0, 2).join(''),
+        hosColor: x.hos !== '—' && parseInt(x.hos, 10) <= 2 ? 'oklch(0.47 0.14 25)' : 'oklch(0.3 0.015 258)'
+      })),
+      trucks: d.trucks.map((x) => withPill(x)),
+      customers: d.customers.map((x) => Object.assign({}, x, { statusBg: pill(x.tier)[0], statusFg: pill(x.tier)[1] })),
+      arBuckets: d.ar,
+      invoices: d.invoices.map((x) => Object.assign(withPill(x), {
+        ageColor: x.status === 'Overdue' ? 'oklch(0.47 0.14 25)' : 'oklch(0.5 0.012 258)'
+      })),
+      users: d.users.map((x) => withPill(x)),
+      platformRows: TENANTS.map((o, i) => Object.assign(withPill(o), {
+        select: () => this.setState({ tenant: i, view: 'dashboard', sel: null })
+      })),
+
+      hasSelection: !!this.state.sel,
+      sel: this.state.sel || { stops: [], facts: [], docs: [] },
+      closeSel: () => this.setState({ sel: null })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/industry-7af03cd3-5d16-402a-b2c2-589bcbdf5b77/styles.css" />
+<script src="_ds/industry-7af03cd3-5d16-402a-b2c2-589bcbdf5b77/_ds_bundle.js"></script>
+<script src="./image-slot.js"></script>
+<style>
+  html { scroll-behavior:smooth; }
+  body { margin:0; text-wrap:pretty; background:var(--color-bg); }
+  h1,h2,h3,h4,h5,h6 { margin:0; }
+  .num { font-family:"Barlow Condensed", system-ui, sans-serif; font-weight:600; font-variant-numeric:tabular-nums; }
+  .kick { display:block;font-size:13px;line-height:12px;letter-spacing:0.08em;text-transform:uppercase;font-weight:600;color:var(--color-accent-700);margin-bottom:12px; }
+  .rule { height:1px;border:0;margin:0 0 24px;background:var(--color-divider); }
+  .disp { font-family:"Barlow Condensed", system-ui, sans-serif; font-weight:600; text-transform:uppercase; letter-spacing:0.01em; }
+  a { color:var(--color-accent-700); text-decoration:none; }
+  a:hover { color:var(--color-accent-900); }
+</style>
+</helmet>
+
+<div style="max-width:1200px;margin:0 auto;padding:0 56px">
+
+  <nav class="nav" style="padding-left:0;padding-right:0">
+    <span class="nav-brand" style="display:flex;align-items:center;gap:10px">
+      <span style="width:15px;height:15px;background:var(--color-accent);display:block"></span>RunTruck
+    </span>
+    <a href="#platform">Platform</a>
+    <a href="#who">Who it's for</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#faq">FAQ</a>
+    <button class="btn btn-secondary" type="button">Log in</button>
+    <button class="btn btn-primary" type="button">Start 14-day trial</button>
+  </nav>
+
+  <section style="padding:96px 0 72px">
+    <h1 class="disp" style="font-size:clamp(48px,7vw,92px);line-height:1.04;margin-left:-0.052em">
+      <span style="display:block">Dispatch to cash,</span>
+      <span style="display:block">on one system.</span>
+    </h1>
+    <p style="font-size:17px;line-height:26px;max-width:58ch;margin:28px 0 0">RunTruck is a transportation management system for trucking companies — loads, drivers, trucks, customers, invoices and driver settlements in one place, so your office stops reconciling spreadsheets and starts closing the week on time.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:28px">
+      <button class="btn btn-primary" type="button">Start 14-day trial</button>
+      <button class="btn btn-secondary" type="button">Book a 20-minute demo</button>
+    </div>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:28px;font-size:13px;color:var(--color-neutral-700)">
+      <div>No card required</div><div>Data migration included</div><div>Live support 7am–7pm CST</div>
+    </div>
+  </section>
+
+  <section style="padding:0 0 84px">
+    <div class="blueprint">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <header style="display:flex;flex-wrap:wrap;border-bottom:1px solid var(--color-divider)">
+        <span class="kick" style="flex:1;min-width:16ch;padding:12px 24px;margin:0;color:var(--color-text);line-height:24px">RunTruck — operating data</span>
+        <span class="kick" style="padding:12px 24px;margin:0;border-left:1px solid var(--color-divider);color:var(--color-neutral-700);line-height:24px">RT-100</span>
+        <span class="kick" style="padding:12px 24px;margin:0;border-left:1px solid var(--color-divider);color:var(--color-neutral-700);line-height:24px">Sheet 01 of 04</span>
+      </header>
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width:72px;padding-left:24px">No.</th><th style="width:32%">Measure</th><th style="width:22%">Value</th><th>Remark</th>
+          </tr>
+        </thead>
+        <tbody>
+          <sc-for list="{{ specs }}" as="s" hint-placeholder-count="4">
+            <tr>
+              <td class="kick" style="padding:12px 0 12px 24px;margin:0;line-height:24px">{{ s.no }}</td>
+              <td style="font-size:15px">{{ s.prop }}</td>
+              <td class="num" style="font-size:24px">{{ s.val }}</td>
+              <td style="font-size:15px;color:var(--color-neutral-700)">{{ s.rem }}</td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+      <p style="margin:0;padding:12px 24px;border-top:1px solid var(--color-divider);font-size:13px;line-height:24px;color:var(--color-neutral-700)">Figures from customer fleets of 10–350 power units, measured over the first two quarters on the platform.</p>
+    </div>
+  </section>
+
+  <section id="platform" style="padding:0 0 84px">
+    <span class="kick">02 · What the platform holds</span>
+    <hr class="rule" />
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:44px">
+      <sc-for list="{{ features }}" as="f" hint-placeholder-count="6">
+        <div class="blueprint" style="padding:24px">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <h2 class="disp" style="font-size:22px;line-height:24px">{{ f.title }}</h2>
+          <p style="font-size:15px;line-height:24px;margin:16px 0 0;color:var(--color-neutral-800)">{{ f.body }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section id="who" style="padding:0 0 84px">
+    <span class="kick">03 · Built for your side of the freight</span>
+    <hr class="rule" />
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--color-divider)">
+      <sc-for list="{{ audiences }}" as="a" hint-placeholder-count="4">
+        <div style="padding:24px;border-right:1px solid var(--color-divider)">
+          <h3 class="disp" style="font-size:21px">{{ a.name }}</h3>
+          <p style="font-size:14px;line-height:22px;margin:12px 0 18px;color:var(--color-neutral-700)">{{ a.body }}</p>
+          <sc-for list="{{ a.points }}" as="p" hint-placeholder-count="4">
+            <div style="display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--color-divider);font-size:14px">
+              <span style="width:6px;height:6px;background:var(--color-accent);margin-top:8px;flex:none"></span>
+              <span>{{ p }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:64px;align-items:center;padding:0 0 84px">
+    <div>
+      <span class="kick">04 · From the yard to the office</span>
+      <hr class="rule" />
+      <h2 class="disp" style="font-size:34px;line-height:36px">The office sees what the truck sees</h2>
+      <p style="font-size:15px;line-height:24px;margin:20px 0 0;max-width:46ch;color:var(--color-neutral-800)">Drivers send the bill of lading from the cab and it lands on the load. Dispatch sees the stop close, accounting sees an invoice ready to go out — no phone tag, no scanning at the end of the week.</p>
+      <div style="display:flex;gap:12px;margin-top:24px">
+        <button class="btn btn-secondary" type="button">See the driver app</button>
+      </div>
+    </div>
+    <figure class="blueprint duotone" style="margin:0;position:relative">
+      <image-slot id="site-photo" shape="rect" style="width:100%;aspect-ratio:16/10" placeholder="Drop a photo — driver with phone at the trailer"></image-slot>
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    </figure>
+  </section>
+
+  <section style="padding:0 0 84px">
+    <figure style="margin:0">
+      <blockquote class="num" style="font-size:clamp(26px,2.8vw,34px);line-height:1.24;letter-spacing:0;max-width:38ch;margin:0;text-indent:-0.316em">“We ran fifteen spreadsheets and a whiteboard. Now settlements take an hour on Monday instead of a day and a half.”</blockquote>
+      <figcaption style="font-size:15px;line-height:24px;color:var(--color-neutral-700);margin-top:36px;text-indent:-0.885em">— Rosa Medina, dispatch lead, Sunridge Freight (42 trucks)</figcaption>
+    </figure>
+  </section>
+
+  <section id="pricing" style="padding:0 0 84px">
+    <span class="kick">05 · Pricing</span>
+    <hr class="rule" />
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:44px">
+      <sc-for list="{{ plans }}" as="p" hint-placeholder-count="3">
+        <div class="blueprint" style="padding:24px;display:flex;flex-direction:column;gap:16px">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div>
+            <h3 class="disp" style="font-size:22px">{{ p.name }}</h3>
+            <div style="font-size:13px;color:var(--color-neutral-700);margin-top:4px">{{ p.for }}</div>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:8px;padding-bottom:16px;border-bottom:1px solid var(--color-divider)">
+            <div class="num" style="font-size:42px;line-height:1">{{ p.price }}</div>
+            <div style="font-size:13px;color:var(--color-neutral-700)">{{ p.unit }}</div>
+          </div>
+          <sc-for list="{{ p.points }}" as="x" hint-placeholder-count="4">
+            <div style="display:flex;gap:10px;font-size:14px;line-height:22px">
+              <span style="width:6px;height:6px;background:var(--color-accent);margin-top:8px;flex:none"></span>
+              <span>{{ x }}</span>
+            </div>
+          </sc-for>
+          <div style="flex:1"></div>
+          <button class="btn {{ p.btnClass }} btn-block" type="button">{{ p.cta }}</button>
+        </div>
+      </sc-for>
+    </div>
+    <p style="font-size:13px;line-height:24px;color:var(--color-neutral-700);margin:20px 0 0">Billed per power unit, monthly. Driver app seats, data migration and support are included on every plan.</p>
+  </section>
+
+  <section id="faq" style="padding:0 0 84px">
+    <span class="kick">06 · Questions</span>
+    <hr class="rule" />
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0 64px">
+      <sc-for list="{{ faqs }}" as="f" hint-placeholder-count="6">
+        <div style="padding:20px 0;border-top:1px solid var(--color-divider)">
+          <h3 class="disp" style="font-size:19px">{{ f.q }}</h3>
+          <p style="font-size:15px;line-height:24px;margin:10px 0 0;color:var(--color-neutral-800)">{{ f.a }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="padding:0 0 72px">
+    <span class="kick">07 · Get started</span>
+    <hr class="rule" />
+    <h3 class="disp" style="font-size:26px">Move your first load on RunTruck this week</h3>
+    <p style="font-size:15px;line-height:24px;margin:16px 0 0;max-width:60ch;color:var(--color-neutral-800)">We migrate your customers, drivers, trucks and open invoices before your trial starts, so you are looking at your own freight on day one — not a demo account.</p>
+    <div style="display:flex;gap:12px;align-items:stretch;max-width:480px;margin-top:24px">
+      <input class="input" type="email" placeholder="you@yourfleet.com" aria-label="Work email" style="flex:1" />
+      <button class="btn btn-primary" type="button">Start trial</button>
+    </div>
+  </section>
+
+  <footer style="padding:32px 0;border-top:1px solid var(--color-divider);display:flex;flex-wrap:wrap;gap:32px;font-size:13px;line-height:24px;color:var(--color-neutral-700)">
+    <div style="flex:1;min-width:220px">
+      <div class="num" style="font-size:17px;color:var(--color-text)">RUNTRUCK</div>
+      <div style="margin-top:6px">TMS for trucking companies.</div>
+    </div>
+    <sc-for list="{{ footer }}" as="c" hint-placeholder-count="3">
+      <div style="min-width:150px">
+        <div class="kick" style="margin-bottom:10px">{{ c.title }}</div>
+        <sc-for list="{{ c.links }}" as="l" hint-placeholder-count="4">
+          <div style="padding:3px 0">{{ l }}</div>
+        </sc-for>
+      </div>
+    </sc-for>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      specs: [
+        { no:'01', prop:'Spreadsheets retired per fleet', val:'15+', rem:'Dispatch, fuel, payroll, IFTA, maintenance' },
+        { no:'02', prop:'Time to invoice a delivered load', val:'4 min', rem:'From POD upload to invoice sent' },
+        { no:'03', prop:'Integrations and open API', val:'100+', rem:'ELD, factoring, fuel cards, accounting, EDI' },
+        { no:'04', prop:'Setup with your own data', val:'5 days', rem:'Migration and training included' }
+      ],
+      features: [
+        { title:'Dispatch & planning', body:'One board for every load: assign a driver and trailer, see hours of service before you commit, and watch stops close in real time instead of calling for updates.' },
+        { title:'Fleet & safety', body:'Trucks, trailers, odometers and service intervals in one register. CDLs, medical cards and annual reviews raise themselves before they expire.' },
+        { title:'Driver app', body:'Drivers accept loads, photograph the bill of lading, log fuel and check settlements from their phone. The document lands on the load, not in a text thread.' },
+        { title:'Invoicing & settlements', body:'Invoice a load the moment the POD arrives, run driver pay by mile, percentage or flat rate, and see aging by customer without exporting anything.' },
+        { title:'Reporting you can act on', body:'Revenue per mile, deadhead, cost per truck and margin by customer — per driver, per lane, per week, with the numbers traceable to the loads behind them.' },
+        { title:'Integrations & EDI', body:'Connect the ELD, fuel card, factoring company and accounting system you already use, with built-in EDI for shippers that require it.' }
+      ],
+      audiences: [
+        { name:'Carriers', body:'Asset fleets from ten trucks to several hundred.', points:['Dispatch and planning','Driver management and settlement','Fleet and safety compliance','Accounting and payroll handoff'] },
+        { name:'Brokers', body:'Non-asset teams covering freight with partner carriers.', points:['Carrier onboarding and packets','Load tendering and coverage','Carrier settlement','Shipper rate history'] },
+        { name:'Hybrids', body:'Asset-based brokerages running both books.', points:['One platform, two divisions','Consolidated financials','Shared customer records','Cross-division dispatch'] },
+        { name:'Private fleets', body:'Companies hauling their own product.', points:['Delivery planning','Cost per stop and per unit','Driver hours and safety','Maintenance scheduling'] }
+      ],
+      plans: [
+        { name:'Starter', for:'Up to 15 trucks', price:'$39', unit:'per truck / month', points:['Dispatch board and load detail','Driver app and documents','Invoicing and AR aging','Email support'], cta:'Start trial', btnClass:'btn-secondary' },
+        { name:'Growth', for:'15–100 trucks', price:'$32', unit:'per truck / month', points:['Everything in Starter','Driver settlements and payroll export','Maintenance and compliance registers','Reporting suite and open API','Live support 7am–7pm CST'], cta:'Start trial', btnClass:'btn-primary' },
+        { name:'Enterprise', for:'100+ trucks or multiple divisions', price:'Custom', unit:'annual agreement', points:['Everything in Growth','Multi-division consolidation','Built-in EDI and custom workflows','Dedicated implementation team','SSO, MFA and audit logs'], cta:'Talk to us', btnClass:'btn-secondary' }
+      ],
+      faqs: [
+        { q:'How is this different from what we have?', a:'RunTruck is one record per load, from booking through payment. Dispatch, safety and accounting work from that same record, so nothing is re-keyed between systems and nothing gets invoiced twice.' },
+        { q:'Will you move our data?', a:'Yes. Customers, drivers, trucks, trailers, open loads and unpaid invoices come across before your trial starts, from a spreadsheet or from your current TMS.' },
+        { q:'What does the driver need?', a:'A smartphone. Drivers accept loads, upload documents, log fuel and view settlements without calling the office.' },
+        { q:'Do you replace our accounting system?', a:'No. RunTruck handles freight billing and driver settlements, then hands clean entries to QuickBooks or your accounting package.' },
+        { q:'Is there a free trial?', a:'Fourteen days on your own data, with support included. No card required, and you keep your exports if you leave.' },
+        { q:'How is it priced?', a:'Per power unit, per month, with driver app seats included. Trailer records, users and documents are not metered.' }
+      ],
+      footer: [
+        { title:'Platform', links:['Dispatch','Fleet & safety','Driver app','Invoicing','Reporting','Integrations'] },
+        { title:'Who it\u2019s for', links:['Carriers','Brokers','Hybrids','Private fleets'] },
+        { title:'Company', links:['Pricing','Support','Security','Contact'] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

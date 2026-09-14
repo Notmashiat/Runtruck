@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas" />
+<link rel="stylesheet" href="industry.css" />
+<style>
+  html, body { margin:0; padding:0; background:#e4e4e6; }
+  h1,h2,h3,h4,h5,h6 { margin:0; }
+  .num { font-family:"Barlow Condensed", system-ui, sans-serif; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:-0.01em; }
+  .lbl { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; }
+  a { color:var(--color-accent-700); }
+  a:hover { color:var(--color-accent-900); }
+</style>
+</helmet>
+
+<section style="padding:56px;display:flex;flex-direction:column;gap:28px">
+  <div style="display:flex;align-items:flex-end;gap:16px">
+    <h2 style="font-size:30px">RunTruck — two visual directions</h2>
+    <div style="font-size:13px;color:var(--color-neutral-700);padding-bottom:5px">Dashboard and load detail in each. Pick <a href="#1a">1a</a> or <a href="#1b">1b</a> and I'll build the remaining screens in it.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+
+    <div id="1a" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="num" style="font-size:15px;background:var(--color-accent);color:var(--color-bg);padding:3px 10px">1a</div>
+        <h3 style="font-size:22px">Blueprint board</h3>
+        <div style="font-size:13px;color:var(--color-neutral-700)">All-paper ground, everything a framed line drawing.</div>
+      </div>
+
+      <div style="width:1440px;height:900px;background:var(--color-bg);border:1px solid var(--color-divider);display:flex;overflow:hidden">
+        <div style="width:216px;flex:none;border-right:1px solid var(--color-divider);padding:24px 0;display:flex;flex-direction:column">
+          <div style="padding:0 24px 30px 24px;display:flex;align-items:center;gap:10px">
+            <div style="width:16px;height:16px;background:var(--color-accent)"></div>
+            <div class="num" style="font-size:19px;letter-spacing:0.06em">RUNTRUCK</div>
+          </div>
+          <div class="lbl" style="padding:0 24px 10px 24px;color:var(--color-neutral-600)">Operations</div>
+          <div style="display:flex;flex-direction:column">
+            <div style="padding:9px 24px;border-left:2px solid var(--color-accent);background:var(--color-accent-100);color:var(--color-accent-800);font-size:14px;font-weight:500">Dashboard</div>
+            <div style="padding:9px 24px;border-left:2px solid transparent;font-size:14px">Loads</div>
+            <div style="padding:9px 24px;border-left:2px solid transparent;font-size:14px">Drivers</div>
+            <div style="padding:9px 24px;border-left:2px solid transparent;font-size:14px">Trucks &amp; trailers</div>
+            <div style="padding:9px 24px;border-left:2px solid transparent;font-size:14px">Customers</div>
+          </div>
+          <div class="lbl" style="padding:30px 24px 10px 24px;color:var(--color-neutral-600)">Money</div>
+          <div style="display:flex;flex-direction:column">
+            <div style="padding:9px 24px;border-left:2px solid transparent;font-size:14px">Invoicing</div>
+            <div style="padding:9px 24px;border-left:2px solid transparent;font-size:14px">Settlements</div>
+          </div>
+          <div style="flex:1"></div>
+          <div style="padding:16px 24px 0 24px;border-top:1px solid var(--color-divider);font-size:13px">
+            <div style="font-weight:500">Rosa Medina</div>
+            <div style="font-size:12px;color:var(--color-neutral-600)">Dispatch · Sunridge Freight</div>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:0;padding:30px 36px;display:flex;flex-direction:column;gap:30px;overflow:hidden">
+          <div style="display:flex;align-items:flex-end;gap:16px">
+            <div>
+              <div class="lbl" style="color:var(--color-accent-700)">Wednesday, September 3</div>
+              <h1 style="font-size:38px;margin-top:6px">Today</h1>
+            </div>
+            <div style="flex:1"></div>
+            <input class="input" placeholder="Search loads, drivers, customers" style="width:250px" />
+            <button class="btn btn-primary blueprint" type="button">New load<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i></button>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:26px">
+            <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+              <div class="blueprint" style="padding:18px 18px 16px 18px">
+                <div class="lbl" style="color:var(--color-accent-700)">{{ k.label }}</div>
+                <div class="num" style="font-size:40px;margin-top:12px;line-height:1">{{ k.value }}</div>
+                <div style="font-size:12px;color:var(--color-neutral-700);margin-top:6px">{{ k.delta }}</div>
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1.55fr 1fr;gap:36px;align-items:start;min-height:0">
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:baseline;gap:12px">
+                <h4>Active loads</h4>
+                <div style="font-size:12px;color:var(--color-neutral-600)">7 moving · 2 need attention</div>
+              </div>
+              <div class="blueprint" style="padding:14px 16px">
+                <table class="table">
+                  <thead>
+                    <tr><th>Load</th><th>Customer</th><th>Route</th><th>Driver</th><th style="text-align:right">Rate</th><th style="text-align:right">Status</th></tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ loads }}" as="l" hint-placeholder-count="7">
+                      <tr>
+                        <td class="num" style="font-size:14px">{{ l.id }}</td>
+                        <td>{{ l.customer }}</td>
+                        <td style="color:var(--color-neutral-700)">{{ l.route }}</td>
+                        <td>{{ l.driver }}</td>
+                        <td class="num" style="text-align:right;font-size:15px">{{ l.rate }}</td>
+                        <td style="text-align:right"><span class="tag {{ l.tagClass }}">{{ l.status }}</span></td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:30px">
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <h4>Revenue, last 7 days</h4>
+                <div class="blueprint" style="padding:18px">
+                  <div style="display:flex;align-items:flex-end;gap:10px;height:120px">
+                    <sc-for list="{{ chart }}" as="c" hint-placeholder-count="7">
+                      <div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:8px">
+                        <div style="width:100%;height:{{ c.h }};background:{{ c.fill }}"></div>
+                        <div style="font-size:11px;color:var(--color-neutral-600)">{{ c.day }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <h4>Drivers</h4>
+                <div style="display:flex;flex-direction:column">
+                  <sc-for list="{{ drivers }}" as="d" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--color-divider);font-size:14px">
+                      <div style="width:8px;height:8px;background:{{ d.dot }};flex:none"></div>
+                      <div style="flex:1">{{ d.name }}</div>
+                      <div style="font-size:12px;color:var(--color-neutral-600)">{{ d.note }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="width:1440px;height:900px;background:var(--color-bg);border:1px solid var(--color-divider);display:flex;overflow:hidden">
+        <div style="width:216px;flex:none;border-right:1px solid var(--color-divider);padding:24px 0">
+          <div style="padding:0 24px 30px 24px;display:flex;align-items:center;gap:10px">
+            <div style="width:16px;height:16px;background:var(--color-accent)"></div>
+            <div class="num" style="font-size:19px;letter-spacing:0.06em">RUNTRUCK</div>
+          </div>
+          <div class="lbl" style="padding:0 24px 10px 24px;color:var(--color-neutral-600)">Operations</div>
+          <div style="display:flex;flex-direction:column">
+            <div style="padding:9px 24px;border-left:2px solid transparent;font-size:14px">Dashboard</div>
+            <div style="padding:9px 24px;border-left:2px solid var(--color-accent);background:var(--color-accent-100);color:var(--color-accent-800);font-size:14px;font-weight:500">Loads</div>
+            <div style="padding:9px 24px;border-left:2px solid transparent;font-size:14px">Drivers</div>
+            <div style="padding:9px 24px;border-left:2px solid transparent;font-size:14px">Trucks &amp; trailers</div>
+            <div style="padding:9px 24px;border-left:2px solid transparent;font-size:14px">Customers</div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;padding:30px 36px;display:flex;flex-direction:column;gap:26px">
+          <div style="display:flex;align-items:flex-end;gap:16px">
+            <div>
+              <div class="lbl" style="color:var(--color-accent-700)">Load L-40218 · Northgate Foods</div>
+              <h1 style="font-size:38px;margin-top:6px">Fresno, CA → Reno, NV</h1>
+            </div>
+            <div style="flex:1"></div>
+            <button class="btn btn-secondary" type="button">Message driver</button>
+            <button class="btn btn-primary blueprint" type="button">Update status<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i></button>
+          </div>
+
+          <div class="blueprint" style="display:grid;grid-template-columns:repeat(5,1fr)">
+            <sc-for list="{{ facts }}" as="f" hint-placeholder-count="5">
+              <div style="padding:16px 18px;border-right:1px solid var(--color-divider)">
+                <div class="lbl" style="color:var(--color-neutral-600)">{{ f.k }}</div>
+                <div class="num" style="font-size:24px;margin-top:8px;line-height:1.1">{{ f.v }}</div>
+              </div>
+            </sc-for>
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:36px;align-items:start">
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <h4>Stops</h4>
+              <div style="display:flex;flex-direction:column;gap:0">
+                <sc-for list="{{ stops }}" as="s" hint-placeholder-count="3">
+                  <div style="display:grid;grid-template-columns:18px 1fr;gap:16px">
+                    <div style="display:flex;flex-direction:column;align-items:center">
+                      <div style="width:10px;height:10px;margin-top:5px;background:{{ s.fill }};border:1px solid var(--color-accent)"></div>
+                      <div style="width:1px;flex:1;background:var(--color-divider)"></div>
+                    </div>
+                    <div style="padding-bottom:26px">
+                      <div class="lbl" style="color:var(--color-accent-700)">{{ s.kind }}</div>
+                      <div style="font-size:17px;font-weight:500;margin-top:5px">{{ s.name }}</div>
+                      <div style="font-size:13px;color:var(--color-neutral-700);margin-top:3px">{{ s.address }}</div>
+                      <div class="num" style="font-size:15px;margin-top:6px">{{ s.window }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:26px">
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <h4>Freight</h4>
+                <div style="display:flex;flex-direction:column">
+                  <sc-for list="{{ freight }}" as="f" hint-placeholder-count="5">
+                    <div style="display:flex;gap:16px;padding:10px 0;border-bottom:1px solid var(--color-divider);font-size:14px">
+                      <div style="flex:1;color:var(--color-neutral-700)">{{ f.k }}</div>
+                      <div class="num" style="font-size:15px">{{ f.v }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <h4>Documents</h4>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:22px">
+                  <sc-for list="{{ docs }}" as="d" hint-placeholder-count="3">
+                    <div class="blueprint" style="padding:14px">
+                      <div style="height:74px;background:repeating-linear-gradient(135deg,var(--color-neutral-200) 0 5px,transparent 5px 10px);border:1px solid var(--color-divider)"></div>
+                      <div style="font-size:13px;margin-top:12px;font-weight:500">{{ d.name }}</div>
+                      <div style="font-size:12px;color:var(--color-neutral-600);margin-top:2px">{{ d.state }}</div>
+                      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1b" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="num" style="font-size:15px;background:var(--color-accent);color:var(--color-bg);padding:3px 10px">1b</div>
+        <h3 style="font-size:22px">Steel rail</h3>
+        <div style="font-size:13px;color:var(--color-neutral-700)">Deep steel navigation field, content as one spec plate.</div>
+      </div>
+
+      <div style="width:1440px;height:900px;background:var(--color-bg);border:1px solid var(--color-divider);display:flex;overflow:hidden">
+        <div style="width:232px;flex:none;background:var(--color-accent-900);color:var(--color-bg);padding:26px 0;display:flex;flex-direction:column">
+          <div style="padding:0 22px 32px 22px;display:flex;align-items:center;gap:10px">
+            <div style="width:16px;height:16px;background:var(--color-accent-400)"></div>
+            <div class="num" style="font-size:19px;letter-spacing:0.06em">RUNTRUCK</div>
+          </div>
+          <div class="lbl" style="padding:0 22px 12px 22px;color:var(--color-accent-400)">Operations</div>
+          <div style="display:flex;flex-direction:column">
+            <div style="padding:10px 22px;background:var(--color-accent);font-size:14px;font-weight:500">Dashboard</div>
+            <div style="padding:10px 22px;font-size:14px;color:var(--color-accent-200)">Loads</div>
+            <div style="padding:10px 22px;font-size:14px;color:var(--color-accent-200)">Drivers</div>
+            <div style="padding:10px 22px;font-size:14px;color:var(--color-accent-200)">Trucks &amp; trailers</div>
+            <div style="padding:10px 22px;font-size:14px;color:var(--color-accent-200)">Customers</div>
+          </div>
+          <div class="lbl" style="padding:32px 22px 12px 22px;color:var(--color-accent-400)">Money</div>
+          <div style="display:flex;flex-direction:column">
+            <div style="padding:10px 22px;font-size:14px;color:var(--color-accent-200)">Invoicing</div>
+            <div style="padding:10px 22px;font-size:14px;color:var(--color-accent-200)">Settlements</div>
+          </div>
+          <div style="flex:1"></div>
+          <div style="margin:0 22px;padding-top:16px;border-top:1px solid var(--color-accent-700);font-size:13px">
+            <div style="font-weight:500">Rosa Medina</div>
+            <div style="font-size:12px;color:var(--color-accent-300)">Dispatch · Sunridge Freight</div>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:16px;padding:22px 40px;border-bottom:1px solid var(--color-divider)">
+            <h1 style="font-size:32px">Today</h1>
+            <div style="font-size:13px;color:var(--color-neutral-700)">Wednesday, September 3</div>
+            <div style="flex:1"></div>
+            <input class="input" placeholder="Search" style="width:200px" />
+            <button class="btn btn-primary" type="button">New load</button>
+          </div>
+
+          <div style="padding:34px 40px;display:flex;flex-direction:column;gap:34px;min-height:0">
+            <div class="blueprint" style="display:grid;grid-template-columns:repeat(4,1fr);background:var(--color-neutral-100)">
+              <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+                <div style="padding:22px 24px;border-right:1px solid var(--color-divider)">
+                  <div class="lbl" style="color:var(--color-neutral-600)">{{ k.label }}</div>
+                  <div class="num" style="font-size:46px;line-height:1;margin-top:14px">{{ k.value }}</div>
+                  <div style="font-size:12px;color:var(--color-accent-700);margin-top:8px">{{ k.delta }}</div>
+                </div>
+              </sc-for>
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:40px;align-items:start">
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div style="display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--color-accent-900);padding-bottom:8px">
+                  <h4 style="font-size:19px">Active loads</h4>
+                  <div style="flex:1"></div>
+                  <div class="lbl" style="color:var(--color-accent-700)">View all</div>
+                </div>
+                <table class="table">
+                  <thead>
+                    <tr><th>Load</th><th>Customer</th><th>Route</th><th>Driver</th><th style="text-align:right">Rate</th><th style="text-align:right">Status</th></tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ loads }}" as="l" hint-placeholder-count="7">
+                      <tr>
+                        <td class="num" style="font-size:14px">{{ l.id }}</td>
+                        <td>{{ l.customer }}</td>
+                        <td style="color:var(--color-neutral-700)">{{ l.route }}</td>
+                        <td>{{ l.driver }}</td>
+                        <td class="num" style="text-align:right;font-size:15px">{{ l.rate }}</td>
+                        <td style="text-align:right"><span class="tag {{ l.tagClass }}">{{ l.status }}</span></td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:34px">
+                <div style="display:flex;flex-direction:column;gap:16px">
+                  <div style="border-bottom:1px solid var(--color-accent-900);padding-bottom:8px"><h4 style="font-size:19px">Revenue, last 7 days</h4></div>
+                  <div style="display:flex;align-items:flex-end;gap:10px;height:132px">
+                    <sc-for list="{{ chart }}" as="c" hint-placeholder-count="7">
+                      <div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:8px">
+                        <div style="width:100%;height:{{ c.h }};background:{{ c.fill }}"></div>
+                        <div style="font-size:11px;color:var(--color-neutral-600)">{{ c.day }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:16px">
+                  <div style="border-bottom:1px solid var(--color-accent-900);padding-bottom:8px"><h4 style="font-size:19px">Drivers</h4></div>
+                  <div style="display:flex;flex-direction:column">
+                    <sc-for list="{{ drivers }}" as="d" hint-placeholder-count="5">
+                      <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--color-divider);font-size:14px">
+                        <div style="width:8px;height:8px;background:{{ d.dot }};flex:none"></div>
+                        <div style="flex:1">{{ d.name }}</div>
+                        <div style="font-size:12px;color:var(--color-neutral-600)">{{ d.note }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="width:1440px;height:900px;background:var(--color-bg);border:1px solid var(--color-divider);display:flex;overflow:hidden">
+        <div style="width:232px;flex:none;background:var(--color-accent-900);color:var(--color-bg);padding:26px 0">
+          <div style="padding:0 22px 32px 22px;display:flex;align-items:center;gap:10px">
+            <div style="width:16px;height:16px;background:var(--color-accent-400)"></div>
+            <div class="num" style="font-size:19px;letter-spacing:0.06em">RUNTRUCK</div>
+          </div>
+          <div class="lbl" style="padding:0 22px 12px 22px;color:var(--color-accent-400)">Operations</div>
+          <div style="display:flex;flex-direction:column">
+            <div style="padding:10px 22px;font-size:14px;color:var(--color-accent-200)">Dashboard</div>
+            <div style="padding:10px 22px;background:var(--color-accent);font-size:14px;font-weight:500">Loads</div>
+            <div style="padding:10px 22px;font-size:14px;color:var(--color-accent-200)">Drivers</div>
+            <div style="padding:10px 22px;font-size:14px;color:var(--color-accent-200)">Trucks &amp; trailers</div>
+            <div style="padding:10px 22px;font-size:14px;color:var(--color-accent-200)">Customers</div>
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:16px;padding:20px 40px;border-bottom:1px solid var(--color-divider)">
+            <div>
+              <div class="lbl" style="color:var(--color-accent-700)">Load L-40218 · Northgate Foods</div>
+              <h1 style="font-size:30px;margin-top:5px">Fresno, CA → Reno, NV</h1>
+            </div>
+            <div style="flex:1"></div>
+            <span class="tag tag-accent" style="font-size:12px">In transit</span>
+            <button class="btn btn-secondary" type="button">Message driver</button>
+            <button class="btn btn-primary" type="button">Update status</button>
+          </div>
+
+          <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0">
+            <div style="padding:32px 40px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:22px">
+              <div style="border-bottom:1px solid var(--color-accent-900);padding-bottom:8px"><h4 style="font-size:19px">Stops</h4></div>
+              <sc-for list="{{ stops }}" as="s" hint-placeholder-count="3">
+                <div style="display:grid;grid-template-columns:18px 1fr;gap:16px">
+                  <div style="display:flex;flex-direction:column;align-items:center">
+                    <div style="width:10px;height:10px;margin-top:5px;background:{{ s.fill }};border:1px solid var(--color-accent)"></div>
+                    <div style="width:1px;flex:1;background:var(--color-divider)"></div>
+                  </div>
+                  <div style="padding-bottom:18px">
+                    <div class="lbl" style="color:var(--color-accent-700)">{{ s.kind }}</div>
+                    <div style="font-size:17px;font-weight:500;margin-top:5px">{{ s.name }}</div>
+                    <div style="font-size:13px;color:var(--color-neutral-700);margin-top:3px">{{ s.address }}</div>
+                    <div class="num" style="font-size:15px;margin-top:6px">{{ s.window }}</div>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="flex:1"></div>
+              <div class="blueprint duotone" style="height:150px;background:repeating-linear-gradient(135deg,var(--color-neutral-300) 0 6px,var(--color-neutral-200) 6px 12px);display:flex;align-items:center;justify-content:center">
+                <div class="lbl" style="color:var(--color-neutral-700);font-size:11px">Live map / ELD trace</div>
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              </div>
+            </div>
+
+            <div style="padding:26px 40px;display:flex;flex-direction:column;gap:24px">
+              <div class="blueprint" style="display:grid;grid-template-columns:repeat(5,1fr);background:var(--color-neutral-100)">
+                <sc-for list="{{ facts }}" as="f" hint-placeholder-count="5">
+                  <div style="padding:14px 12px;border-right:1px solid var(--color-divider)">
+                    <div class="lbl" style="color:var(--color-neutral-600);font-size:9px">{{ f.k }}</div>
+                    <div class="num" style="font-size:22px;margin-top:6px;line-height:1.1">{{ f.v }}</div>
+                  </div>
+                </sc-for>
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <div style="border-bottom:1px solid var(--color-accent-900);padding-bottom:8px"><h4 style="font-size:19px">Freight &amp; pay</h4></div>
+                <sc-for list="{{ freight }}" as="f" hint-placeholder-count="5">
+                  <div style="display:flex;gap:16px;padding:9px 0;border-bottom:1px solid var(--color-divider);font-size:14px">
+                    <div style="flex:1;color:var(--color-neutral-700)">{{ f.k }}</div>
+                    <div class="num" style="font-size:15px">{{ f.v }}</div>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <div style="border-bottom:1px solid var(--color-accent-900);padding-bottom:8px"><h4 style="font-size:19px">Documents</h4></div>
+                <sc-for list="{{ docs }}" as="d" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--color-divider)">
+                    <div style="width:26px;height:32px;background:repeating-linear-gradient(135deg,var(--color-neutral-200) 0 5px,transparent 5px 10px);border:1px solid var(--color-divider);flex:none"></div>
+                    <div style="flex:1;font-size:14px">{{ d.name }}</div>
+                    <div style="font-size:12px;color:var(--color-neutral-600)">{{ d.state }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+const LOADS = [
+  { id:'L-40218', customer:'Northgate Foods', route:'Fresno → Reno', driver:'Marcus Hale', rate:'$2,450', status:'In transit', tagClass:'tag-accent' },
+  { id:'L-40219', customer:'Bayline Distribution', route:'Stockton → Salt Lake City', driver:'Dara Whitfield', rate:'$3,180', status:'At pickup', tagClass:'tag-neutral' },
+  { id:'L-40220', customer:'Cascade Building Supply', route:'Sacramento → Boise', driver:'Ellis Nakamura', rate:'$2,910', status:'Delayed', tagClass:'tag-outline' },
+  { id:'L-40221', customer:'Harbor Point Retail', route:'Oakland → Portland', driver:'Unassigned', rate:'$3,540', status:'Needs driver', tagClass:'tag-outline' },
+  { id:'L-40214', customer:'Northgate Foods', route:'Bakersfield → Phoenix', driver:'Priya Raman', rate:'$1,980', status:'Needs POD', tagClass:'tag-outline' },
+  { id:'L-40212', customer:'Bayline Distribution', route:'Los Angeles → Las Vegas', driver:'Marcus Hale', rate:'$1,640', status:'Delivered', tagClass:'tag-neutral' },
+  { id:'L-40210', customer:'Sierra Ag Partners', route:'Modesto → Denver', driver:'Tobias Frey', rate:'$4,120', status:'Delivered', tagClass:'tag-neutral' }
+];
+
+class Component extends DCLogic {
+  renderVals() {
+    const bars = [42, 58, 51, 66, 74, 38, 29];
+    const max = Math.max.apply(null, bars);
+    return {
+      kpis: [
+        { label:'Active loads', value:'27', delta:'+4 vs. last week' },
+        { label:'Revenue this week', value:'$168K', delta:'+9.2%' },
+        { label:'Deadhead miles', value:'7.8%', delta:'1.4 pts better' },
+        { label:'Unbilled loads', value:'11', delta:'$34,900 waiting' }
+      ],
+      loads: LOADS,
+      chart: bars.map((v, i) => ({
+        day: ['Thu','Fri','Sat','Sun','Mon','Tue','Wed'][i],
+        h: Math.round((v / max) * 100) + '%',
+        fill: v === max ? 'var(--color-accent)' : 'var(--color-accent-300)'
+      })),
+      drivers: [
+        { name:'Marcus Hale', note:'On duty · 6h 20m left', dot:'var(--color-accent)' },
+        { name:'Dara Whitfield', note:'On duty · 9h 05m left', dot:'var(--color-accent)' },
+        { name:'Ellis Nakamura', note:'On duty · 1h 45m left', dot:'var(--color-accent)' },
+        { name:'Priya Raman', note:'Available', dot:'var(--color-neutral-400)' },
+        { name:'Tobias Frey', note:'Home time', dot:'var(--color-neutral-300)' }
+      ],
+      facts: [
+        { k:'Miles', v:'478' },
+        { k:'Line haul', v:'$2,450' },
+        { k:'Rate / mile', v:'$5.13' },
+        { k:'Driver pay', v:'$612' },
+        { k:'Margin', v:'$1,214' }
+      ],
+      stops: [
+        { kind:'Pickup · complete', name:'Northgate Cold Storage', address:'4120 S Golden State Blvd, Fresno, CA', window:'Sep 3 · 08:00–14:00', fill:'var(--color-accent)' },
+        { kind:'Fuel stop', name:'Pilot #418, Lodi, CA', address:'Planned · 92 gal, DEF top-off', window:'Sep 3 · 16:40', fill:'transparent' },
+        { kind:'Delivery', name:'Reno Grocers DC', address:'1855 E Greg St, Sparks, NV', window:'Sep 4 · 06:00–12:00', fill:'transparent' }
+      ],
+      freight: [
+        { k:'Commodity', v:'Frozen produce' },
+        { k:'Weight', v:'41,200 lb' },
+        { k:'Equipment', v:'Reefer, 53 ft' },
+        { k:'Temperature', v:'-10 °F' },
+        { k:'Reference', v:'PO 88-41207' }
+      ],
+      docs: [
+        { name:'Rate confirmation', state:'Attached' },
+        { name:'Bill of lading', state:'Attached' },
+        { name:'Proof of delivery', state:'Pending' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
