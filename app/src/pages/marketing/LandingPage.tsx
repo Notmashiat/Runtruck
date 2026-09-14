@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Blueprint } from '../../components/Blueprint';
 
 const SPECS = [
@@ -63,7 +64,7 @@ export function LandingPage() {
         <a href="#who">Who it's for</a>
         <a href="#pricing">Pricing</a>
         <a href="#faq">FAQ</a>
-        <button className="btn btn-secondary" type="button">Log in</button>
+        <Link className="btn btn-secondary" to="/app/dashboard">Log in</Link>
         <button className="btn btn-primary" type="button">Start 14-day trial</button>
       </nav>
 
