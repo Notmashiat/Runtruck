@@ -16,9 +16,9 @@ export function DashboardPage() {
 
   const kpis = [
     { label: 'Active loads', value: String(LOADS.filter((l) => ACTIVE_STATUSES.includes(l.status)).length), delta: '+4 vs. last week', go: () => navigate('/app/loads') },
-    { label: 'Revenue this week', value: '$168K', delta: '+9.2%', go: () => navigate('/app/invoices') },
-    { label: 'Deadhead miles', value: '7.8%', delta: '1.4 pts better', go: () => navigate('/app/trucks') },
-    { label: 'Unbilled loads', value: '11', delta: '$34,900 waiting', go: () => navigate('/app/invoices') },
+    { label: 'Revenue this week', value: '$168K', delta: '+9.2%', go: () => navigate('/app/accounting') },
+    { label: 'Deadhead miles', value: '7.8%', delta: '1.4 pts better', go: () => navigate('/app/fleet') },
+    { label: 'Unbilled loads', value: '11', delta: '$34,900 waiting', go: () => navigate('/app/accounting') },
   ];
 
   const activeLoads = (searching ? LOADS.filter((l) => matches(l, q)) : LOADS.filter((l) => ACTIVE_STATUSES.includes(l.status))).slice(0, 6);
@@ -90,7 +90,7 @@ export function DashboardPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div className="sect"><h4 style={{ fontSize: 19 }}>Drivers</h4></div>
             {driverDots.map((d) => (
-              <div key={d.name} onClick={() => navigate('/app/drivers')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderBottom: '1px solid var(--color-divider)', fontSize: 14, cursor: 'pointer' }}>
+              <div key={d.name} onClick={() => navigate('/app/hr')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderBottom: '1px solid var(--color-divider)', fontSize: 14, cursor: 'pointer' }}>
                 <div style={{ width: 8, height: 8, background: d.dot, flex: 'none' }} />
                 <div style={{ flex: 1 }}>{d.name}</div>
                 <div style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>{d.note}</div>

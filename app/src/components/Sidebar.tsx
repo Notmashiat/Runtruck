@@ -5,7 +5,7 @@ import { useAppShell } from '../context/AppShellContext';
 export function Sidebar() {
   const location = useLocation();
   const { setQuery } = useAppShell();
-  const activeKey = (location.pathname.split('/')[2] || 'dashboard') as ViewKey;
+  const activeKey = (location.pathname.toLowerCase().split('/')[2] || 'dashboard') as ViewKey;
 
   return (
     <div

@@ -13,22 +13,24 @@ export type NavEntry = NavGroup | NavLink;
 export type ViewKey =
   | 'dashboard'
   | 'loads'
-  | 'drivers'
-  | 'trucks'
-  | 'customers'
-  | 'invoices'
-  | 'settlements';
+  | 'planner'
+  | 'fleet'
+  | 'crm'
+  | 'facilities'
+  | 'accounting'
+  | 'hr'
+  | 'safety';
 
 export const NAV: NavEntry[] = [
-  { group: 'Operations' },
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'loads', label: 'Loads' },
-  { key: 'drivers', label: 'Drivers' },
-  { key: 'trucks', label: 'Trucks & trailers' },
-  { key: 'customers', label: 'Customers' },
-  { group: 'Money' },
-  { key: 'invoices', label: 'Invoicing' },
-  { key: 'settlements', label: 'Settlements' },
+  { key: 'planner', label: 'Planner' },
+  { key: 'fleet', label: 'Fleet' },
+  { key: 'crm', label: 'CRM' },
+  { key: 'facilities', label: 'Facilities' },
+  { key: 'accounting', label: 'Accounting' },
+  { key: 'hr', label: 'HR' },
+  { key: 'safety', label: 'Safety' },
 ];
 
 export interface Load {
@@ -231,11 +233,13 @@ export const ACTIVE_STATUSES = ['In transit', 'At pickup', 'Dispatched', 'Delaye
 export const HEAD: Record<ViewKey, [string, string]> = {
   dashboard: ['Wednesday, September 3', 'Today'],
   loads: ['Dispatch board', 'Loads'],
-  drivers: ['Availability and compliance', 'Drivers'],
-  trucks: ['Fleet and maintenance', 'Trucks & trailers'],
-  customers: ['Accounts and shipping history', 'Customers'],
-  invoices: ['Accounts receivable', 'Invoicing'],
-  settlements: ['Week of September 1', 'Settlements'],
+  planner: ['Capacity and lane planning', 'Planner'],
+  fleet: ['Trucks, trailers and maintenance', 'Fleet'],
+  crm: ['Accounts and shipping history', 'CRM'],
+  facilities: ['Yards, terminals and shops', 'Facilities'],
+  accounting: ['Receivables and driver pay', 'Accounting'],
+  hr: ['Driver roster and compliance', 'HR'],
+  safety: ['DOT compliance and incidents', 'Safety'],
 };
 
 export const COMPLIANCE = [

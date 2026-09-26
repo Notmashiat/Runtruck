@@ -13,10 +13,12 @@ export function Header() {
   const navigate = useNavigate();
   const { query, setQuery, approveAll } = useAppShell();
 
-  const segments = location.pathname.split('/');
+  // Route matching is case-insensitive, so normalise before looking the section up in HEAD.
+  const segments = location.pathname.toLowerCase().split('/');
   const view = (segments[2] || 'dashboard') as ViewKey;
-  const loadId = segments[3];
+  const loadId = view === 'loads' ? location.pathname.split('/')[3] : undefined; // raw pathname: load ids are case-sensitive
   const sel = loadId ? LOADS.find((l) => l.id === loadId) ?? LOADS[0] : null;
+  const onSettlements = view === 'accounting' && segments[3] === 'settlements';
 
   const showBack = Boolean(sel);
   const showSearch = (view === 'dashboard' || view === 'loads') && !sel;
@@ -24,24 +26,25 @@ export function Header() {
   const headKicker = sel ? `Load ${sel.id} · ${sel.customer}` : HEAD[view][0];
   const headTitle = sel ? sel.route : HEAD[view][1];
 
-  const actionsFor: Record<string, HeadAction[]> = {
+  const actionsFor: Partial<Record<ViewKey | 'loadDetail', HeadAction[]>> = {
     dashboard: [{ label: 'New load', cls: 'btn-primary', onClick: () => navigate('/app/loads') }],
     loads: [{ label: 'New load', cls: 'btn-primary', onClick: () => navigate('/app/loads') }],
     loadDetail: [
       { label: 'Message driver', cls: 'btn-secondary', onClick: () => {} },
       { label: 'Update status', cls: 'btn-primary', onClick: () => {} },
     ],
-    drivers: [{ label: 'Add driver', cls: 'btn-primary', onClick: () => {} }],
-    trucks: [
+    fleet: [
       { label: 'Log service', cls: 'btn-secondary', onClick: () => {} },
       { label: 'Add unit', cls: 'btn-primary', onClick: () => {} },
     ],
-    customers: [{ label: 'Add customer', cls: 'btn-primary', onClick: () => {} }],
-    invoices: [
-      { label: 'Export batch', cls: 'btn-secondary', onClick: () => {} },
-      { label: 'Invoice 11 loads', cls: 'btn-primary', onClick: () => navigate('/app/settlements') },
-    ],
-    settlements: [{ label: 'Run settlements', cls: 'btn-primary', onClick: () => approveAll() }],
+    crm: [{ label: 'Add customer', cls: 'btn-primary', onClick: () => {} }],
+    accounting: onSettlements
+      ? [{ label: 'Run settlements', cls: 'btn-primary', onClick: () => approveAll() }]
+      : [
+          { label: 'Export batch', cls: 'btn-secondary', onClick: () => {} },
+          { label: 'Invoice 11 loads', cls: 'btn-primary', onClick: () => navigate('/app/accounting/settlements') },
+        ],
+    hr: [{ label: 'Add driver', cls: 'btn-primary', onClick: () => {} }],
   };
   const headActions = actionsFor[sel ? 'loadDetail' : view] ?? [];
 
