@@ -1,25 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
-import {
-  NAV,
-  LOADS,
-  DRIVERS,
-  TRUCKS,
-  CUSTOMERS,
-  INVOICES,
-  SETTLEMENTS,
-  type ViewKey,
-} from '../data/mock';
+import { NAV, type ViewKey } from '../data/mock';
 import { useAppShell } from '../context/AppShellContext';
-
-const COUNTS: Record<ViewKey, string> = {
-  dashboard: '',
-  loads: String(LOADS.length),
-  drivers: String(DRIVERS.length),
-  trucks: String(TRUCKS.length),
-  customers: String(CUSTOMERS.length),
-  invoices: String(INVOICES.length),
-  settlements: String(SETTLEMENTS.length),
-};
 
 export function Sidebar() {
   const location = useLocation();
@@ -91,9 +72,6 @@ export function Sidebar() {
             }}
           >
             <div style={{ flex: 1 }}>{n.label}</div>
-            <div className="num" style={{ fontSize: 13, opacity: 0.7 }}>
-              {COUNTS[n.key]}
-            </div>
           </Link>
         );
       })}
