@@ -1,6 +1,6 @@
 # RunTruck
 
-A React + TypeScript implementation of RunTruck: the operations app (`/app/*`, with its own light,
+A React + TypeScript implementation of RunTruck: the operations app (`/app/*`, with its own light/dark,
 card-based UI) and the marketing site (`../RunTruck Site.dc.html`), built from the Claude Design
 handoff bundle in the repo root.
 
@@ -8,7 +8,7 @@ handoff bundle in the repo root.
 
 - Vite + React 19 + TypeScript
 - React Router for client-side routing (`/` marketing site, `/app/*` the operations app)
-- Plain CSS. The app (`/app/*`) uses its own light, card-based UI (`src/styles/shell.css`, the
+- Plain CSS. The app (`/app/*`) uses its own light/dark, card-based UI (`src/styles/shell.css`, the
   `ui-*` classes, Inter); the marketing site uses the "Industry" design system from the handoff
   (`src/styles/industry.css`, copied from the bundle; only its font `@import` moved to `index.html`), and `src/styles/app.css` holds
   the small shared additions
@@ -18,15 +18,17 @@ handoff bundle in the repo root.
 
 ```
 src/
-  components/       Sidebar, Header (the top bar: search, Filters, per-screen actions), AppLayout,
-                     SectionTabs + TabbedSection (the pill tab bar), and shared pieces: Card, Kpis,
+  components/       Sidebar (with Settings and Log out), SettingsDialog (Profile + Appearance), Header
+                     (the top bar: search, Filters, per-screen actions), AppLayout, SectionTabs +
+                     TabbedSection (the pill tab bar), and shared pieces: Card, Kpis,
                      Tag (status chip), ComingSoon, Blueprint (marketing site only)
   context/          AppShellContext — shared UI state (search, tab filters, settlement approval)
                      that persists across navigation within the app shell
   data/             mock.ts — loads, drivers, trucks, customers, invoices, settlements, plus the
                      sidebar entries (NAV) and each section's tabs (SECTION_TABS);
                      accounting.ts, fleet.ts, hr.ts, safety.ts — data for those sections' tabs
-  lib/search.ts      matchesQuery — the top-bar search filters whichever table is on screen
+  lib/               search.ts (the top-bar search filters whichever table is on screen) and
+                     theme.ts (light/dark, stored in localStorage, applied as data-theme on <html>)
   pages/app/         One file per screen; tabbed sections keep their tabs in a subfolder
                      (fleet/, accounting/, hr/, safety/)
   pages/marketing/   The public landing page
@@ -53,6 +55,11 @@ they are designed:
 Older URLs redirect to their new homes: `/app/drivers` → `/app/fleet/drivers`, `/app/trucks` →
 `/app/fleet/trucks`, `/app/customers` → `/app/crm`, `/app/invoices` → `/app/accounting/invoiced`, and
 `/app/settlements` and `/app/accounting/settlements` → `/app/accounting/payroll`.
+
+The sidebar foot has the signed-in user (`USER` in `data/mock.ts`, with Member ID and Company ID),
+**Settings** — a popup with a Profile page and an Appearance page whose dark-mode switch darkens the
+whole site (app and marketing page; `:root[data-theme="dark"]` tokens in `shell.css` and `app.css`) —
+and **Log out**, which returns to the marketing page.
 
 Routing replaces the original prototype's internal view-state + localStorage persistence:
 every screen (including a given load's detail view) is a real URL, so reloading or sharing a

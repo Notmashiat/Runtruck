@@ -37,6 +37,16 @@ export const NAV: NavEntry[] = [
   { key: 'safety', label: 'Safety' },
 ];
 
+// The signed-in user: shown at the foot of the sidebar and on Settings › Profile.
+export const USER = {
+  name: 'Rosa Medina',
+  role: 'Dispatch',
+  company: 'Sunridge Freight',
+  email: 'rosa.medina@sunridgefreight.com',
+  memberId: '100482731',
+  companyId: '30017',
+};
+
 export interface Load {
   id: string;
   customer: string;
