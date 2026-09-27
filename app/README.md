@@ -10,7 +10,7 @@ handoff bundle in the repo root.
 - React Router for client-side routing (`/` marketing site, `/app/*` the operations app)
 - Plain CSS. The app (`/app/*`) uses its own light, card-based UI (`src/styles/shell.css`, the
   `ui-*` classes, Inter); the marketing site uses the "Industry" design system from the handoff
-  (`src/styles/industry.css`, copied verbatim from the bundle), and `src/styles/app.css` holds
+  (`src/styles/industry.css`, copied from the bundle; only its font `@import` moved to `index.html`), and `src/styles/app.css` holds
   the small shared additions
 - Static in-memory mock data (`src/data/mock.ts`) — no backend, matching the original prototype
 
