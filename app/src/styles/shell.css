@@ -69,7 +69,7 @@
 .ui-tab.is-active { background: var(--ui-primary-soft); color: var(--ui-primary-hover); font-weight: 600; }
 
 /* — KPI cards — */
-.ui-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.ui-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
 .ui-kpi {
   display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 12px;
   min-height: 96px; padding: 20px 24px; background: var(--ui-card); border-radius: 16px;
@@ -106,8 +106,8 @@
 /* "num" is also app.css's condensed-numerals class (the sidebar wordmark, the marketing
    site); inside a table it only means right-aligned, so reset the face it would bring. */
 .ui-table th.num, .ui-table td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: inherit; letter-spacing: inherit; }
-.ui-table td.num { font-weight: inherit; }
-.ui-table td.strong { font-weight: 600; }
+.ui-table td.num { font-weight: inherit; white-space: nowrap; }
+.ui-table td.strong { font-weight: 600; white-space: nowrap; }
 .ui-table td.muted { color: var(--ui-muted); }
 .ui-table tr.is-clickable { cursor: pointer; }
 .ui-table tr.is-clickable:hover td { background: #f7f9fc; }
