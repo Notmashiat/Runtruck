@@ -6,13 +6,13 @@ import { AppShellProvider } from '../context/AppShellContext';
 export function AppLayout() {
   return (
     <AppShellProvider>
-      <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--color-bg)', color: 'var(--color-text)' }}>
+      <div className="ui-shell">
         <Sidebar />
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="ui-column">
           <Header />
-          <div style={{ flex: 1, overflowY: 'auto', padding: '34px 40px' }}>
+          <main className="ui-main">
             <Outlet />
-          </div>
+          </main>
         </div>
       </div>
     </AppShellProvider>

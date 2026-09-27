@@ -1,74 +1,166 @@
-import { useNavigate } from 'react-router-dom';
-import { Blueprint } from '../../components/Blueprint';
+import { Fragment, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Card } from '../../components/Card';
+import { Kpis } from '../../components/Kpis';
 import { Tag } from '../../components/Tag';
 import { useAppShell, type LoadTab } from '../../context/AppShellContext';
-import { LOADS } from '../../data/mock';
+import { ACTIVE_STATUSES, LOADS, type Load } from '../../data/mock';
+import { matchesQuery } from '../../lib/search';
 
 const TABS: LoadTab[] = ['Active', 'Needs POD', 'Delivered', 'All'];
-const ACTIVE_STATUSES = ['In transit', 'At pickup', 'Dispatched', 'Delayed', 'Needs driver'];
 
-function matches(l: (typeof LOADS)[number], q: string) {
-  return `${l.id} ${l.customer} ${l.route} ${l.driver}`.toLowerCase().includes(q);
+function countOf(status: string) {
+  return String(LOADS.filter((l) => l.status === status).length);
+}
+
+const KPIS = [
+  { label: 'Undispatched', value: countOf('Needs driver') },
+  { label: 'In transit', value: countOf('In transit') },
+  { label: 'Delivered', value: countOf('Delivered') },
+  { label: 'Needs POD', value: countOf('Needs POD') },
+];
+
+function listFor(tab: LoadTab): Load[] {
+  if (tab === 'All') return LOADS;
+  if (tab === 'Active') return LOADS.filter((l) => ACTIVE_STATUSES.includes(l.status));
+  return LOADS.filter((l) => l.status === tab);
+}
+
+function firstId(list: Load[]): string | null {
+  return list.length ? list[0].id : null;
 }
 
 export function LoadsPage() {
-  const navigate = useNavigate();
   const { query, setQuery, loadTab, setLoadTab } = useAppShell();
-  const q = query.trim().toLowerCase();
-  const searching = q.length > 0;
+  const searching = query.trim().length > 0;
 
-  let loadRows = LOADS;
-  if (searching) loadRows = LOADS.filter((l) => matches(l, q));
-  else if (loadTab === 'Active') loadRows = LOADS.filter((l) => ACTIVE_STATUSES.includes(l.status));
-  else if (loadTab === 'Needs POD') loadRows = LOADS.filter((l) => l.status === 'Needs POD');
-  else if (loadTab === 'Delivered') loadRows = LOADS.filter((l) => l.status === 'Delivered');
+  // A search looks across every load, regardless of the filter.
+  const rows = searching ? LOADS.filter((l) => matchesQuery(l, query)) : listFor(loadTab);
+  const [openId, setOpenId] = useState<string | null>(firstId(rows));
 
-  const loadCount = searching ? `${loadRows.length} matching “${query}”` : `${loadRows.length} loads`;
+  const countText = searching ? `${rows.length} matching “${query}”` : `${rows.length} loads`;
+
+  const filter = (
+    <div className="ui-filter">
+      {TABS.map((o) => (
+        <button
+          key={o}
+          type="button"
+          className={`ui-filter-opt${!searching && loadTab === o ? ' is-active' : ''}`}
+          onClick={() => { setLoadTab(o); setQuery(''); setOpenId(firstId(listFor(o))); }}
+        >
+          {o}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div className="seg">
-          {TABS.map((t) => (
-            <label key={t} className="seg-opt" onClick={() => { setLoadTab(t); setQuery(''); }}>
-              <input type="radio" name="loadtab" readOnly checked={!searching && loadTab === t} />
-              {t}
-            </label>
-          ))}
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>{loadCount}</div>
-      </div>
+    <>
+      <Kpis items={KPIS} />
 
-      <div style={{ minWidth: 0, overflowX: 'auto' }}>
-        <table className="table">
+      <Card flush title={countText} action={filter}>
+        <table className="ui-table">
           <thead>
             <tr>
-              <th>Load</th><th>Customer</th><th>Route</th><th>Pickup</th><th>Delivery</th><th>Driver / unit</th>
-              <th style={{ textAlign: 'right' }}>Rate</th><th style={{ textAlign: 'right' }}>Status</th>
+              <th>Load #</th><th>Tender #</th><th>Truck</th><th>Route</th><th>Pickup</th><th>Driver</th>
+              <th className="num">Rate</th><th className="num">Status</th>
             </tr>
           </thead>
           <tbody>
-            {loadRows.map((l) => (
-              <tr key={l.id} onClick={() => navigate(`/app/loads/${l.id}`)} className="row-link">
-                <td className="num" style={{ fontSize: 14 }}>{l.id}</td>
-                <td>{l.customer}</td>
-                <td style={{ color: 'var(--color-neutral-700)' }}>{l.route}</td>
-                <td className="num" style={{ fontSize: 14 }}>{l.pickup}</td>
-                <td className="num" style={{ fontSize: 14 }}>{l.delivery}</td>
-                <td>{l.driver} <span className="num" style={{ color: 'var(--color-neutral-600)' }}>{l.unit}</span></td>
-                <td className="num" style={{ textAlign: 'right', fontSize: 15 }}>{l.rate}</td>
-                <td style={{ textAlign: 'right' }}><Tag label={l.status} tagClass={l.tagClass} /></td>
-              </tr>
-            ))}
+            {rows.map((l) => {
+              const open = openId === l.id;
+              const unassigned = l.unit === '—';
+              return (
+                <Fragment key={l.id}>
+                  <tr className={`is-clickable${open ? ' is-open' : ''}`} onClick={() => setOpenId(open ? null : l.id)}>
+                    <td className="strong">{l.id}</td>
+                    <td className="strong">{l.ref}</td>
+                    <td className={unassigned ? 'muted' : ''}>{unassigned ? 'Unassigned' : l.unit}</td>
+                    <td>{l.route}</td>
+                    <td>{l.pickup}</td>
+                    <td>{l.driver}</td>
+                    <td className="num">{l.rate}</td>
+                    <td className="num"><Tag label={l.status} tagClass={l.tagClass} /></td>
+                  </tr>
+                  {open && (
+                    <tr>
+                      <td colSpan={8} className="ui-expand-cell">
+                        <div className="ui-expand">
+                          <div>
+                            <div className="ui-label">Stops (2)</div>
+                            <div className="ui-stop">
+                              <div className="ui-stop-kind pickup">Pickup · Stop 1</div>
+                              <div className="ui-stop-name">{l.from}</div>
+                              <div className="ui-stop-meta">{l.fromAddr}</div>
+                              <div className="ui-stop-meta">Pickup {l.pickup} · 08:00–14:00</div>
+                            </div>
+                            <div className="ui-stop">
+                              <div className="ui-stop-kind delivery">Delivery · Stop 2</div>
+                              <div className="ui-stop-name">{l.to}</div>
+                              <div className="ui-stop-meta">{l.toAddr}</div>
+                              <div className="ui-stop-meta">Deliver {l.delivery} · 06:00–12:00</div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="ui-label">Load details</div>
+                            <div className="ui-kv">
+                              {[
+                                ['System load #', l.id],
+                                ['Tender #', l.ref],
+                                ['Commodity', l.commodity],
+                                ['Weight', l.weight],
+                                ['Equipment', l.equip],
+                                ['Rate', l.rate],
+                              ].map(([k, v]) => (
+                                <div key={k}>
+                                  <div className="ui-label">{k}</div>
+                                  <div className="ui-kv-value">{v}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="ui-label">Customer</div>
+                            <div className="ui-kv">
+                              <div>
+                                <div className="ui-kv-value">{l.customer}</div>
+                                <div className="ui-stop-meta">{l.temp} · {l.equip}</div>
+                              </div>
+                              <div>
+                                <Link className="ui-link" to={`/app/loads/${l.id}`}>Open load →</Link>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="ui-label">Truck &amp; driver</div>
+                            <div className="ui-kv">
+                              <div>
+                                <div className="ui-label">Truck</div>
+                                <div className="ui-kv-value">{unassigned ? 'Unassigned' : l.unit}</div>
+                              </div>
+                              <div>
+                                <div className="ui-label">Driver</div>
+                                <div className="ui-kv-value">{l.driver}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
-      </div>
-
-      {loadRows.length === 0 && (
-        <Blueprint style={{ padding: 44, textAlign: 'center', fontSize: 14, color: 'var(--color-neutral-700)' }}>
-          Nothing matches that filter.
-        </Blueprint>
-      )}
-    </div>
+        {rows.length === 0 && (
+          <div className="ui-empty">{searching ? `Nothing matches “${query}”.` : 'No loads in this view.'}</div>
+        )}
+      </Card>
+    </>
   );
 }

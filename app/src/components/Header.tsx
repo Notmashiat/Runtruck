@@ -1,90 +1,81 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { HEAD, LOADS, type ViewKey } from '../data/mock';
 import { useAppShell } from '../context/AppShellContext';
+import { UNINVOICED } from '../data/accounting';
+import { SECTION_TABS, type ViewKey } from '../data/mock';
 
 interface HeadAction {
   label: string;
-  cls: string;
-  onClick: () => void;
+  primary?: boolean;
+  onClick?: () => void;
 }
+
+// Screens with nothing to filter get no Filters button.
+const NO_FILTERS: ViewKey[] = ['dashboard', 'planner', 'facilities'];
 
 export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const { query, setQuery, approveAll } = useAppShell();
 
-  // Route matching is case-insensitive, so normalise before looking the section up in HEAD.
+  // Route matching is case-insensitive, so normalise before keying off the section.
   const segments = location.pathname.toLowerCase().split('/');
   const view = (segments[2] || 'dashboard') as ViewKey;
-  const loadId = view === 'loads' ? location.pathname.split('/')[3] : undefined; // raw pathname: load ids are case-sensitive
-  const sel = loadId ? LOADS.find((l) => l.id === loadId) ?? LOADS[0] : null;
-  const onSettlements = view === 'accounting' && segments[3] === 'settlements';
+  const tab = SECTION_TABS[view] ? segments[3] : undefined;
+  const onLoadDetail = view === 'loads' && Boolean(segments[3]);
 
-  const showBack = Boolean(sel);
-  const showSearch = (view === 'dashboard' || view === 'loads') && !sel;
-
-  const headKicker = sel ? `Load ${sel.id} · ${sel.customer}` : HEAD[view][0];
-  const headTitle = sel ? sel.route : HEAD[view][1];
-
-  const actionsFor: Partial<Record<ViewKey | 'loadDetail', HeadAction[]>> = {
-    dashboard: [{ label: 'New load', cls: 'btn-primary', onClick: () => navigate('/app/loads') }],
-    loads: [{ label: 'New load', cls: 'btn-primary', onClick: () => navigate('/app/loads') }],
-    loadDetail: [
-      { label: 'Message driver', cls: 'btn-secondary', onClick: () => {} },
-      { label: 'Update status', cls: 'btn-primary', onClick: () => {} },
-    ],
-    fleet: [
-      { label: 'Log service', cls: 'btn-secondary', onClick: () => {} },
-      { label: 'Add unit', cls: 'btn-primary', onClick: () => {} },
-    ],
-    crm: [{ label: 'Add customer', cls: 'btn-primary', onClick: () => {} }],
-    accounting: onSettlements
-      ? [{ label: 'Run settlements', cls: 'btn-primary', onClick: () => approveAll() }]
-      : [
-          { label: 'Export batch', cls: 'btn-secondary', onClick: () => {} },
-          { label: 'Invoice 11 loads', cls: 'btn-primary', onClick: () => navigate('/app/accounting/settlements') },
-        ],
-    hr: [{ label: 'Add driver', cls: 'btn-primary', onClick: () => {} }],
+  // Keyed by section, or section/tab for the tabbed sections. Most are stubs,
+  // as in the original prototype; the ones that navigate are the real flows.
+  const actionsFor: Record<string, HeadAction[]> = {
+    dashboard: [{ label: '+ New Load', primary: true, onClick: () => navigate('/app/loads') }],
+    loads: [{ label: '+ New Load', primary: true, onClick: () => navigate('/app/loads') }],
+    loadDetail: [{ label: 'Message driver' }, { label: 'Update status', primary: true }],
+    'fleet/drivers': [{ label: '+ Add Driver', primary: true }],
+    'fleet/trucks': [{ label: 'Log service' }, { label: '+ Add Unit', primary: true }],
+    'fleet/trailers': [{ label: '+ Add Trailer', primary: true }],
+    crm: [{ label: '+ Add Customer', primary: true }],
+    'accounting/uninvoiced': [{ label: `Invoice ${UNINVOICED.length} loads`, primary: true, onClick: () => navigate('/app/accounting/invoiced') }],
+    'accounting/invoiced': [{ label: 'Export batch' }, { label: '+ New Batch', primary: true, onClick: () => navigate('/app/accounting/batches') }],
+    'accounting/batches': [{ label: '+ New Batch', primary: true }],
+    'accounting/past-due': [{ label: 'Send reminders', primary: true }],
+    'accounting/paid': [{ label: 'Export' }],
+    'accounting/payroll': [{ label: 'Run settlements', primary: true, onClick: () => approveAll() }],
+    'accounting/bills': [{ label: '+ Add Bill', primary: true }],
+    'hr/employee-contracts': [{ label: '+ New Contract', primary: true }],
+    'hr/onboarding': [{ label: '+ Start Onboarding', primary: true }],
+    'safety/maintenance': [{ label: '+ Log Service', primary: true }],
+    'safety/driver-documents': [{ label: 'Request document', primary: true }],
+    'safety/violations': [{ label: '+ Log Violation', primary: true }],
+    'safety/settlements': [{ label: '+ New Claim', primary: true }],
   };
-  const headActions = actionsFor[sel ? 'loadDetail' : view] ?? [];
+  const headActions = actionsFor[onLoadDetail ? 'loadDetail' : tab ? `${view}/${tab}` : view] ?? [];
+  const showFilters = !onLoadDetail && !NO_FILTERS.includes(view);
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 16,
-        padding: '20px 40px',
-        borderBottom: '1px solid var(--color-divider)',
-        flex: 'none',
-      }}
-    >
-      {showBack && (
-        <button onClick={() => navigate('/app/loads')} className="btn btn-ghost" type="button">
+    <header className="ui-topbar">
+      {onLoadDetail ? (
+        <button onClick={() => navigate('/app/loads')} className="ui-btn" type="button">
           ← Loads
         </button>
-      )}
-      <div>
-        <div className="lbl" style={{ color: 'var(--color-accent-700)' }}>
-          {headKicker}
-        </div>
-        <h1 style={{ fontSize: 30, marginTop: 5 }}>{headTitle}</h1>
-      </div>
-      <div style={{ flex: 1 }} />
-      {showSearch && (
+      ) : (
         <input
-          className="input"
+          className="ui-search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search loads, drivers, customers"
-          style={{ width: 250 }}
+          placeholder="Search"
+          aria-label="Search"
         />
       )}
+      <div style={{ flex: 1 }} />
+      {showFilters && (
+        <button className="ui-btn" type="button">
+          Filters
+        </button>
+      )}
       {headActions.map((a) => (
-        <button key={a.label} onClick={a.onClick} className={`btn ${a.cls}`} type="button">
+        <button key={a.label} onClick={a.onClick} className={`ui-btn${a.primary ? ' ui-btn-primary' : ''}`} type="button">
           {a.label}
         </button>
       ))}
-    </div>
+    </header>
   );
 }

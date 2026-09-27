@@ -9,6 +9,10 @@ export interface NavLink {
   label: string;
 }
 export type NavEntry = NavGroup | NavLink;
+export interface SectionTab {
+  key: string;
+  label: string;
+}
 
 export type ViewKey =
   | 'dashboard'
@@ -103,8 +107,8 @@ export const DRIVERS: Driver[] = [
   { name: 'Dara Whitfield', status: 'On duty', tagClass: 'tag-accent', unit: 'T-107', load: 'L-40219 · Stockton → SLC', hos: '9h 05m', cdl: '11/2027', pay: '$58,900', miles: 1980 },
   { name: 'Ellis Nakamura', status: 'On duty', tagClass: 'tag-accent', unit: 'T-121', load: 'L-40220 · Sacramento → Boise', hos: '1h 45m', cdl: '02/2027', pay: '$55,120', miles: 1760 },
   { name: 'Priya Raman', status: 'Available', tagClass: 'tag-neutral', unit: 'T-103', load: '—', hos: '11h 00m', cdl: '07/2026', pay: '$52,480', miles: 1420 },
-  { name: 'Ana Cortez', status: 'Available', tagClass: 'tag-neutral', unit: 'T-109', load: 'L-40222 · tomorrow', hos: '11h 00m', cdl: '09/2029', pay: '$48,300', miles: 1180 },
-  { name: 'Tobias Frey', status: 'Home time', tagClass: 'tag-outline', unit: 'T-118', load: '—', hos: '—', cdl: '01/2028', pay: '$63,750', miles: 640 },
+  { name: 'Ana Cortez', status: 'Available', tagClass: 'tag-neutral', unit: 'T-109', load: 'L-40222 · Sep 5', hos: '11h 00m', cdl: '09/2029', pay: '$48,300', miles: 1180 },
+  { name: 'Tobias Frey', status: 'Home time', tagClass: 'tag-neutral', unit: 'T-118', load: '—', hos: '—', cdl: '01/2028', pay: '$63,750', miles: 640 },
 ];
 
 export interface Truck {
@@ -198,7 +202,7 @@ export const INVOICES: Invoice[] = [
   { id: 'INV-8841', customer: 'Northgate Foods', load: 'L-40214', issued: 'Sep 1', amount: '$1,980', age: '2 d', status: 'Sent', tagClass: 'tag-accent' },
   { id: 'INV-8840', customer: 'Bayline Distribution', load: 'L-40212', issued: 'Aug 31', amount: '$1,640', age: '3 d', status: 'Sent', tagClass: 'tag-accent' },
   { id: 'INV-8829', customer: 'Cascade Building Supply', load: 'L-40198', issued: 'Aug 16', amount: '$2,880', age: '18 d', status: 'Sent', tagClass: 'tag-accent' },
-  { id: 'INV-8824', customer: 'Harbor Point Retail', load: 'L-40191', issued: 'Aug 7', amount: '$3,410', age: '27 d', status: 'Paid', tagClass: 'tag-neutral' },
+  { id: 'INV-8824', customer: 'Harbor Point Retail', load: 'L-40191', issued: 'Aug 7', amount: '$3,410', age: '27 d', status: 'Paid', tagClass: 'tag-green' },
   { id: 'INV-8836', customer: 'Sierra Ag Partners', load: 'L-40210', issued: 'Jul 24', amount: '$4,120', age: '41 d', status: 'Overdue', tagClass: 'tag-outline' },
 ];
 
@@ -223,23 +227,39 @@ export const SETTLEMENTS: Settlement[] = [
 
 export const SETTLE_TAG: Record<string, string> = {
   Ready: 'tag-accent',
-  Paid: 'tag-neutral',
+  Paid: 'tag-green',
   Approved: 'tag-accent',
   'Hold · fuel': 'tag-outline',
 };
 
 export const ACTIVE_STATUSES = ['In transit', 'At pickup', 'Dispatched', 'Delayed', 'Needs driver'];
 
-export const HEAD: Record<ViewKey, [string, string]> = {
-  dashboard: ['Wednesday, September 3', 'Today'],
-  loads: ['Dispatch board', 'Loads'],
-  planner: ['Capacity and lane planning', 'Planner'],
-  fleet: ['Trucks, trailers and maintenance', 'Fleet'],
-  crm: ['Accounts and shipping history', 'CRM'],
-  facilities: ['Yards, terminals and shops', 'Facilities'],
-  accounting: ['Receivables and driver pay', 'Accounting'],
-  hr: ['Driver roster and compliance', 'HR'],
-  safety: ['DOT compliance and incidents', 'Safety'],
+// Sections split into tabs; each tab is a route under /app/<section>/<key>.
+export const SECTION_TABS: Partial<Record<ViewKey, SectionTab[]>> = {
+  fleet: [
+    { key: 'drivers', label: 'Drivers' },
+    { key: 'trucks', label: 'Trucks' },
+    { key: 'trailers', label: 'Trailers' },
+  ],
+  accounting: [
+    { key: 'uninvoiced', label: 'Uninvoiced' },
+    { key: 'invoiced', label: 'Invoiced' },
+    { key: 'batches', label: 'Batches' },
+    { key: 'past-due', label: 'Past Due' },
+    { key: 'paid', label: 'Paid' },
+    { key: 'payroll', label: 'Payroll' },
+    { key: 'bills', label: 'Bills' },
+  ],
+  hr: [
+    { key: 'employee-contracts', label: 'Employee Contracts' },
+    { key: 'onboarding', label: 'Onboarding' },
+  ],
+  safety: [
+    { key: 'maintenance', label: 'Maintenance' },
+    { key: 'driver-documents', label: 'Driver Documents' },
+    { key: 'violations', label: 'Violations' },
+    { key: 'settlements', label: 'Settlements' },
+  ],
 };
 
 export const COMPLIANCE = [

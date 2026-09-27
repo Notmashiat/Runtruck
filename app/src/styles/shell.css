@@ -1,0 +1,164 @@
+/* RunTruck app shell — the light, card-based look of the operations app
+   (everything under /app). The marketing site keeps industry.css; the
+   sidebar keeps its industry.css tokens. */
+
+:root {
+  --ui-bg: #edf0f5;
+  --ui-card: #ffffff;
+  --ui-border: #e3e7ee;
+  --ui-row: #eceff5;
+  --ui-thead: #dde2eb;
+  --ui-expand: #f4f6fa;
+  --ui-text: #111827;
+  --ui-text-2: #4b5563;
+  --ui-muted: #6b7280;
+  --ui-primary: #1e5eff;
+  --ui-primary-hover: #164bd6;
+  --ui-primary-soft: #dce6ff;
+  --ui-amber: #a05a00;
+  --ui-amber-soft: #fff1d6;
+  --ui-green: #167a3b;
+  --ui-green-soft: #dff5e6;
+  --ui-gray-soft: #eef0f4;
+}
+
+.ui-shell {
+  display: flex; height: 100vh; overflow: hidden;
+  background: var(--ui-bg); color: var(--ui-text);
+  font-family: "Inter", system-ui, sans-serif; font-size: 14px;
+}
+/* industry.css and app.css still apply globally (condensed headings, steel-blue links,
+   steel-blue focus rings); the shell uses one family and one blue. */
+.ui-shell h1, .ui-shell h2, .ui-shell h3, .ui-shell h4, .ui-shell h5, .ui-shell h6 { font-family: inherit; letter-spacing: -0.01em; }
+.ui-shell a { color: var(--ui-primary); }
+.ui-shell :focus-visible { outline-color: var(--ui-primary); }
+.ui-column { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.ui-main { flex: 1; overflow-y: auto; padding: 20px 24px 32px; display: flex; flex-direction: column; gap: 20px; }
+
+/* — top bar — */
+.ui-topbar {
+  display: flex; align-items: center; gap: 12px; flex: none;
+  padding: 12px 24px; background: var(--ui-card); border-bottom: 1px solid var(--ui-border);
+}
+.ui-search {
+  width: 300px; max-width: 100%; height: 36px; padding: 0 14px;
+  font: inherit; font-size: 14px; color: var(--ui-text);
+  background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 10px;
+}
+.ui-search::placeholder { color: var(--ui-muted); }
+.ui-search:focus-visible { outline: 2px solid var(--ui-primary); outline-offset: -1px; }
+.ui-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 18px;
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--ui-text-2); white-space: nowrap;
+  background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 999px; cursor: pointer;
+}
+.ui-btn:hover { background: #f5f7fb; }
+.ui-btn-primary { color: #fff; background: var(--ui-primary); border-color: var(--ui-primary); }
+.ui-btn-primary:hover { background: var(--ui-primary-hover); border-color: var(--ui-primary-hover); }
+
+/* — section tabs (the centred pill bar) — */
+.ui-tabs {
+  align-self: center; max-width: 100%; display: inline-flex; flex-wrap: wrap; justify-content: center;
+  gap: 4px; padding: 6px; background: var(--ui-card); border-radius: 999px;
+}
+.ui-tab {
+  padding: 8px 18px; font-size: 14px; font-weight: 500; white-space: nowrap;
+  color: var(--ui-primary); text-decoration: none; border-radius: 999px;
+}
+.ui-tab:hover { background: #f0f4ff; color: var(--ui-primary); }
+.ui-tab.is-active { background: var(--ui-primary-soft); color: var(--ui-primary-hover); font-weight: 600; }
+
+/* — KPI cards — */
+.ui-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.ui-kpi {
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 12px;
+  min-height: 96px; padding: 20px 24px; background: var(--ui-card); border-radius: 16px;
+}
+.ui-kpi.is-clickable { cursor: pointer; }
+.ui-kpi.is-clickable:hover { box-shadow: 0 0 0 2px var(--ui-primary-soft); }
+.ui-kpi-label { font-size: 16px; font-weight: 600; }
+.ui-kpi-note { margin-top: 4px; font-size: 12px; color: var(--ui-muted); }
+.ui-kpi-value {
+  margin-left: auto; font-size: clamp(30px, 3.2vw, 44px); font-weight: 700; line-height: 1;
+  letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+}
+
+/* — cards — */
+.ui-card { background: var(--ui-card); border-radius: 16px; overflow: hidden; }
+.ui-card-head { display: flex; align-items: center; gap: 12px; padding: 14px 24px; border-bottom: 1px solid var(--ui-border); }
+.ui-card-title { font-size: 15px; font-weight: 600; }
+.ui-card-body { padding: 20px 24px; }
+.ui-card-flush { overflow-x: auto; }
+.ui-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 20px; align-items: start; }
+.ui-grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; }
+
+/* — tables — */
+.ui-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ui-table th {
+  padding: 12px 16px; text-align: left; white-space: nowrap;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--ui-text-2); background: var(--ui-thead);
+}
+.ui-table td { padding: 13px 16px; border-bottom: 1px solid var(--ui-row); vertical-align: middle; }
+.ui-table th:first-child, .ui-table td:first-child { padding-left: 24px; }
+.ui-table th:last-child, .ui-table td:last-child { padding-right: 24px; }
+.ui-table tbody tr:last-child td { border-bottom: 0; }
+/* "num" is also app.css's condensed-numerals class (the sidebar wordmark, the marketing
+   site); inside a table it only means right-aligned, so reset the face it would bring. */
+.ui-table th.num, .ui-table td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: inherit; letter-spacing: inherit; }
+.ui-table td.num { font-weight: inherit; }
+.ui-table td.strong { font-weight: 600; }
+.ui-table td.muted { color: var(--ui-muted); }
+.ui-table tr.is-clickable { cursor: pointer; }
+.ui-table tr.is-clickable:hover td { background: #f7f9fc; }
+.ui-table tr.is-open td { background: var(--ui-expand); border-bottom-color: transparent; }
+.ui-table td.ui-expand-cell { padding: 0; }
+
+/* — expanded row detail (loads) — */
+.ui-expand {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px 32px;
+  padding: 16px 24px 28px; background: var(--ui-expand);
+}
+@media (max-width: 1100px) { .ui-expand { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ui-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ui-muted); }
+.ui-kv { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.ui-kv-value { margin-top: 2px; font-size: 13px; font-weight: 600; }
+.ui-stop { margin-top: 10px; padding-left: 10px; border-left: 3px solid var(--ui-primary); }
+.ui-stop:has(> .pickup) { border-left-color: var(--ui-amber); }
+.ui-stop:has(> .delivery) { border-left-color: var(--ui-green); }
+.ui-stop-kind { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.ui-stop-kind.pickup { color: var(--ui-amber); }
+.ui-stop-kind.delivery { color: var(--ui-green); }
+.ui-stop-name { margin-top: 2px; font-size: 13px; font-weight: 700; }
+.ui-stop-meta { margin-top: 2px; font-size: 12px; color: var(--ui-muted); }
+
+/* — status chips and in-card filters — */
+.ui-chip { display: inline-flex; align-items: center; padding: 3px 10px; font-size: 12px; font-weight: 600; border-radius: 999px; white-space: nowrap; }
+.ui-chip-blue { background: var(--ui-primary-soft); color: var(--ui-primary-hover); }
+.ui-chip-gray { background: var(--ui-gray-soft); color: var(--ui-text-2); }
+.ui-chip-amber { background: var(--ui-amber-soft); color: var(--ui-amber); }
+.ui-chip-green { background: var(--ui-green-soft); color: var(--ui-green); }
+.ui-filter { display: inline-flex; gap: 2px; padding: 3px; background: #f1f3f8; border-radius: 999px; }
+.ui-filter-opt {
+  padding: 5px 12px; font: inherit; font-size: 13px; font-weight: 600; color: var(--ui-muted);
+  background: transparent; border: 0; border-radius: 999px; cursor: pointer;
+}
+.ui-filter-opt.is-active { color: var(--ui-text); background: var(--ui-card); box-shadow: 0 1px 2px rgba(17, 24, 39, 0.1); }
+
+/* — text and small pieces — */
+.ui-link { padding: 0; font: inherit; font-size: 13px; font-weight: 600; color: var(--ui-primary); background: none; border: 0; cursor: pointer; text-decoration: none; }
+.ui-link:hover { color: var(--ui-primary-hover); text-decoration: underline; }
+.ui-h2 { margin: 8px 0 0; font-size: 22px; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
+.ui-p { margin: 8px 0 0; max-width: 60ch; font-size: 14px; line-height: 22px; color: var(--ui-text-2); }
+.ui-bullets { margin: 16px 0 0; padding: 0; list-style: none; }
+.ui-bullets li { padding: 8px 0; border-top: 1px solid var(--ui-border); font-size: 14px; }
+.ui-placeholder {
+  display: flex; align-items: center; justify-content: center; min-height: 220px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ui-muted);
+  background: var(--ui-expand); border: 2px dashed #c9d2e3; border-radius: 16px;
+}
+.ui-empty { padding: 40px; text-align: center; font-size: 14px; color: var(--ui-muted); }
+.ui-total { display: flex; justify-content: flex-end; align-items: baseline; gap: 12px; padding: 14px 24px; border-top: 1px solid var(--ui-border); font-size: 14px; color: var(--ui-muted); }
+.ui-total strong { font-size: 20px; color: var(--ui-text); font-variant-numeric: tabular-nums; }
+.ui-bar-track { height: 10px; background: #e9edf3; border-radius: 999px; overflow: hidden; }
+.ui-bar-fill { height: 100%; background: var(--ui-primary); border-radius: 999px; }

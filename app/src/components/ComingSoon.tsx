@@ -1,4 +1,4 @@
-import { Blueprint } from './Blueprint';
+import { Card } from './Card';
 
 interface ComingSoonProps {
   title: string;
@@ -7,36 +7,22 @@ interface ComingSoonProps {
   figure: string;
 }
 
-// Stand-in for an app section that is in the sidebar but not designed yet: what
-// the section is for, what it will hold, and a hatched frame where its main view
-// goes (the same treatment LoadDetailPage uses for the live map).
+// Stand-in for a sidebar section that is not designed yet: what it is for,
+// what it will hold, and a dashed frame where its main view goes.
 export function ComingSoon({ title, body, items, figure }: ComingSoonProps) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 34 }}>
-      <Blueprint style={{ padding: '28px 32px', maxWidth: 760 }}>
-        <div className="lbl" style={{ color: 'var(--color-accent-700)' }}>Coming soon</div>
-        <h4 style={{ fontSize: 24, marginTop: 8 }}>{title}</h4>
-        <p style={{ fontSize: 15, lineHeight: '24px', margin: '12px 0 0', maxWidth: '58ch', color: 'var(--color-neutral-800)' }}>{body}</p>
-        <div style={{ marginTop: 20 }}>
+    <>
+      <Card>
+        <div className="ui-label" style={{ color: 'var(--ui-primary)' }}>Coming soon</div>
+        <h2 className="ui-h2">{title}</h2>
+        <p className="ui-p">{body}</p>
+        <ul className="ui-bullets">
           {items.map((x) => (
-            <div key={x} style={{ display: 'flex', gap: 10, padding: '7px 0', borderTop: '1px solid var(--color-divider)', fontSize: 14 }}>
-              <span style={{ width: 6, height: 6, background: 'var(--color-accent)', marginTop: 8, flex: 'none' }} />
-              <span>{x}</span>
-            </div>
+            <li key={x}>{x}</li>
           ))}
-        </div>
-      </Blueprint>
-
-      <Blueprint
-        className="duotone"
-        style={{
-          height: 220,
-          background: 'repeating-linear-gradient(135deg,var(--color-neutral-300) 0 6px,var(--color-neutral-200) 6px 12px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-      >
-        <div className="lbl" style={{ color: 'var(--color-neutral-700)', fontSize: 11 }}>{figure}</div>
-      </Blueprint>
-    </div>
+        </ul>
+      </Card>
+      <div className="ui-placeholder">{figure}</div>
+    </>
   );
 }

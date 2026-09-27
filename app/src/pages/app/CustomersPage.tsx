@@ -1,62 +1,68 @@
-import { Blueprint } from '../../components/Blueprint';
+import { Card } from '../../components/Card';
+import { Kpis } from '../../components/Kpis';
 import { Tag } from '../../components/Tag';
+import { useAppShell } from '../../context/AppShellContext';
 import { CUSTOMERS, TOP_ACCOUNTS } from '../../data/mock';
+import { matchesQuery } from '../../lib/search';
+
+const KPIS = [
+  { label: 'Accounts', value: String(CUSTOMERS.length), note: '2 key accounts' },
+  { label: 'Revenue YTD', value: '$1.3M', note: 'Top 3 accounts = 73%' },
+  { label: 'On time', value: '92%', note: 'Weighted by loads' },
+  { label: 'Open AR', value: '$91.9K', note: '1 account at risk' },
+];
 
 export function CustomersPage() {
+  const { query } = useAppShell();
+  const rows = CUSTOMERS.filter((c) => matchesQuery(c, query));
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 34 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,280px),1fr))', gap: 26 }}>
+    <>
+      <Kpis items={KPIS} />
+
+      <div className="ui-grid-3">
         {TOP_ACCOUNTS.map((a) => (
-          <Blueprint key={a.name} style={{ padding: 20 }}>
-            <div className="lbl" style={{ color: 'var(--color-accent-700)' }}>{a.tier}</div>
-            <div style={{ fontSize: 21, fontFamily: 'var(--font-heading)', fontWeight: 600, marginTop: 8 }}>{a.name}</div>
-            <div style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: 4 }}>{a.contact}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 12, marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--color-divider)' }}>
-              <div>
-                <div className="lbl" style={{ color: 'var(--color-neutral-600)', fontSize: 9 }}>Loads</div>
-                <div className="num" style={{ fontSize: 24, marginTop: 4 }}>{a.loads}</div>
-              </div>
-              <div>
-                <div className="lbl" style={{ color: 'var(--color-neutral-600)', fontSize: 9 }}>Revenue</div>
-                <div className="num" style={{ fontSize: 24, marginTop: 4 }}>{a.revenue}</div>
-              </div>
-              <div>
-                <div className="lbl" style={{ color: 'var(--color-neutral-600)', fontSize: 9 }}>On time</div>
-                <div className="num" style={{ fontSize: 24, marginTop: 4 }}>{a.onTime}</div>
-              </div>
+          <Card key={a.name}>
+            <div className="ui-label" style={{ color: 'var(--ui-primary)' }}>{a.tier}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, marginTop: 6 }}>{a.name}</div>
+            <div style={{ fontSize: 13, color: 'var(--ui-muted)', marginTop: 2 }}>{a.contact}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 12, marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--ui-border)' }}>
+              {[['Loads', a.loads], ['Revenue', a.revenue], ['On time', a.onTime]].map(([k, v]) => (
+                <div key={k}>
+                  <div className="ui-label">{k}</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>{v}</div>
+                </div>
+              ))}
             </div>
-          </Blueprint>
+          </Card>
         ))}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div className="sect"><h4 style={{ fontSize: 19 }}>All accounts</h4></div>
-        <div style={{ minWidth: 0, overflowX: 'auto' }}>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Customer</th><th>Primary contact</th><th style={{ textAlign: 'right' }}>Loads YTD</th>
-                <th style={{ textAlign: 'right' }}>Revenue</th><th style={{ textAlign: 'right' }}>On time</th>
-                <th style={{ textAlign: 'right' }}>Terms</th><th style={{ textAlign: 'right' }}>AR balance</th><th style={{ textAlign: 'right' }}>Standing</th>
+      <Card title="All accounts" flush>
+        <table className="ui-table">
+          <thead>
+            <tr>
+              <th>Customer</th><th>Primary contact</th><th className="num">Loads YTD</th><th className="num">Revenue</th>
+              <th className="num">On time</th><th className="num">Terms</th><th className="num">AR balance</th><th className="num">Standing</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((c) => (
+              <tr key={c.name}>
+                <td className="strong">{c.name}</td>
+                <td className="muted">{c.contact}</td>
+                <td className="num">{c.loads}</td>
+                <td className="num">{c.revenue}</td>
+                <td className="num">{c.onTime}</td>
+                <td className="num">{c.terms}</td>
+                <td className="num">{c.ar}</td>
+                <td className="num"><Tag label={c.tier} tagClass={c.tagClass} /></td>
               </tr>
-            </thead>
-            <tbody>
-              {CUSTOMERS.map((c) => (
-                <tr key={c.name}>
-                  <td style={{ fontWeight: 500 }}>{c.name}</td>
-                  <td style={{ color: 'var(--color-neutral-700)' }}>{c.contact}</td>
-                  <td className="num" style={{ textAlign: 'right', fontSize: 15 }}>{c.loads}</td>
-                  <td className="num" style={{ textAlign: 'right', fontSize: 15 }}>{c.revenue}</td>
-                  <td className="num" style={{ textAlign: 'right', fontSize: 15 }}>{c.onTime}</td>
-                  <td className="num" style={{ textAlign: 'right', fontSize: 15 }}>{c.terms}</td>
-                  <td className="num" style={{ textAlign: 'right', fontSize: 15 }}>{c.ar}</td>
-                  <td style={{ textAlign: 'right' }}><Tag label={c.tier} tagClass={c.tagClass} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+            ))}
+          </tbody>
+        </table>
+        {rows.length === 0 && <div className="ui-empty">Nothing matches “{query}”.</div>}
+      </Card>
+    </>
   );
 }
