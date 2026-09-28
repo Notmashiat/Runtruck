@@ -38,14 +38,14 @@ src/
 ```
 
 The sidebar has nine sections. Four are split into tabs (a centred pill bar; each tab is its own
-URL, and a section's root URL opens its first tab) and two are placeholders (`ComingSoon`) until
-they are designed:
+URL, and a section's root URL opens its first tab) and one is a placeholder (`ComingSoon`) until
+it is designed:
 
 | Sidebar    | URL                                                                            | Screen                                                        |
 | ---------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------- |
 | Dashboard  | `/app/dashboard`                                                               | `DashboardPage`                                               |
 | Loads      | `/app/loads`                                                                   | `LoadsPage` (rows expand inline); `/app/loads/:id` opens `LoadDetailPage` |
-| Planner    | `/app/planner`                                                                 | `PlannerPage` (placeholder)                                   |
+| Planner    | `/app/planner`                                                                 | `PlannerPage` — day / week / month calendar                   |
 | Fleet      | `/app/fleet/{drivers,trucks,trailers}`                                         | `fleet/DriversTab`, `TrucksTab`, `TrailersTab`                |
 | CRM        | `/app/crm`                                                                     | `CustomersPage`                                               |
 | Facilities | `/app/facilities`                                                              | `FacilitiesPage` (placeholder)                                |
@@ -67,6 +67,12 @@ and **Log out**, which returns to the marketing page.
 and equipment, rates, documents, notes and a review page. Required fields are checked on Create; the
 load is added through `addLoad` in `AppShellContext` and shows on the board and its own detail page.
 New loads live in memory only, so a reload drops them until there is a backend.
+
+**Planner** is a calendar with Day, Week and Month views (`pages/app/PlannerPage.tsx`,
+`styles/calendar.css`). Pickups and deliveries come from the loads (`loadEvents` in
+`data/planner.ts`); the office's own events (`PLANNER_EVENTS`) can be added, edited and deleted, and
+are saved in localStorage along with the layout choices in Customize (week start, weekends, day
+hours, row height, 12/24h) and the category filters. Customize › Reset calendar restores both.
 
 Routing replaces the original prototype's internal view-state + localStorage persistence:
 every screen (including a given load's detail view) is a real URL, so reloading or sharing a

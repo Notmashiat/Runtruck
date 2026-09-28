@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import './styles/industry.css'
 import './styles/app.css'
 import './styles/shell.css'
+import './styles/calendar.css'
 import { initTheme } from './lib/theme'
 import App from './App.tsx'
 
