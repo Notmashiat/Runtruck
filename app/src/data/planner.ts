@@ -94,11 +94,17 @@ export function loadEvents(loads: Load[]): PlannerEvent[] {
         }];
       });
     }
+    // The mock loads only carry dates; spread their appointments over the
+    // working day (stable per load number) instead of stacking them at 8 AM.
+    const n = Number(l.id.slice(2)) || 0;
+    const pHour = 6 + (n % 7) * 1.5;
+    const dHour = 7 + ((n * 3) % 8) * 1.5;
+    const hhmm = (h: number) => `${String(Math.floor(h)).padStart(2, '0')}:${h % 1 ? '30' : '00'}`;
     const out: PlannerEvent[] = [];
     const p = shortToIso(l.pickup, YEAR);
     const d = shortToIso(l.delivery, YEAR);
-    if (p) out.push({ id: `load:${l.id}:p`, title: `Pickup · ${l.id}`, category: 'pickup', date: p, start: '08:00', end: '10:00', notes: `${l.from} · ${l.customer}`, people: [l.driver], loadId: l.id, readOnly: true });
-    if (d) out.push({ id: `load:${l.id}:d`, title: `Delivery · ${l.id}`, category: 'delivery', date: d, start: '10:00', end: '12:00', notes: `${l.to} · ${l.customer}`, people: [l.driver], loadId: l.id, readOnly: true });
+    if (p) out.push({ id: `load:${l.id}:p`, title: `Pickup · ${l.id}`, category: 'pickup', date: p, start: hhmm(pHour), end: hhmm(pHour + 2), notes: `${l.from} · ${l.customer}`, people: [l.driver], loadId: l.id, readOnly: true });
+    if (d) out.push({ id: `load:${l.id}:d`, title: `Delivery · ${l.id}`, category: 'delivery', date: d, start: hhmm(dHour), end: hhmm(dHour + 2), notes: `${l.to} · ${l.customer}`, people: [l.driver], loadId: l.id, readOnly: true });
     return out;
   });
 }

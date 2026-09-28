@@ -280,42 +280,44 @@ function TimeGrid({ days, events, prefs, rowH, time, onOpenDay, onCreate, onSele
   return (
     <div className="cal">
       <div className="cal-scroll" ref={scrollRef}>
-        <div className="cal-head" style={cols}>
-          <div />
-          {days.map((d) => {
-            const today = iso(d) === TODAY;
-            const inner = (
-              <>
-                <span className="cal-head-num">{d.getDate()}</span>
-                <span className="cal-head-day">{WEEKDAYS[d.getDay()].slice(0, 3)}</span>
-              </>
-            );
-            return (
-              <div key={iso(d)} className="cal-head-cell">
-                {onOpenDay ? (
-                  <button type="button" className={`cal-head-btn${today ? ' is-today' : ''}`} onClick={() => onOpenDay(d)}>{inner}</button>
-                ) : (
-                  <div className={`cal-head-btn${today ? ' is-today' : ''}`}>{inner}</div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {hasAllDay && (
-          <div className="cal-allday" style={cols}>
-            <div className="cal-gutter-label">All day</div>
-            {byDay.map((list, i) => (
-              <div key={i} className="cal-allday-cell">
-                {list.filter((o) => o.allDay).map((o) => (
-                  <button key={o.ev.id} type="button" className={`cal-chip t-${TONE[o.ev.category]}`} onClick={(e) => onSelect(o, e)}>
-                    {o.ev.title}
-                  </button>
-                ))}
-              </div>
-            ))}
+        <div className="cal-sticky">
+          <div className="cal-head" style={cols}>
+            <div />
+            {days.map((d) => {
+              const today = iso(d) === TODAY;
+              const inner = (
+                <>
+                  <span className="cal-head-num">{d.getDate()}</span>
+                  <span className="cal-head-day">{WEEKDAYS[d.getDay()].slice(0, 3)}</span>
+                </>
+              );
+              return (
+                <div key={iso(d)} className="cal-head-cell">
+                  {onOpenDay ? (
+                    <button type="button" className={`cal-head-btn${today ? ' is-today' : ''}`} onClick={() => onOpenDay(d)}>{inner}</button>
+                  ) : (
+                    <div className={`cal-head-btn${today ? ' is-today' : ''}`}>{inner}</div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        )}
+  
+          {hasAllDay && (
+            <div className="cal-allday" style={cols}>
+              <div className="cal-gutter-label">All day</div>
+              {byDay.map((list, i) => (
+                <div key={i} className="cal-allday-cell">
+                  {list.filter((o) => o.allDay).map((o) => (
+                    <button key={o.ev.id} type="button" className={`cal-chip t-${TONE[o.ev.category]}`} onClick={(e) => onSelect(o, e)}>
+                      {o.ev.title}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="cal-body" style={{ ...cols, height: hours.length * rowH, '--cal-row': `${rowH}px` } as CSSProperties}>
           <div className="cal-gutter">
