@@ -70,9 +70,12 @@ New loads live in memory only, so a reload drops them until there is a backend.
 
 **Planner** is a calendar with Day, Week and Month views (`pages/app/PlannerPage.tsx`,
 `styles/calendar.css`). Pickups and deliveries come from the loads (`loadEvents` in
-`data/planner.ts`); the office's own events (`PLANNER_EVENTS`) can be added, edited and deleted, and
-are saved in localStorage along with the layout choices in Customize (week start, weekends, day
-hours, row height, 12/24h) and the category filters. Customize › Reset calendar restores both.
+`data/planner.ts`); the office's own events (`PLANNER_EVENTS`) can be added, edited and deleted.
+**Customize** has three pages: Layout (week start, weekends, day hours, row height, 12/24h), Color
+codes (rename, recolor, add and delete what each color means; color load stops by stop type —
+Loaded / Empty — or by driver, customer or truck) and Event cards (what each of a card's three lines
+shows; by default the city and state where the truck loads or goes empty, then time and load #).
+Events, color codes and preferences are saved in localStorage; Layout › Reset puts all of it back.
 
 Routing replaces the original prototype's internal view-state + localStorage persistence:
 every screen (including a given load's detail view) is a real URL, so reloading or sharing a

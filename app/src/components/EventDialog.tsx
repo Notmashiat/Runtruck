@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppShell } from '../context/AppShellContext';
-import { CATEGORIES, type CategoryKey, type PlannerEvent } from '../data/planner';
+import type { Category, PlannerEvent } from '../data/planner';
 import { toMinutes } from '../lib/dates';
 
 interface Props {
   event: PlannerEvent;
+  categories: Category[];
   isNew: boolean;
   onSave: (e: PlannerEvent) => void;
   onDelete: () => void;
@@ -12,7 +13,7 @@ interface Props {
 }
 
 // Add or edit a planner event. A native <dialog>, like Settings and New Load.
-export function EventDialog({ event, isNew, onSave, onDelete, onClose }: Props) {
+export function EventDialog({ event, categories, isNew, onSave, onDelete, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const { loads } = useAppShell();
   const [e, setE] = useState<PlannerEvent>(event);
@@ -39,6 +40,7 @@ export function EventDialog({ event, isNew, onSave, onDelete, onClose }: Props) 
     onSave({
       ...e,
       title: e.title.trim(),
+      place: e.place?.trim() || undefined,
       start: allDay ? undefined : start,
       end: allDay ? undefined : end,
       endDate: allDay && e.endDate && e.endDate > e.date ? e.endDate : undefined,
@@ -61,9 +63,9 @@ export function EventDialog({ event, isNew, onSave, onDelete, onClose }: Props) 
               <input className="ui-input" value={e.title} onChange={(x) => set('title', x.target.value)} autoFocus />
             </label>
             <label className="ui-field">
-              <span className="ui-field-label">Type</span>
-              <select className="ui-input" value={e.category} onChange={(x) => set('category', x.target.value as CategoryKey)}>
-                {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+              <span className="ui-field-label">Color code</span>
+              <select className="ui-input" value={e.category} onChange={(x) => set('category', x.target.value)}>
+                {categories.filter((c) => !c.locked || c.key === e.category).map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
               </select>
             </label>
             <label className={`ui-field${tried && badDate ? ' is-invalid' : ''}`}>
@@ -95,6 +97,10 @@ export function EventDialog({ event, isNew, onSave, onDelete, onClose }: Props) 
                 </label>
               </>
             )}
+            <label className="ui-field">
+              <span className="ui-field-label">City, state</span>
+              <input className="ui-input" value={e.place ?? ''} onChange={(x) => set('place', x.target.value)} placeholder="e.g. Modesto, CA" />
+            </label>
             <label className="ui-field">
               <span className="ui-field-label">Related load</span>
               <select className="ui-input" value={e.loadId ?? ''} onChange={(x) => set('loadId', x.target.value || undefined)}>

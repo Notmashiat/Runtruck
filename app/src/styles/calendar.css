@@ -32,6 +32,14 @@
 .t-purple { --c: var(--ui-purple); --c-soft: var(--ui-purple-soft); }
 .t-blue { --c: var(--ui-primary); --c-soft: var(--ui-primary-soft); }
 .t-teal { --c: var(--ui-teal); --c-soft: var(--ui-teal-soft); }
+.t-pink { --c: #be185d; --c-soft: #fde7f1; }
+.t-orange { --c: #c2410c; --c-soft: #ffedd5; }
+.t-indigo { --c: #4338ca; --c-soft: #e6e7fe; }
+.t-slate { --c: #475569; --c-soft: #e8ecf1; }
+:root[data-theme="dark"] .t-pink { --c: #f78fc0; --c-soft: #3a1829; }
+:root[data-theme="dark"] .t-orange { --c: #fb9b5f; --c-soft: #3a2413; }
+:root[data-theme="dark"] .t-indigo { --c: #a5b0ff; --c-soft: #232650; }
+:root[data-theme="dark"] .t-slate { --c: #aab6c6; --c-soft: #26303d; }
 .cal-dot { width: 8px; height: 8px; flex: none; border-radius: 999px; background: var(--c); }
 .cal-dot.is-ring { width: 10px; height: 10px; background: transparent; border: 2px solid var(--c); }
 
@@ -76,8 +84,7 @@ button.cal-head-btn:hover { background: var(--ui-hover); }
 }
 .cal-ev:hover, .cal-chip:hover { box-shadow: 0 2px 8px var(--ui-shadow); }
 .cal-ev-title { font-size: 12px; font-weight: 600; line-height: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cal-ev-time { font-size: 11px; color: var(--ui-text-2); white-space: nowrap; }
-.cal-ev-note { font-size: 11px; color: var(--ui-muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.cal-ev-line { font-size: 11px; line-height: 14px; color: var(--ui-text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .cal-month-head { display: grid; border-bottom: 1px solid var(--ui-border); }
 .cal-month-head > div { padding: 10px; text-align: center; font-size: 12px; font-weight: 600; color: var(--ui-muted); text-transform: uppercase; letter-spacing: 0.04em; }
@@ -123,12 +130,34 @@ button.cal-head-btn:hover { background: var(--ui-hover); }
 .ui-shell .cal-pop-actions a.ui-btn { color: var(--ui-text-2); text-decoration: none; }
 .cal-pop-hint { margin-top: 10px; font-size: 12px; color: var(--ui-muted); }
 
-.cal-menu { position: absolute; top: calc(100% + 8px); right: 0; width: 320px; padding: 14px 16px; }
-.cal-menu-title { margin-bottom: 8px; font-size: 14px; font-weight: 700; }
-.cal-menu-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: 13px; color: var(--ui-text-2); }
-.cal-menu-row + .cal-menu-row { border-top: 1px solid var(--ui-border); }
+.cal-pop-details { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 12px 0 0; font-size: 13px; }
+.cal-pop-details > div { display: contents; }
+.cal-pop-details dt { color: var(--ui-muted); }
+.cal-pop-details dd { margin: 0; font-weight: 600; }
+.cal-legend-edit { align-self: center; margin-left: 4px; font-size: 12px; }
+
+/* — Customize popup — */
 .cal-menu-select { width: 130px; height: 32px; font-size: 13px; }
-.cal-menu-foot { margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--ui-border); }
+.cal-subhead { margin: 8px 0 0; font-size: 15px; font-weight: 700; }
+.cal-codes { display: flex; flex-direction: column; border: 1px solid var(--ui-border); border-radius: 14px; }
+.cal-code {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px 12px; padding: 12px 14px;
+}
+.cal-code + .cal-code { border-top: 1px solid var(--ui-border); }
+.cal-code.is-muted { opacity: 0.6; }
+.cal-code .cal-palette { grid-column: 2 / -1; }
+.cal-code-name { height: 34px; font-weight: 600; }
+.cal-code-name.is-text { display: flex; align-items: center; font-size: 14px; }
+.cal-code-note { font-size: 12px; color: var(--ui-muted); text-align: right; }
+.cal-palette { display: flex; flex-wrap: wrap; gap: 6px; }
+.cal-swatch {
+  width: 22px; height: 22px; padding: 0; cursor: pointer;
+  background: var(--c); border: 2px solid var(--ui-card); border-radius: 999px; box-shadow: 0 0 0 1px var(--ui-border);
+}
+.cal-swatch.is-on { box-shadow: 0 0 0 2px var(--ui-text); }
+.cal-cards-setup { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 20px; align-items: start; }
+@media (max-width: 760px) { .cal-cards-setup { grid-template-columns: minmax(0, 1fr); } }
+.cal-ev.cal-preview { position: static; width: 100%; min-height: 80px; cursor: default; }
 
 /* the add/edit event dialog: the form shell without a side menu */
 .ui-dialog.is-form { width: min(640px, calc(100% - 48px)); min-height: 0; }

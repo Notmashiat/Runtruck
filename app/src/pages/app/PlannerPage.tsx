@@ -1,33 +1,19 @@
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { CalendarSettings, type SettingsPage } from '../../components/CalendarSettings';
 import { EventDialog } from '../../components/EventDialog';
 import { useAppShell } from '../../context/AppShellContext';
-import { CATEGORIES, loadEvents, PLANNER_EVENTS, TODAY, type CategoryKey, type PlannerEvent } from '../../data/planner';
+import {
+  DEFAULT_CATEGORIES, DEFAULT_PREFS, loadEvents, PLANNER_EVENTS, ROW_H, TODAY, TONES,
+  type CalView, type CardField, type Category, type ColorBy, type PlannerEvent, type Prefs,
+} from '../../data/planner';
 import {
   addDays, addMonths, formatTime, fromIso, iso, MONTHS, shortLabel, startOfWeek, toHhmm, toMinutes, WEEKDAYS,
 } from '../../lib/dates';
 import { usePersisted } from '../../lib/persist';
 import { matchesQuery } from '../../lib/search';
 
-type CalView = 'Day' | 'Week' | 'Month';
 const VIEWS: CalView[] = ['Day', 'Week', 'Month'];
-type Density = 'Compact' | 'Comfortable' | 'Spacious';
-const ROW_H: Record<Density, number> = { Compact: 40, Comfortable: 56, Spacious: 76 };
-
-interface Prefs {
-  view: CalView;
-  weekStart: number;
-  showWeekends: boolean;
-  dayStart: number;
-  dayEnd: number;
-  density: Density;
-  hour24: boolean;
-  hidden: CategoryKey[];
-}
-
-const DEFAULT_PREFS: Prefs = {
-  view: 'Week', weekStart: 1, showWeekends: true, dayStart: 6, dayEnd: 20, density: 'Comfortable', hour24: false, hidden: [],
-};
 
 // One event as drawn on one day: all-day spans become a chip on each day they cover.
 interface Occurrence {
@@ -38,8 +24,11 @@ interface Occurrence {
   allDay: boolean;
 }
 
-const TONE = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.tone])) as Record<CategoryKey, string>;
-const LABEL = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.label])) as Record<CategoryKey, string>;
+// How the grids draw an event: its color and the lines on its card.
+interface Look {
+  tone: (ev: PlannerEvent) => string;
+  lines: (o: Occurrence) => string[];
+}
 
 function occurrencesOn(events: PlannerEvent[], date: string): Occurrence[] {
   return events
@@ -84,6 +73,11 @@ function layout(occ: Occurrence[]) {
   return out;
 }
 
+function valueOf(ev: PlannerEvent, by: ColorBy): string {
+  const v = by === 'driver' ? ev.driver : by === 'customer' ? ev.customer : by === 'truck' ? ev.truck : '';
+  return v && v !== 'Unassigned' ? v : 'Unassigned';
+}
+
 function reviveEvents(raw: unknown): PlannerEvent[] | null {
   return Array.isArray(raw) && raw.every((e) => e && typeof e.id === 'string' && typeof e.date === 'string') ? raw : null;
 }
@@ -92,36 +86,107 @@ function revivePrefs(raw: unknown): Prefs | null {
   return raw && typeof raw === 'object' ? { ...DEFAULT_PREFS, ...(raw as Partial<Prefs>) } : null;
 }
 
+// Saved color codes, always with the two the load board needs (Loaded / Empty) first.
+function reviveCategories(raw: unknown): Category[] | null {
+  if (!Array.isArray(raw) || !raw.every((c) => c && typeof c.key === 'string' && typeof c.label === 'string' && typeof c.tone === 'string')) return null;
+  const saved = raw as Category[];
+  const locked = DEFAULT_CATEGORIES.filter((c) => c.locked).map((d) => ({ ...d, ...saved.find((c) => c.key === d.key), locked: true }));
+  return [...locked, ...saved.filter((c) => !locked.some((l) => l.key === c.key)).map((c) => ({ ...c, locked: false }))];
+}
+
 export function PlannerPage() {
   const { loads, query } = useAppShell();
   const [prefs, setPrefs] = usePersisted<Prefs>('runtruck-planner-prefs', DEFAULT_PREFS, revivePrefs);
   const [events, setEvents] = usePersisted<PlannerEvent[]>('runtruck-planner-events', PLANNER_EVENTS, reviveEvents);
+  const [categories, setCategories] = usePersisted<Category[]>('runtruck-planner-categories', DEFAULT_CATEGORIES, reviveCategories);
   const [cursor, setCursor] = useState(() => fromIso(TODAY));
   const [selected, setSelected] = useState<{ o: Occurrence; x: number; y: number } | null>(null);
   const [editing, setEditing] = useState<{ ev: PlannerEvent; isNew: boolean } | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [settings, setSettings] = useState<SettingsPage | null>(null);
 
   const pref = <K extends keyof Prefs>(key: K, value: Prefs[K]) => setPrefs((p) => ({ ...p, [key]: value }));
-  const { view } = prefs;
-  const rowH = ROW_H[prefs.density];
+  const { view, colorBy } = prefs;
+  const byValue = colorBy !== 'type';
+  const time = (min: number) => formatTime(min, prefs.hour24);
 
-  const shown = [...events, ...loadEvents(loads)].filter(
-    (e) => !prefs.hidden.includes(e.category) && matchesQuery({ title: e.title, notes: e.notes, people: e.people?.join(' ') }, query),
+  // — colors —
+  const all = [...events, ...loadEvents(loads)];
+  const catOf = new Map(categories.map((c) => [c.key, c]));
+  const values = byValue ? [...new Set(all.filter((e) => e.readOnly).map((e) => valueOf(e, colorBy)))].sort() : [];
+  const valueTone = (v: string) => prefs.valueTones[`${colorBy}:${v}`] ?? TONES[values.indexOf(v) % TONES.length];
+  const colorKey = (ev: PlannerEvent) => (byValue && ev.readOnly ? `${colorBy}:${valueOf(ev, colorBy)}` : ev.category);
+  const look: Look = {
+    tone: (ev) => (byValue && ev.readOnly ? valueTone(valueOf(ev, colorBy)) : catOf.get(ev.category)?.tone ?? 'slate'),
+    lines: (o) => {
+      const field = (f: CardField): string => {
+        const ev = o.ev;
+        const map: Record<CardField, string | undefined> = {
+          place: ev.place,
+          title: ev.title,
+          category: catOf.get(ev.category)?.label ?? 'Uncategorized',
+          time: o.allDay ? 'All day' : `${time(o.start)} – ${time(o.end)}`,
+          load: ev.loadId,
+          driver: ev.driver ?? ev.people?.[0],
+          truck: ev.truck,
+          customer: ev.customer,
+          facility: ev.facility,
+          commodity: ev.commodity,
+          none: '',
+        };
+        return map[f] ?? '';
+      };
+      const [first, ...rest] = prefs.cardLines;
+      return [field(first) || o.ev.title, ...rest.map(field).filter(Boolean)];
+    },
+  };
+
+  // Legend chips double as show / hide filters.
+  const legend = byValue
+    ? [
+        ...categories.filter((c) => !c.locked).map((c) => ({ key: c.key, label: c.label, tone: c.tone })),
+        ...values.map((v) => ({ key: `${colorBy}:${v}`, label: v, tone: valueTone(v) })),
+      ]
+    : categories.map((c) => ({ key: c.key, label: c.label, tone: c.tone }));
+
+  const shown = all.filter(
+    (e) => !prefs.hidden.includes(colorKey(e))
+      && matchesQuery({ title: e.title, place: e.place, notes: e.notes, people: e.people?.join(' '), customer: e.customer, truck: e.truck }, query),
   );
 
-  // Columns on screen.
+  // — color code edits —
+  const updateCategory = (key: string, patch: Partial<Category>) => setCategories((cs) => cs.map((c) => (c.key === key ? { ...c, ...patch } : c)));
+  const addCategory = () => {
+    const used = new Set(categories.map((c) => c.tone));
+    const tone = TONES.find((t) => !used.has(t)) ?? 'slate';
+    setCategories((cs) => [...cs, { key: `code-${Date.now()}`, label: 'New color code', tone }]);
+  };
+  const deleteCategory = (key: string) => {
+    const gone = categories.find((c) => c.key === key);
+    const fallback = categories.find((c) => !c.locked && c.key !== key);
+    if (!gone || !fallback) {
+      window.alert('Keep at least one color code for your own events.');
+      return;
+    }
+    const n = events.filter((e) => e.category === key).length;
+    if (n && !window.confirm(`Delete “${gone.label}”? Its ${n} event${n === 1 ? '' : 's'} move to “${fallback.label}”.`)) return;
+    setEvents((list) => list.map((e) => (e.category === key ? { ...e, category: fallback.key } : e)));
+    setCategories((cs) => cs.filter((c) => c.key !== key));
+    pref('hidden', prefs.hidden.filter((k) => k !== key));
+  };
+
+  // — columns on screen —
   const weekDays = (from: Date) =>
     Array.from({ length: 7 }, (_, i) => addDays(from, i)).filter((d) => prefs.showWeekends || (d.getDay() !== 0 && d.getDay() !== 6));
   let days: Date[] = [];
-  let weeks: Date[][] = [];
+  const weeks: Date[][] = [];
   if (view === 'Day') days = [cursor];
   if (view === 'Week') days = weekDays(startOfWeek(cursor, prefs.weekStart));
   if (view === 'Month') {
     const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
     for (let w = startOfWeek(first, prefs.weekStart); w.getMonth() === first.getMonth() || w < first; w = addDays(w, 7)) {
-      weeks.push(weekDays(w));
+      const week = weekDays(w);
+      if (week.length) weeks.push(week);
     }
-    weeks = weeks.filter((w) => w.length);
   }
 
   const move = (dir: 1 | -1) => {
@@ -136,9 +201,10 @@ export function PlannerPage() {
   const create = (date: string, startMin?: number) => {
     setSelected(null);
     const s = startMin ?? 9 * 60;
+    const category = categories.find((c) => !c.locked)?.key ?? 'meeting';
     setEditing({
       isNew: true,
-      ev: { id: `ev-${Date.now()}`, title: '', category: 'meeting', date, start: toHhmm(s), end: toHhmm(Math.min(s + 60, 23 * 60 + 45)) },
+      ev: { id: `ev-${Date.now()}`, title: '', category, date, start: toHhmm(s), end: toHhmm(Math.min(s + 60, 23 * 60 + 45)) },
     });
   };
   const select = (o: Occurrence, e: MouseEvent) => {
@@ -151,7 +217,10 @@ export function PlannerPage() {
   const range = view === 'Week' && days.length
     ? `${shortLabel(days[0])} – ${shortLabel(days[days.length - 1])}`
     : view === 'Month' ? `${shown.filter((e) => e.date.startsWith(iso(cursor).slice(0, 7))).length} events this month` : '';
-  const time = (min: number) => formatTime(min, prefs.hour24);
+
+  // A sample load stop for the Event cards preview.
+  const sampleEv = all.find((e) => e.readOnly && e.category === 'pickup') ?? all[0];
+  const sampleOcc = sampleEv && occurrencesOn([sampleEv], sampleEv.date)[0];
 
   return (
     <>
@@ -177,15 +246,12 @@ export function PlannerPage() {
             </button>
           ))}
         </div>
-        <div style={{ position: 'relative' }}>
-          <button type="button" className="ui-btn" aria-expanded={menuOpen} onClick={() => setMenuOpen((o) => !o)}>Customize</button>
-          {menuOpen && <CustomizeMenu prefs={prefs} pref={pref} onReset={() => { setPrefs(DEFAULT_PREFS); setEvents(PLANNER_EVENTS); }} onClose={() => setMenuOpen(false)} />}
-        </div>
+        <button type="button" className="ui-btn" onClick={() => setSettings('Layout')}>Customize</button>
         <button type="button" className="ui-btn ui-btn-primary" onClick={() => create(iso(cursor))}>+ Add Event</button>
       </div>
 
       <div className="cal-legend">
-        {CATEGORIES.map((c) => {
+        {legend.map((c) => {
           const on = !prefs.hidden.includes(c.key);
           return (
             <button
@@ -200,24 +266,17 @@ export function PlannerPage() {
             </button>
           );
         })}
+        <button type="button" className="ui-link cal-legend-edit" onClick={() => setSettings('Color codes')}>Edit colors</button>
       </div>
 
       {view === 'Month' ? (
-        <MonthGrid
-          weeks={weeks}
-          month={cursor.getMonth()}
-          events={shown}
-          time={time}
-          onOpenDay={openDay}
-          onCreate={create}
-          onSelect={select}
-        />
+        <MonthGrid weeks={weeks} month={cursor.getMonth()} events={shown} look={look} time={time} onOpenDay={openDay} onCreate={create} onSelect={select} />
       ) : (
         <TimeGrid
           days={days}
           events={shown}
           prefs={prefs}
-          rowH={rowH}
+          look={look}
           time={time}
           onOpenDay={view === 'Week' ? openDay : undefined}
           onCreate={create}
@@ -228,7 +287,9 @@ export function PlannerPage() {
       {selected && (
         <EventPopover
           sel={selected}
+          look={look}
           time={time}
+          category={catOf.get(selected.o.ev.category)}
           onClose={() => setSelected(null)}
           onEdit={() => { setEditing({ ev: selected.o.ev, isNew: false }); setSelected(null); }}
           onDelete={() => { setEvents((list) => list.filter((e) => e.id !== selected.o.ev.id)); setSelected(null); }}
@@ -238,10 +299,28 @@ export function PlannerPage() {
       {editing && (
         <EventDialog
           event={editing.ev}
+          categories={categories}
           isNew={editing.isNew}
           onClose={() => setEditing(null)}
           onDelete={() => setEvents((list) => list.filter((e) => e.id !== editing.ev.id))}
           onSave={(ev) => setEvents((list) => (editing.isNew ? [...list, ev] : list.map((e) => (e.id === ev.id ? ev : e))))}
+        />
+      )}
+
+      {settings && (
+        <CalendarSettings
+          page={settings}
+          prefs={prefs}
+          pref={pref}
+          categories={categories}
+          onCategory={updateCategory}
+          onAddCategory={addCategory}
+          onDeleteCategory={deleteCategory}
+          values={values}
+          valueTone={valueTone}
+          sample={sampleOcc ? { lines: look.lines(sampleOcc), tone: look.tone(sampleOcc.ev) } : { lines: ['Fresno, CA'], tone: 'amber' }}
+          onReset={() => { setPrefs(DEFAULT_PREFS); setEvents(PLANNER_EVENTS); setCategories(DEFAULT_CATEGORIES); }}
+          onClose={() => setSettings(null)}
         />
       )}
     </>
@@ -250,13 +329,15 @@ export function PlannerPage() {
 
 interface GridProps {
   events: PlannerEvent[];
+  look: Look;
   time: (min: number) => string;
   onOpenDay?: (d: Date) => void;
   onCreate: (date: string, startMin?: number) => void;
   onSelect: (o: Occurrence, e: MouseEvent) => void;
 }
 
-function TimeGrid({ days, events, prefs, rowH, time, onOpenDay, onCreate, onSelect }: GridProps & { days: Date[]; prefs: Prefs; rowH: number }) {
+function TimeGrid({ days, events, prefs, look, time, onOpenDay, onCreate, onSelect }: GridProps & { days: Date[]; prefs: Prefs }) {
+  const rowH = ROW_H[prefs.density];
   const visStart = prefs.dayStart * 60;
   const visEnd = prefs.dayEnd * 60;
   const hours = Array.from({ length: prefs.dayEnd - prefs.dayStart }, (_, i) => prefs.dayStart + i);
@@ -302,15 +383,15 @@ function TimeGrid({ days, events, prefs, rowH, time, onOpenDay, onCreate, onSele
               );
             })}
           </div>
-  
+
           {hasAllDay && (
             <div className="cal-allday" style={cols}>
               <div className="cal-gutter-label">All day</div>
               {byDay.map((list, i) => (
                 <div key={i} className="cal-allday-cell">
                   {list.filter((o) => o.allDay).map((o) => (
-                    <button key={o.ev.id} type="button" className={`cal-chip t-${TONE[o.ev.category]}`} onClick={(e) => onSelect(o, e)}>
-                      {o.ev.title}
+                    <button key={o.ev.id} type="button" className={`cal-chip t-${look.tone(o.ev)}`} onClick={(e) => onSelect(o, e)}>
+                      {look.lines(o)[0]}
                     </button>
                   ))}
                 </div>
@@ -333,18 +414,19 @@ function TimeGrid({ days, events, prefs, rowH, time, onOpenDay, onCreate, onSele
                 {layout(timed).map(({ o, lane, lanes }) => {
                   const top = ((Math.max(o.start, visStart) - visStart) / 60) * rowH;
                   const height = Math.max(((Math.min(o.end, visEnd) - Math.max(o.start, visStart)) / 60) * rowH - 3, 20);
+                  const lines = look.lines(o);
+                  const fit = Math.max(1, Math.floor((height - 8) / 16));
                   return (
                     <button
                       key={o.ev.id}
                       type="button"
-                      className={`cal-ev t-${TONE[o.ev.category]}`}
+                      className={`cal-ev t-${look.tone(o.ev)}`}
                       style={{ top, height, left: `calc(${(lane / lanes) * 100}% + 3px)`, width: `calc(${100 / lanes}% - 6px)` }}
                       onClick={(e) => onSelect(o, e)}
-                      title={`${o.ev.title} · ${time(o.start)} – ${time(o.end)}`}
+                      title={lines.join(' · ')}
                     >
-                      <span className="cal-ev-title">{o.ev.title}</span>
-                      {height >= 38 && <span className="cal-ev-time">{time(o.start)} – {time(o.end)}</span>}
-                      {height >= 70 && o.ev.notes && <span className="cal-ev-note">{o.ev.notes}</span>}
+                      <span className="cal-ev-title">{lines[0]}</span>
+                      {lines.slice(1, fit).map((t, j) => <span key={j} className="cal-ev-line">{t}</span>)}
                     </button>
                   );
                 })}
@@ -357,7 +439,7 @@ function TimeGrid({ days, events, prefs, rowH, time, onOpenDay, onCreate, onSele
   );
 }
 
-function MonthGrid({ weeks, month, events, time, onOpenDay, onCreate, onSelect }: GridProps & { weeks: Date[][]; month: number }) {
+function MonthGrid({ weeks, month, events, look, time, onOpenDay, onCreate, onSelect }: GridProps & { weeks: Date[][]; month: number }) {
   const MAX = 3;
   const cols = { gridTemplateColumns: `repeat(${weeks[0]?.length ?? 7}, minmax(0, 1fr))` };
   return (
@@ -379,13 +461,16 @@ function MonthGrid({ weeks, month, events, time, onOpenDay, onCreate, onSelect }
                 <button type="button" className={`cal-month-num${date === TODAY ? ' is-today' : ''}`} onClick={() => onOpenDay?.(d)}>
                   {d.getDate()}
                 </button>
-                {list.slice(0, MAX).map((o) => (
-                  <button key={o.ev.id} type="button" className={`cal-month-ev t-${TONE[o.ev.category]}`} onClick={(e) => onSelect(o, e)}>
-                    <span className={`cal-dot t-${TONE[o.ev.category]}`} />
-                    {!o.allDay && <span className="cal-month-time">{time(o.start)}</span>}
-                    <span className="cal-month-title">{o.ev.title}</span>
-                  </button>
-                ))}
+                {list.slice(0, MAX).map((o) => {
+                  const tone = look.tone(o.ev);
+                  return (
+                    <button key={o.ev.id} type="button" className={`cal-month-ev t-${tone}`} onClick={(e) => onSelect(o, e)}>
+                      <span className={`cal-dot t-${tone}`} />
+                      {!o.allDay && <span className="cal-month-time">{time(o.start)}</span>}
+                      <span className="cal-month-title">{look.lines(o)[0]}</span>
+                    </button>
+                  );
+                })}
                 {list.length > MAX && (
                   <button type="button" className="ui-link cal-more" onClick={() => onOpenDay?.(d)}>+{list.length - MAX} more</button>
                 )}
@@ -418,9 +503,11 @@ function useDismiss(onClose: () => void) {
   return ref;
 }
 
-function EventPopover({ sel, time, onClose, onEdit, onDelete }: {
+function EventPopover({ sel, look, time, category, onClose, onEdit, onDelete }: {
   sel: { o: Occurrence; x: number; y: number };
+  look: Look;
   time: (min: number) => string;
+  category?: Category;
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -430,23 +517,34 @@ function EventPopover({ sel, time, onClose, onEdit, onDelete }: {
   const ev = o.ev;
   const people = ev.people?.filter((p) => p && p !== 'Unassigned') ?? [];
   const left = Math.max(12, Math.min(sel.x + 12, window.innerWidth - 352));
-  const top = Math.max(12, Math.min(sel.y - 20, window.innerHeight - 320));
-  const when = o.allDay
-    ? ev.endDate ? `${shortLabel(fromIso(ev.date))} – ${shortLabel(fromIso(ev.endDate))}` : 'All day'
-    : `${time(o.start)} – ${time(o.end)}`;
+  const top = Math.max(12, Math.min(sel.y - 20, window.innerHeight - 360));
+  const lines = look.lines(o);
+  const details = [
+    ['City, state', ev.place], ['Facility', ev.facility], ['Customer', ev.customer], ['Truck', ev.truck], ['Commodity', ev.commodity],
+  ].filter(([, v]) => v) as [string, string][];
 
   return (
-    <div ref={ref} className="cal-pop" style={{ left, top }} role="dialog" aria-label={ev.title}>
+    <div ref={ref} className="cal-pop" style={{ left, top }} role="dialog" aria-label={lines[0]}>
       <div className="cal-pop-title">
-        <span className={`cal-dot is-ring t-${TONE[ev.category]}`} />
-        {ev.title}
+        <span className={`cal-dot is-ring t-${look.tone(ev)}`} />
+        {lines[0]}
       </div>
       <div className="cal-pop-meta">
         <span>{shortLabel(fromIso(o.date))}</span>
-        <span>{when}</span>
+        <span>{o.allDay ? (ev.endDate ? `Until ${shortLabel(fromIso(ev.endDate))}` : 'All day') : `${time(o.start)} – ${time(o.end)}`}</span>
       </div>
-      <div className="cal-pop-kind">{LABEL[ev.category]}</div>
-      {ev.notes && <p className="cal-pop-notes">{ev.notes}</p>}
+      <div className="cal-pop-kind">{category?.label ?? 'Uncategorized'}{ev.loadId ? ` · ${ev.loadId}` : ''}</div>
+      {details.length > 0 && (
+        <dl className="cal-pop-details">
+          {details.map(([k, v]) => (
+            <div key={k}>
+              <dt>{k}</dt>
+              <dd>{v}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {ev.notes && !ev.readOnly && <p className="cal-pop-notes">{ev.notes}</p>}
       {people.length > 0 && (
         <div className="cal-people">
           {people.slice(0, 3).map((p) => (
@@ -465,60 +563,6 @@ function EventPopover({ sel, time, onClose, onEdit, onDelete }: {
         )}
       </div>
       {ev.readOnly && <div className="cal-pop-hint">From the load board — change it on the load.</div>}
-    </div>
-  );
-}
-
-function CustomizeMenu({ prefs, pref, onReset, onClose }: {
-  prefs: Prefs;
-  pref: <K extends keyof Prefs>(key: K, value: Prefs[K]) => void;
-  onReset: () => void;
-  onClose: () => void;
-}) {
-  const ref = useDismiss(onClose);
-  const hourOptions = Array.from({ length: 25 }, (_, h) => h);
-  const row = (label: string, control: ReactNode) => (
-    <div className="cal-menu-row">
-      <span>{label}</span>
-      {control}
-    </div>
-  );
-  const choice = <T extends string | number | boolean>(options: [T, string][], value: T, onChange: (v: T) => void) => (
-    <div className="ui-filter">
-      {options.map(([v, label]) => (
-        <button key={label} type="button" className={`ui-filter-opt${value === v ? ' is-active' : ''}`} onClick={() => onChange(v)}>{label}</button>
-      ))}
-    </div>
-  );
-
-  return (
-    <div ref={ref} className="cal-menu" role="dialog" aria-label="Customize calendar">
-      <div className="cal-menu-title">Customize</div>
-      {row('Week starts on', choice<number>([[0, 'Sun'], [1, 'Mon']], prefs.weekStart, (v) => pref('weekStart', v)))}
-      {row('Weekends', choice<boolean>([[true, 'Show'], [false, 'Hide']], prefs.showWeekends, (v) => pref('showWeekends', v)))}
-      {row('Time format', choice<boolean>([[false, '12h'], [true, '24h']], prefs.hour24, (v) => pref('hour24', v)))}
-      {row('Row height', choice<Density>([['Compact', 'S'], ['Comfortable', 'M'], ['Spacious', 'L']], prefs.density, (v) => pref('density', v)))}
-      {row('Day starts', (
-        <select className="ui-input cal-menu-select" value={prefs.dayStart} onChange={(e) => pref('dayStart', Math.min(Number(e.target.value), prefs.dayEnd - 1))}>
-          {hourOptions.slice(0, 24).map((h) => <option key={h} value={h}>{formatTime(h * 60, prefs.hour24)}</option>)}
-        </select>
-      ))}
-      {row('Day ends', (
-        <select className="ui-input cal-menu-select" value={prefs.dayEnd} onChange={(e) => pref('dayEnd', Math.max(Number(e.target.value), prefs.dayStart + 1))}>
-          {hourOptions.slice(1).map((h) => <option key={h} value={h}>{h === 24 ? 'Midnight' : formatTime(h * 60, prefs.hour24)}</option>)}
-        </select>
-      ))}
-      <div className="cal-menu-foot">
-        <button
-          type="button"
-          className="ui-link"
-          onClick={() => {
-            if (window.confirm('Reset the calendar layout and restore the original events? Events you added or edited will be removed.')) onReset();
-          }}
-        >
-          Reset calendar
-        </button>
-      </div>
     </div>
   );
 }

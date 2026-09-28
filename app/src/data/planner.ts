@@ -7,17 +7,21 @@ import type { Load } from './mock';
 export const TODAY = '2026-09-03';
 const YEAR = 2026;
 
-export type CategoryKey = 'pickup' | 'delivery' | 'maintenance' | 'driver' | 'meeting' | 'admin';
+// The colors a color code can use (classes t-<tone> in calendar.css).
+export const TONES = ['amber', 'green', 'red', 'purple', 'blue', 'teal', 'pink', 'orange', 'indigo', 'slate'];
 
+// A color code: what one color means on the calendar. Users rename, recolor,
+// add and delete them; the two locked ones are fed by the load board.
 export interface Category {
-  key: CategoryKey;
+  key: string;
   label: string;
   tone: string;
+  locked?: boolean;
 }
 
-export const CATEGORIES: Category[] = [
-  { key: 'pickup', label: 'Pickups', tone: 'amber' },
-  { key: 'delivery', label: 'Deliveries', tone: 'green' },
+export const DEFAULT_CATEGORIES: Category[] = [
+  { key: 'pickup', label: 'Loaded (pickup)', tone: 'amber', locked: true },
+  { key: 'delivery', label: 'Empty (delivery)', tone: 'green', locked: true },
   { key: 'maintenance', label: 'Maintenance', tone: 'red' },
   { key: 'driver', label: 'Driver schedule', tone: 'purple' },
   { key: 'meeting', label: 'Meetings', tone: 'blue' },
@@ -27,17 +31,77 @@ export const CATEGORIES: Category[] = [
 export interface PlannerEvent {
   id: string;
   title: string;
-  category: CategoryKey;
+  category: string;
   date: string;
   // All-day events have no start/end; they may span to endDate.
   endDate?: string;
   start?: string;
   end?: string;
+  // "City, ST" — what the event cards lead with by default.
+  place?: string;
   notes?: string;
   people?: string[];
   loadId?: string;
+  facility?: string;
+  customer?: string;
+  driver?: string;
+  truck?: string;
+  commodity?: string;
   // Derived from a load: shown, but edited on the load itself.
   readOnly?: boolean;
+}
+
+// — calendar preferences (Customize) —
+
+export type CalView = 'Day' | 'Week' | 'Month';
+export type Density = 'Compact' | 'Comfortable' | 'Spacious';
+export const ROW_H: Record<Density, number> = { Compact: 40, Comfortable: 56, Spacious: 76 };
+
+// What colors the load board's stops: their stop type (the Loaded / Empty
+// color codes), or one color per driver, customer or truck.
+export type ColorBy = 'type' | 'driver' | 'customer' | 'truck';
+
+// What an event card can show on each of its lines.
+export type CardField = 'place' | 'title' | 'category' | 'time' | 'load' | 'driver' | 'truck' | 'customer' | 'facility' | 'commodity' | 'none';
+export const CARD_FIELDS: [CardField, string][] = [
+  ['place', 'City, state'],
+  ['category', 'Color code name'],
+  ['time', 'Time'],
+  ['load', 'Load #'],
+  ['driver', 'Driver'],
+  ['truck', 'Truck / trailer'],
+  ['customer', 'Customer'],
+  ['facility', 'Facility'],
+  ['commodity', 'Commodity'],
+  ['title', 'Event title'],
+  ['none', 'Nothing'],
+];
+
+export interface Prefs {
+  view: CalView;
+  weekStart: number;
+  showWeekends: boolean;
+  dayStart: number;
+  dayEnd: number;
+  density: Density;
+  hour24: boolean;
+  // Colour-code keys, or "<colorBy>:<value>" keys, that are switched off.
+  hidden: string[];
+  colorBy: ColorBy;
+  // "<colorBy>:<value>" → tone, for colors the user picked by hand.
+  valueTones: Record<string, string>;
+  cardLines: CardField[];
+}
+
+export const DEFAULT_PREFS: Prefs = {
+  view: 'Week', weekStart: 1, showWeekends: true, dayStart: 6, dayEnd: 20, density: 'Comfortable', hour24: false,
+  hidden: [], colorBy: 'type', valueTones: {}, cardLines: ['place', 'time', 'load'],
+};
+
+// '1855 E Greg St, Sparks, NV 89431' → 'Sparks, NV'.
+export function cityState(address: string): string {
+  const parts = address.replace(/\s+\d{5}(-\d{4})?$/, '').split(',').map((p) => p.trim()).filter(Boolean);
+  return parts.slice(-2).join(', ');
 }
 
 function weekdaysBetween(from: string, to: string, skip: string[]): string[] {
@@ -82,15 +146,20 @@ export const PLANNER_EVENTS: PlannerEvent[] = [
 // One pickup and one delivery per load (every stop for loads entered with New Load).
 export function loadEvents(loads: Load[]): PlannerEvent[] {
   return loads.flatMap((l) => {
+    const shared = {
+      loadId: l.id, customer: l.customer, driver: l.driver, truck: l.unit === '—' ? '' : l.unit, commodity: l.commodity,
+      people: [l.driver], readOnly: true,
+    };
     if (l.stops) {
       return l.stops.flatMap((s, i): PlannerEvent[] => {
         const [day, window = ''] = s.when.split(' · ');
         const date = shortToIso(day, YEAR);
         if (!date) return [];
         const [start, end] = window.includes('–') ? window.split('–') : ['08:00', '09:00'];
+        const place = cityState(s.address);
         return [{
-          id: `load:${l.id}:${i}`, title: `${s.kind} · ${l.id}`, category: s.kind === 'Pickup' ? 'pickup' : 'delivery',
-          date, start, end: end || start, notes: `${s.name} · ${l.customer}`, people: [l.driver], loadId: l.id, readOnly: true,
+          ...shared, id: `load:${l.id}:${i}`, title: `${l.id} · ${place}`, category: s.kind === 'Pickup' ? 'pickup' : 'delivery',
+          date, start, end: end || start, place, facility: s.name, notes: `${s.name} · ${l.customer}`,
         }];
       });
     }
@@ -103,8 +172,9 @@ export function loadEvents(loads: Load[]): PlannerEvent[] {
     const out: PlannerEvent[] = [];
     const p = shortToIso(l.pickup, YEAR);
     const d = shortToIso(l.delivery, YEAR);
-    if (p) out.push({ id: `load:${l.id}:p`, title: `Pickup · ${l.id}`, category: 'pickup', date: p, start: hhmm(pHour), end: hhmm(pHour + 2), notes: `${l.from} · ${l.customer}`, people: [l.driver], loadId: l.id, readOnly: true });
-    if (d) out.push({ id: `load:${l.id}:d`, title: `Delivery · ${l.id}`, category: 'delivery', date: d, start: hhmm(dHour), end: hhmm(dHour + 2), notes: `${l.to} · ${l.customer}`, people: [l.driver], loadId: l.id, readOnly: true });
+    const [fromPlace = '', toPlace = ''] = l.route.split(' → ');
+    if (p) out.push({ ...shared, id: `load:${l.id}:p`, title: `${l.id} · ${fromPlace}`, category: 'pickup', date: p, start: hhmm(pHour), end: hhmm(pHour + 2), place: fromPlace, facility: l.from, notes: `${l.from} · ${l.customer}` });
+    if (d) out.push({ ...shared, id: `load:${l.id}:d`, title: `${l.id} · ${toPlace}`, category: 'delivery', date: d, start: hhmm(dHour), end: hhmm(dHour + 2), place: toPlace, facility: l.to, notes: `${l.to} · ${l.customer}` });
     return out;
   });
 }
