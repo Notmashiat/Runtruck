@@ -4,26 +4,15 @@ import { Card } from '../../components/Card';
 import { Kpis } from '../../components/Kpis';
 import { Tag } from '../../components/Tag';
 import { useAppShell, type LoadTab } from '../../context/AppShellContext';
-import { ACTIVE_STATUSES, LOADS, type Load } from '../../data/mock';
+import { ACTIVE_STATUSES, stopsOf, type Load } from '../../data/mock';
 import { matchesQuery } from '../../lib/search';
 
 const TABS: LoadTab[] = ['Active', 'Needs POD', 'Delivered', 'All'];
 
-function countOf(status: string) {
-  return String(LOADS.filter((l) => l.status === status).length);
-}
-
-const KPIS = [
-  { label: 'Undispatched', value: countOf('Needs driver') },
-  { label: 'In transit', value: countOf('In transit') },
-  { label: 'Delivered', value: countOf('Delivered') },
-  { label: 'Needs POD', value: countOf('Needs POD') },
-];
-
-function listFor(tab: LoadTab): Load[] {
-  if (tab === 'All') return LOADS;
-  if (tab === 'Active') return LOADS.filter((l) => ACTIVE_STATUSES.includes(l.status));
-  return LOADS.filter((l) => l.status === tab);
+function listFor(loads: Load[], tab: LoadTab): Load[] {
+  if (tab === 'All') return loads;
+  if (tab === 'Active') return loads.filter((l) => ACTIVE_STATUSES.includes(l.status));
+  return loads.filter((l) => l.status === tab);
 }
 
 function firstId(list: Load[]): string | null {
@@ -31,12 +20,20 @@ function firstId(list: Load[]): string | null {
 }
 
 export function LoadsPage() {
-  const { query, setQuery, loadTab, setLoadTab } = useAppShell();
+  const { query, setQuery, loadTab, setLoadTab, loads } = useAppShell();
   const searching = query.trim().length > 0;
 
   // A search looks across every load, regardless of the filter.
-  const rows = searching ? LOADS.filter((l) => matchesQuery(l, query)) : listFor(loadTab);
+  const rows = searching ? loads.filter((l) => matchesQuery(l, query)) : listFor(loads, loadTab);
   const [openId, setOpenId] = useState<string | null>(firstId(rows));
+
+  const countOf = (status: string) => String(loads.filter((l) => l.status === status).length);
+  const kpis = [
+    { label: 'Undispatched', value: countOf('Needs driver') },
+    { label: 'In transit', value: countOf('In transit') },
+    { label: 'Delivered', value: countOf('Delivered') },
+    { label: 'Needs POD', value: countOf('Needs POD') },
+  ];
 
   const countText = searching ? `${rows.length} matching “${query}”` : `${rows.length} loads`;
 
@@ -47,7 +44,7 @@ export function LoadsPage() {
           key={o}
           type="button"
           className={`ui-filter-opt${!searching && loadTab === o ? ' is-active' : ''}`}
-          onClick={() => { setLoadTab(o); setQuery(''); setOpenId(firstId(listFor(o))); }}
+          onClick={() => { setLoadTab(o); setQuery(''); setOpenId(firstId(listFor(loads, o))); }}
         >
           {o}
         </button>
@@ -57,7 +54,7 @@ export function LoadsPage() {
 
   return (
     <>
-      <Kpis items={KPIS} />
+      <Kpis items={kpis} />
 
       <Card flush title={countText} action={filter}>
         <table className="ui-table">
@@ -71,6 +68,7 @@ export function LoadsPage() {
             {rows.map((l) => {
               const open = openId === l.id;
               const unassigned = l.unit === '—';
+              const stops = stopsOf(l);
               return (
                 <Fragment key={l.id}>
                   <tr className={`is-clickable${open ? ' is-open' : ''}`} onClick={() => setOpenId(open ? null : l.id)}>
@@ -88,19 +86,15 @@ export function LoadsPage() {
                       <td colSpan={8} className="ui-expand-cell">
                         <div className="ui-expand">
                           <div>
-                            <div className="ui-label">Stops (2)</div>
-                            <div className="ui-stop">
-                              <div className="ui-stop-kind pickup">Pickup · Stop 1</div>
-                              <div className="ui-stop-name">{l.from}</div>
-                              <div className="ui-stop-meta">{l.fromAddr}</div>
-                              <div className="ui-stop-meta">Pickup {l.pickup} · 08:00–14:00</div>
-                            </div>
-                            <div className="ui-stop">
-                              <div className="ui-stop-kind delivery">Delivery · Stop 2</div>
-                              <div className="ui-stop-name">{l.to}</div>
-                              <div className="ui-stop-meta">{l.toAddr}</div>
-                              <div className="ui-stop-meta">Deliver {l.delivery} · 06:00–12:00</div>
-                            </div>
+                            <div className="ui-label">Stops ({stops.length})</div>
+                            {stops.map((s, i) => (
+                              <div key={i} className="ui-stop">
+                                <div className={`ui-stop-kind ${s.kind === 'Pickup' ? 'pickup' : 'delivery'}`}>{s.kind} · Stop {i + 1}</div>
+                                <div className="ui-stop-name">{s.name}</div>
+                                <div className="ui-stop-meta">{s.address}</div>
+                                <div className="ui-stop-meta">{s.when}</div>
+                              </div>
+                            ))}
                           </div>
 
                           <div>
@@ -145,6 +139,17 @@ export function LoadsPage() {
                               <div>
                                 <div className="ui-label">Driver</div>
                                 <div className="ui-kv-value">{l.driver}</div>
+                              </div>
+                            </div>
+                            <div className="ui-label" style={{ marginTop: 22 }}>Carrier</div>
+                            <div className="ui-kv">
+                              <div>
+                                <div className="ui-label">Name</div>
+                                <div className="ui-kv-value">{l.carrier}</div>
+                              </div>
+                              <div>
+                                <div className="ui-label">MC · DOT</div>
+                                <div className="ui-kv-value">{l.carrierMc} · {l.carrierDot}</div>
                               </div>
                             </div>
                           </div>

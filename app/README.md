@@ -18,7 +18,8 @@ handoff bundle in the repo root.
 
 ```
 src/
-  components/       Sidebar (with Settings and Log out), SettingsDialog (Profile + Appearance), Header
+  components/       Sidebar (with Settings and Log out), SettingsDialog (Profile + Appearance),
+                     NewLoadDialog (the "+ New Load" form), Header
                      (the top bar: search, Filters, per-screen actions), AppLayout, SectionTabs +
                      TabbedSection (the pill tab bar), and shared pieces: Card, Kpis,
                      Tag (status chip), ComingSoon, Blueprint (marketing site only)
@@ -60,6 +61,12 @@ The sidebar foot has the signed-in user (`USER` in `data/mock.ts`, with Member I
 **Settings** — a popup with a Profile page and an Appearance page whose dark-mode switch darkens the
 whole site (app and marketing page; `:root[data-theme="dark"]` tokens in `shell.css` and `app.css`) —
 and **Log out**, which returns to the marketing page.
+
+**+ New Load** (Dashboard and Loads) opens a large popup with sections for load info, stops
+(multi-stop), freight, LTL details, carrier (own fleet or a partner carrier from `CARRIERS`), driver
+and equipment, rates, documents, notes and a review page. Required fields are checked on Create; the
+load is added through `addLoad` in `AppShellContext` and shows on the board and its own detail page.
+New loads live in memory only, so a reload drops them until there is a backend.
 
 Routing replaces the original prototype's internal view-state + localStorage persistence:
 every screen (including a given load's detail view) is a real URL, so reloading or sharing a

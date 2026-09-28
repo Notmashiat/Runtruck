@@ -4,7 +4,7 @@ import { Kpis } from '../../components/Kpis';
 import { Tag } from '../../components/Tag';
 import { useAppShell } from '../../context/AppShellContext';
 import { dollars, money, UNINVOICED } from '../../data/accounting';
-import { ACTIVE_STATUSES, DRIVERS, LOADS, REVENUE_BARS, REVENUE_DAYS } from '../../data/mock';
+import { ACTIVE_STATUSES, DRIVERS, REVENUE_BARS, REVENUE_DAYS } from '../../data/mock';
 import { matchesQuery } from '../../lib/search';
 
 const MAX_BAR = Math.max(...REVENUE_BARS);
@@ -22,12 +22,12 @@ const DRIVER_ROWS = DRIVERS.map((d) => ({
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { query } = useAppShell();
+  const { query, loads } = useAppShell();
   const searching = query.trim().length > 0;
 
-  const active = LOADS.filter((l) => ACTIVE_STATUSES.includes(l.status));
+  const active = loads.filter((l) => ACTIVE_STATUSES.includes(l.status));
   // A search widens the table to every load; otherwise it is the active set.
-  const rows = (searching ? LOADS.filter((l) => matchesQuery(l, query)) : active).slice(0, 6);
+  const rows = (searching ? loads.filter((l) => matchesQuery(l, query)) : active).slice(0, 6);
 
   const kpis = [
     { label: 'Active loads', value: String(active.length), note: '+4 vs. last week', onClick: () => navigate('/app/loads') },

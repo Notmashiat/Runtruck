@@ -47,6 +47,13 @@ export const USER = {
   companyId: '30017',
 };
 
+export interface LoadStop {
+  kind: 'Pickup' | 'Delivery';
+  name: string;
+  address: string;
+  when: string;
+}
+
 export interface Load {
   id: string;
   customer: string;
@@ -71,33 +78,69 @@ export interface Load {
   fromAddr: string;
   to: string;
   toAddr: string;
+  carrier: string;
+  carrierMc: string;
+  carrierDot: string;
+  // Only on loads entered with the New Load form.
+  mode?: string;
+  ltl?: string;
+  stops?: LoadStop[];
+  documents?: { name: string; file: string }[];
+  carrierRate?: string;
+  notes?: string;
+  createdAt?: string;
 }
 
 export const LOADS: Load[] = [
   { id: 'L-40218', customer: 'Northgate Foods', route: 'Fresno, CA → Reno, NV', pickup: 'Sep 3', delivery: 'Sep 4', driver: 'Marcus Hale', unit: 'T-114 / RF-88', rate: '$2,450', status: 'In transit', tagClass: 'tag-accent',
     miles: '478', rpm: '$5.13', pay: '$612', margin: '$1,214', commodity: 'Frozen produce', weight: '41,200 lb', equip: 'Reefer, 53 ft', temp: '-10 °F', ref: 'PO 88-41207',
-    from: 'Northgate Cold Storage', fromAddr: '4120 S Golden State Blvd, Fresno, CA', to: 'Reno Grocers DC', toAddr: '1855 E Greg St, Sparks, NV' },
+    from: 'Northgate Cold Storage', fromAddr: '4120 S Golden State Blvd, Fresno, CA', to: 'Reno Grocers DC', toAddr: '1855 E Greg St, Sparks, NV', carrier: 'Sunridge Freight (own fleet)', carrierMc: 'MC 812044', carrierDot: 'DOT 2291176' },
   { id: 'L-40219', customer: 'Bayline Distribution', route: 'Stockton, CA → Salt Lake City, UT', pickup: 'Sep 3', delivery: 'Sep 5', driver: 'Dara Whitfield', unit: 'T-107 / DV-51', rate: '$3,180', status: 'At pickup', tagClass: 'tag-neutral',
     miles: '736', rpm: '$4.32', pay: '$795', margin: '$1,540', commodity: 'Palletized dry goods', weight: '38,500 lb', equip: 'Dry van, 53 ft', temp: 'Ambient', ref: 'PO 55-90114',
-    from: 'Bayline DC 4', fromAddr: '2900 Navy Dr, Stockton, CA', to: 'Wasatch Crossdock', toAddr: '1740 S 4130 W, Salt Lake City, UT' },
+    from: 'Bayline DC 4', fromAddr: '2900 Navy Dr, Stockton, CA', to: 'Wasatch Crossdock', toAddr: '1740 S 4130 W, Salt Lake City, UT', carrier: 'Sunridge Freight (own fleet)', carrierMc: 'MC 812044', carrierDot: 'DOT 2291176' },
   { id: 'L-40220', customer: 'Cascade Building Supply', route: 'Sacramento, CA → Boise, ID', pickup: 'Sep 2', delivery: 'Sep 4', driver: 'Ellis Nakamura', unit: 'T-121 / FB-12', rate: '$2,910', status: 'Delayed', tagClass: 'tag-outline',
     miles: '602', rpm: '$4.83', pay: '$728', margin: '$1,388', commodity: 'Lumber', weight: '44,000 lb', equip: 'Flatbed, tarped', temp: 'Ambient', ref: 'SO 7741',
-    from: 'Cascade Yard 2', fromAddr: '8300 Elder Creek Rd, Sacramento, CA', to: 'Boise Builders Depot', toAddr: '440 E Corporate Dr, Meridian, ID' },
+    from: 'Cascade Yard 2', fromAddr: '8300 Elder Creek Rd, Sacramento, CA', to: 'Boise Builders Depot', toAddr: '440 E Corporate Dr, Meridian, ID', carrier: 'Sunridge Freight (own fleet)', carrierMc: 'MC 812044', carrierDot: 'DOT 2291176' },
   { id: 'L-40221', customer: 'Harbor Point Retail', route: 'Oakland, CA → Portland, OR', pickup: 'Sep 4', delivery: 'Sep 6', driver: 'Unassigned', unit: '—', rate: '$3,540', status: 'Needs driver', tagClass: 'tag-outline',
     miles: '632', rpm: '$5.60', pay: '—', margin: '—', commodity: 'Consumer goods', weight: '30,100 lb', equip: 'Dry van, 53 ft', temp: 'Ambient', ref: 'PO 31-2280',
-    from: 'Port of Oakland, Berth 22', fromAddr: '1599 Maritime St, Oakland, CA', to: 'Harbor Point DC', toAddr: '6200 N Basin Ave, Portland, OR' },
+    from: 'Port of Oakland, Berth 22', fromAddr: '1599 Maritime St, Oakland, CA', to: 'Harbor Point DC', toAddr: '6200 N Basin Ave, Portland, OR', carrier: 'Not yet covered', carrierMc: '—', carrierDot: '—' },
   { id: 'L-40214', customer: 'Northgate Foods', route: 'Bakersfield, CA → Phoenix, AZ', pickup: 'Sep 1', delivery: 'Sep 2', driver: 'Priya Raman', unit: 'T-103 / RF-27', rate: '$1,980', status: 'Needs POD', tagClass: 'tag-outline',
     miles: '389', rpm: '$5.09', pay: '$495', margin: '$986', commodity: 'Dairy', weight: '36,800 lb', equip: 'Reefer, 53 ft', temp: '34 °F', ref: 'PO 88-41190',
-    from: 'Northgate Creamery', fromAddr: '3011 Buck Owens Blvd, Bakersfield, CA', to: 'Valley Foods DC', toAddr: '2240 W Buckeye Rd, Phoenix, AZ' },
+    from: 'Northgate Creamery', fromAddr: '3011 Buck Owens Blvd, Bakersfield, CA', to: 'Valley Foods DC', toAddr: '2240 W Buckeye Rd, Phoenix, AZ', carrier: 'Sunridge Freight (own fleet)', carrierMc: 'MC 812044', carrierDot: 'DOT 2291176' },
   { id: 'L-40212', customer: 'Bayline Distribution', route: 'Los Angeles, CA → Las Vegas, NV', pickup: 'Aug 31', delivery: 'Sep 1', driver: 'Marcus Hale', unit: 'T-114 / DV-88', rate: '$1,640', status: 'Delivered', tagClass: 'tag-neutral',
     miles: '271', rpm: '$6.05', pay: '$410', margin: '$842', commodity: 'Beverages', weight: '42,000 lb', equip: 'Dry van, 53 ft', temp: 'Ambient', ref: 'PO 55-89902',
-    from: 'Bayline LA Annex', fromAddr: '5200 S Boyle Ave, Vernon, CA', to: 'Sunset Beverage DC', toAddr: '3900 W Cheyenne Ave, North Las Vegas, NV' },
+    from: 'Bayline LA Annex', fromAddr: '5200 S Boyle Ave, Vernon, CA', to: 'Sunset Beverage DC', toAddr: '3900 W Cheyenne Ave, North Las Vegas, NV', carrier: 'Sunridge Freight (own fleet)', carrierMc: 'MC 812044', carrierDot: 'DOT 2291176' },
   { id: 'L-40210', customer: 'Sierra Ag Partners', route: 'Modesto, CA → Denver, CO', pickup: 'Aug 29', delivery: 'Sep 1', driver: 'Tobias Frey', unit: 'T-118 / DV-14', rate: '$4,120', status: 'Delivered', tagClass: 'tag-neutral',
     miles: '1,142', rpm: '$3.61', pay: '$1,030', margin: '$1,904', commodity: 'Almonds', weight: '43,500 lb', equip: 'Dry van, 53 ft', temp: 'Ambient', ref: 'SO 2214',
-    from: 'Sierra Ag Huller 3', fromAddr: '1901 Crows Landing Rd, Modesto, CA', to: 'Front Range Foods', toAddr: '5400 Havana St, Denver, CO' },
+    from: 'Sierra Ag Huller 3', fromAddr: '1901 Crows Landing Rd, Modesto, CA', to: 'Front Range Foods', toAddr: '5400 Havana St, Denver, CO', carrier: 'Sunridge Freight (own fleet)', carrierMc: 'MC 812044', carrierDot: 'DOT 2291176' },
   { id: 'L-40222', customer: 'Cascade Building Supply', route: 'Redding, CA → Seattle, WA', pickup: 'Sep 5', delivery: 'Sep 6', driver: 'Ana Cortez', unit: 'T-109 / FB-04', rate: '$2,760', status: 'Dispatched', tagClass: 'tag-neutral',
     miles: '578', rpm: '$4.78', pay: '$690', margin: '$1,312', commodity: 'Steel coil', weight: '46,000 lb', equip: 'Flatbed, 48 ft', temp: 'Ambient', ref: 'SO 7802',
-    from: 'Cascade Mill', fromAddr: '3400 Airport Rd, Redding, CA', to: 'Duwamish Steel Yard', toAddr: '8100 E Marginal Way S, Seattle, WA' },
+    from: 'Cascade Mill', fromAddr: '3400 Airport Rd, Redding, CA', to: 'Duwamish Steel Yard', toAddr: '8100 E Marginal Way S, Seattle, WA', carrier: 'Sunridge Freight (own fleet)', carrierMc: 'MC 812044', carrierDot: 'DOT 2291176' },
+];
+
+// A load's stops: the ones entered on the New Load form, or for the mock loads
+// the pickup and delivery with their usual windows.
+export function stopsOf(l: Load): LoadStop[] {
+  return l.stops ?? [
+    { kind: 'Pickup', name: l.from, address: l.fromAddr, when: `${l.pickup} · 08:00–14:00` },
+    { kind: 'Delivery', name: l.to, address: l.toAddr, when: `${l.delivery} · 06:00–12:00` },
+  ];
+}
+
+// The first entry is Sunridge's own authority; the rest are partner carriers
+// that brokered loads can be tendered to.
+export interface Carrier {
+  name: string;
+  mc: string;
+  dot: string;
+}
+
+export const CARRIERS: Carrier[] = [
+  { name: 'Sunridge Freight (own fleet)', mc: 'MC 812044', dot: 'DOT 2291176' },
+  { name: 'Valley Line Transport', mc: 'MC 604117', dot: 'DOT 1780342' },
+  { name: 'Cascade Reefer Express', mc: 'MC 733905', dot: 'DOT 2014588' },
+  { name: 'High Desert Hauling', mc: 'MC 581230', dot: 'DOT 1655901' },
+  { name: 'Golden State Flatbed', mc: 'MC 690452', dot: 'DOT 1893027' },
 ];
 
 export interface Driver {

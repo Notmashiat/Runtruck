@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppShell } from '../context/AppShellContext';
 import { UNINVOICED } from '../data/accounting';
 import { SECTION_TABS, type ViewKey } from '../data/mock';
+import { NewLoadDialog } from './NewLoadDialog';
 
 interface HeadAction {
   label: string;
@@ -16,6 +18,7 @@ export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const { query, setQuery, approveAll } = useAppShell();
+  const [newLoadOpen, setNewLoadOpen] = useState(false);
 
   // Route matching is case-insensitive, so normalise before keying off the section.
   const segments = location.pathname.toLowerCase().split('/');
@@ -26,8 +29,8 @@ export function Header() {
   // Keyed by section, or section/tab for the tabbed sections. Most are stubs,
   // as in the original prototype; the ones that navigate are the real flows.
   const actionsFor: Record<string, HeadAction[]> = {
-    dashboard: [{ label: '+ New Load', primary: true, onClick: () => navigate('/app/loads') }],
-    loads: [{ label: '+ New Load', primary: true, onClick: () => navigate('/app/loads') }],
+    dashboard: [{ label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) }],
+    loads: [{ label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) }],
     loadDetail: [{ label: 'Message driver' }, { label: 'Update status', primary: true }],
     'fleet/drivers': [{ label: '+ Add Driver', primary: true }],
     'fleet/trucks': [{ label: 'Log service' }, { label: '+ Add Unit', primary: true }],
@@ -76,6 +79,9 @@ export function Header() {
           {a.label}
         </button>
       ))}
+      {newLoadOpen && (
+        <NewLoadDialog onClose={() => setNewLoadOpen(false)} onCreated={(id) => navigate(`/app/loads/${id}`)} />
+      )}
     </header>
   );
 }

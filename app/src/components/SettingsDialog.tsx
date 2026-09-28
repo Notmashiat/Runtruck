@@ -78,7 +78,7 @@ function ProfilePage() {
           <dt className="ui-label">Company ID</dt>
           <dd>{USER.companyId}</dd>
         </div>
-        <div>
+        <div className="is-wide">
           <dt className="ui-label">Email</dt>
           <dd>{USER.email}</dd>
         </div>
