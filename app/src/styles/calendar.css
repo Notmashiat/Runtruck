@@ -161,3 +161,5 @@ button.cal-head-btn:hover { background: var(--ui-hover); }
 
 /* the add/edit event dialog: the form shell without a side menu */
 .ui-dialog.is-form { width: min(640px, calc(100% - 48px)); min-height: 0; }
+.ui-setting.is-stacked { flex-direction: column; align-items: flex-start; gap: 10px; }
+.ui-setting.is-stacked .ui-setting-help { max-width: none; }

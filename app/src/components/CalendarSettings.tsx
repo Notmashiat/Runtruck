@@ -52,9 +52,9 @@ function Palette({ value, onChange, label }: { value: string; onChange: (tone: s
   );
 }
 
-function Row({ label, help, children }: { label: string; help?: string; children: ReactNode }) {
+function Row({ label, help, stacked, children }: { label: string; help?: string; stacked?: boolean; children: ReactNode }) {
   return (
-    <div className="ui-setting">
+    <div className={`ui-setting${stacked ? ' is-stacked' : ''}`}>
       <div>
         <div className="ui-setting-name">{label}</div>
         {help && <div className="ui-setting-help">{help}</div>}
@@ -122,7 +122,7 @@ export function CalendarSettings(p: Props) {
           <h2 className="ui-h2" style={{ margin: 0 }}>Color codes</h2>
           <p className="ui-p" style={{ marginTop: 4 }}>Decide what each color stands for. Rename, recolor, add or delete them.</p>
         </div>
-        <Row label="Color load stops by" help="Stop type uses the Loaded and Empty codes below; the others give each driver, customer or truck its own color.">
+        <Row stacked label="Color load stops by" help="Stop type uses the Loaded and Empty codes below; the others give each driver, customer or truck its own color.">
           <Choice<ColorBy> options={COLOR_BY} value={prefs.colorBy} onChange={(v) => pref('colorBy', v)} />
         </Row>
         <div className="cal-codes">
