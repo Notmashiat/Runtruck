@@ -142,7 +142,7 @@ function sections(takenNames: string[]): SectionSpec[] {
 export function FacilityDialog({ facility, prefill, onClose }: { facility?: Facility; prefill?: FormValues; onClose: () => void }) {
   const { facilities, loads, saveFacility, archiveFacility, deleteFacility } = useAppShell();
   const id = facility?.id ?? nextId('FAC', facilities.map((f) => f.id));
-  const initial: FormValues = facility ? { ...FACILITY_BLANK, ...facility.details } : { ...FACILITY_BLANK, type: 'Shipper', open24: 'No', ...prefill };
+  const initial: FormValues = facility ? { ...FACILITY_BLANK, ...facility.details } : { ...FACILITY_BLANK, type: 'Shipper', ...prefill };
   const onLoads = facility ? stopsUsing(loads, facility.name).length : 0;
 
   return (

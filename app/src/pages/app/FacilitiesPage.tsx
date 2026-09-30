@@ -60,13 +60,14 @@ export function FacilitiesPage() {
   const risky = customerSites.filter((f) => detentionRisk(f.details));
 
   // Stops on the load board whose facility is not in the register yet.
-  const unknown = new Map<string, { name: string; address: string; loads: string[] }>();
+  const unknown = new Map<string, { name: string; address: string; loads: string[]; kinds: string[] }>();
   for (const l of loads) {
     for (const s of stopsOf(l)) {
       if (!s.name.trim() || facilityFor(facilities, s.name)) continue;
       const key = s.name.trim().toLowerCase();
-      const entry = unknown.get(key) ?? { name: s.name.trim(), address: s.address, loads: [] };
+      const entry = unknown.get(key) ?? { name: s.name.trim(), address: s.address, loads: [], kinds: [] };
       if (!entry.loads.includes(l.id)) entry.loads.push(l.id);
+      if (!entry.kinds.includes(s.kind)) entry.kinds.push(s.kind);
       unknown.set(key, entry);
     }
   }
@@ -312,7 +313,7 @@ export function FacilitiesPage() {
                   <td className="muted">{u.address}</td>
                   <td>{u.loads.map((id, i) => <Fragment key={id}>{i > 0 && ', '}<Link className="ui-link" to={`/app/loads/${id}`}>{id}</Link></Fragment>)}</td>
                   <td className="num">
-                    <button type="button" className="ui-link" onClick={() => setAdding(prefillFromStop(u.name, u.address))}>+ Add to register</button>
+                    <button type="button" className="ui-link" onClick={() => setAdding(prefillFromStop(u.name, u.address, u.kinds))}>+ Add to register</button>
                   </td>
                 </tr>
               ))}

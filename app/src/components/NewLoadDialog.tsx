@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import { money } from '../data/accounting';
-import { facilityFor, stopHint, type Facility } from '../data/facilities';
+import { facilityFor, isRoad, stopHint, type Facility } from '../data/facilities';
 import { CARRIERS, CUSTOMERS, stopsOf, USER, type Load } from '../data/mock';
 import { shortToIso } from '../lib/dates';
 
@@ -309,7 +309,8 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
   const ref = useRef<HTMLDialogElement>(null);
   const bodyRef = useRef<HTMLElement>(null);
   const { loads, addLoad, updateLoad, deleteLoad, drivers, trucks, trailers, facilities } = useAppShell();
-  const activeFacilities = facilities.filter((x) => !x.archived);
+  // Truck stops and scales are not pickup or delivery sites.
+  const activeFacilities = facilities.filter((x) => !x.archived && !isRoad(x.type));
   // Archived fleet records are kept on file but are not offered for new work.
   const activeDrivers = drivers.filter((x) => !x.archived);
   const activeTrucks = trucks.filter((x) => !x.archived);

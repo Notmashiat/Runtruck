@@ -96,7 +96,8 @@ export function detentionRisk(v: FormValues) {
 // it will cost in time.
 export function stopHint(f: Facility): string {
   const v = f.details;
-  const parts = [`${hoursOn(v, TODAY_DOW) === 'Closed' ? 'Closed today' : `Today ${hoursOn(v, TODAY_DOW)}`}`];
+  const today = hoursOn(v, TODAY_DOW);
+  const parts = [today === 'Closed' ? 'Closed today' : today === 'Open 24 hours' ? today : `Today ${today}`];
   if (isCustomerSite(f.type)) {
     const s = str(v, 'scheduling');
     if (s) parts.push(s === 'Appointment required' && str(v, 'booking') ? `Appointment (${str(v, 'booking').toLowerCase()})` : schedulingShort(v));
@@ -129,12 +130,13 @@ export function facilityFromForm(v: FormValues, id: string, prev?: Facility): Fa
 
 // '3900 W Cheyenne Ave, North Las Vegas, NV 89032' → form fields, for adding a
 // facility straight from a load stop.
-export function prefillFromStop(name: string, address: string): FormValues {
+export function prefillFromStop(name: string, address: string, kinds: string[] = []): FormValues {
   const parts = address.split(',').map((p) => p.trim()).filter(Boolean);
   const last = parts.length > 1 ? parts.pop() ?? '' : '';
   const [state = '', zip = ''] = last.split(/\s+/);
   const city = parts.length > 1 ? parts.pop() ?? '' : '';
-  return { name, street: parts.join(', '), city, state: state.toUpperCase(), zip };
+  const type = kinds.includes('Pickup') && kinds.includes('Delivery') ? 'Shipper & receiver' : kinds.includes('Delivery') ? 'Receiver' : 'Shipper';
+  return { name, type, street: parts.join(', '), city, state: state.toUpperCase(), zip };
 }
 
 // Every load stop at a facility, newest loads first as on the board.
