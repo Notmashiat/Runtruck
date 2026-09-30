@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppShell } from '../context/AppShellContext';
-import { UNINVOICED } from '../data/accounting';
 import { SECTION_TABS, type ViewKey } from '../data/mock';
+import { BatchDialog } from './BatchDialog';
 import { FacilityDialog } from './FacilityDialog';
+import { InvoiceDialog } from './InvoiceDialog';
+import { ReminderDialog } from './ReminderDialog';
 import { DriverDialog, TrailerDialog, TruckDialog } from './FleetDialogs';
 import { NewLoadDialog } from './NewLoadDialog';
 
@@ -22,7 +24,7 @@ export function Header() {
   const { query, setQuery, approveAll, loads } = useAppShell();
   const [newLoadOpen, setNewLoadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | null>(null);
+  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | null>(null);
 
   // Route matching is case-insensitive, so normalise before keying off the section.
   const segments = location.pathname.toLowerCase().split('/');
@@ -46,10 +48,10 @@ export function Header() {
     'fleet/trailers': [{ label: '+ Add Trailer', primary: true, onClick: () => setAdding('trailer') }],
     crm: [{ label: '+ Add Customer', primary: true }],
     facilities: [{ label: '+ Add Facility', primary: true, onClick: () => setAdding('facility') }],
-    'accounting/uninvoiced': [{ label: `Invoice ${UNINVOICED.length} loads`, primary: true, onClick: () => navigate('/app/accounting/invoiced') }],
-    'accounting/invoiced': [{ label: 'Export batch' }, { label: '+ New Batch', primary: true, onClick: () => navigate('/app/accounting/batches') }],
-    'accounting/batches': [{ label: '+ New Batch', primary: true }],
-    'accounting/past-due': [{ label: 'Send reminders', primary: true }],
+    'accounting/uninvoiced': [{ label: '+ New Invoice', primary: true, onClick: () => setAdding('invoice') }],
+    'accounting/invoiced': [{ label: '+ New Invoice', primary: true, onClick: () => setAdding('invoice') }],
+    'accounting/batches': [{ label: '+ New Batch', primary: true, onClick: () => setAdding('batch') }],
+    'accounting/past-due': [{ label: 'Send reminders', primary: true, onClick: () => setAdding('reminders') }],
     'accounting/paid': [{ label: 'Export' }],
     'accounting/payroll': [{ label: 'Run settlements', primary: true, onClick: () => approveAll() }],
     'accounting/bills': [{ label: '+ Add Bill', primary: true }],
@@ -99,6 +101,9 @@ export function Header() {
       {adding === 'truck' && <TruckDialog onClose={() => setAdding(null)} />}
       {adding === 'trailer' && <TrailerDialog onClose={() => setAdding(null)} />}
       {adding === 'facility' && <FacilityDialog onClose={() => setAdding(null)} />}
+      {adding === 'invoice' && <InvoiceDialog onClose={() => setAdding(null)} />}
+      {adding === 'batch' && <BatchDialog onClose={() => setAdding(null)} />}
+      {adding === 'reminders' && <ReminderDialog onClose={() => setAdding(null)} />}
     </header>
   );
 }

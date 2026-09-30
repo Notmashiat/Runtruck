@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
+import { BATCH_SEED, INVOICE_SEED, type Batch, type InvoiceRecord } from '../data/invoicing';
 import { FACILITY_SEED, renameInLoad, sameName, type Facility } from '../data/facilities';
 import { DRIVER_SEED, TRAILER_SEED, TRUCK_SEED, type FleetDriver, type FleetTrailer, type FleetTruck } from '../data/fleet';
 import { LOADS, type Load } from '../data/mock';
@@ -38,6 +39,13 @@ interface AppShellState {
   saveFacility: (f: Facility) => void;
   archiveFacility: (id: string, archived: boolean) => void;
   deleteFacility: (id: string) => void;
+  invoices: InvoiceRecord[];
+  saveInvoice: (inv: InvoiceRecord) => void;
+  saveInvoices: (list: InvoiceRecord[]) => void;
+  deleteInvoice: (id: string) => void;
+  batches: Batch[];
+  saveBatch: (b: Batch) => void;
+  deleteBatch: (id: string) => void;
 }
 
 const AppShellContext = createContext<AppShellState | null>(null);
@@ -50,6 +58,14 @@ function reviveLoads(raw: unknown): Load[] | null {
 
 function reviveRecords<T>(raw: unknown): T[] | null {
   return Array.isArray(raw) && raw.every((r) => r && typeof r.id === 'string' && r.details && typeof r.details === 'object') ? (raw as T[]) : null;
+}
+
+function reviveInvoices(raw: unknown): InvoiceRecord[] | null {
+  return Array.isArray(raw) && raw.every((r) => r && typeof r.id === 'string' && Array.isArray(r.lines) && r.billTo) ? (raw as InvoiceRecord[]) : null;
+}
+
+function reviveBatches(raw: unknown): Batch[] | null {
+  return Array.isArray(raw) && raw.every((r) => r && typeof r.id === 'string' && Array.isArray(r.invoiceIds)) ? (raw as Batch[]) : null;
 }
 
 // Insert or replace by id.
@@ -66,6 +82,8 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
   const [drivers, setDrivers] = usePersisted<FleetDriver[]>('runtruck-drivers', DRIVER_SEED, (raw) => reviveRecords<FleetDriver>(raw));
   const [trucks, setTrucks] = usePersisted<FleetTruck[]>('runtruck-trucks', TRUCK_SEED, (raw) => reviveRecords<FleetTruck>(raw));
   const [trailers, setTrailers] = usePersisted<FleetTrailer[]>('runtruck-trailers', TRAILER_SEED, (raw) => reviveRecords<FleetTrailer>(raw));
+  const [invoices, setInvoices] = usePersisted<InvoiceRecord[]>('runtruck-invoices', INVOICE_SEED, (raw) => reviveInvoices(raw));
+  const [batches, setBatches] = usePersisted<Batch[]>('runtruck-batches', BATCH_SEED, (raw) => reviveBatches(raw));
   const [facilities, setFacilities] = usePersisted<Facility[]>('runtruck-facilities', FACILITY_SEED, (raw) => reviveRecords<Facility>(raw));
 
   // A driver's truck and a truck's driver describe the same assignment, so
@@ -152,6 +170,17 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
     },
     archiveFacility: (id, archived) => setFacilities((list) => list.map((f) => (f.id === id ? { ...f, archived } : f))),
     deleteFacility: (id) => setFacilities((list) => list.filter((f) => f.id !== id)),
+    invoices,
+    saveInvoice: (inv) => setInvoices((list) => upsert(list, inv)),
+    saveInvoices: (changed) => setInvoices((list) => changed.reduce((acc, inv) => upsert(acc, inv), list)),
+    // A deleted invoice also leaves any batch it was in.
+    deleteInvoice: (id) => {
+      setInvoices((list) => list.filter((i) => i.id !== id));
+      setBatches((list) => list.map((b) => (b.invoiceIds.includes(id) ? { ...b, invoiceIds: b.invoiceIds.filter((x) => x !== id) } : b)));
+    },
+    batches,
+    saveBatch: (b) => setBatches((list) => upsert(list, b)),
+    deleteBatch: (id) => setBatches((list) => list.filter((b) => b.id !== id)),
   };
 
   return <AppShellContext.Provider value={value}>{children}</AppShellContext.Provider>;

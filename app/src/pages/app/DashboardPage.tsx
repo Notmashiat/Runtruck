@@ -3,7 +3,7 @@ import { Card } from '../../components/Card';
 import { Kpis } from '../../components/Kpis';
 import { Tag } from '../../components/Tag';
 import { useAppShell } from '../../context/AppShellContext';
-import { dollars, money, UNINVOICED } from '../../data/accounting';
+import { billableLoads, usd0 } from '../../data/invoicing';
 import { ACTIVE_STATUSES, REVENUE_BARS, REVENUE_DAYS } from '../../data/mock';
 import { matchesQuery } from '../../lib/search';
 
@@ -16,7 +16,8 @@ const CHART = REVENUE_BARS.map((v, i) => ({
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { query, loads, drivers } = useAppShell();
+  const { query, loads, drivers, invoices } = useAppShell();
+  const unbilled = billableLoads(loads, invoices);
   const driverRows = drivers.filter((d) => !d.archived).map((d) => ({
     id: d.id,
     name: d.name,
@@ -33,7 +34,7 @@ export function DashboardPage() {
     { label: 'Active loads', value: String(active.length), note: '+4 vs. last week', onClick: () => navigate('/app/loads') },
     { label: 'Revenue this week', value: '$168K', note: '+9.2%', onClick: () => navigate('/app/accounting/invoiced') },
     { label: 'Deadhead miles', value: '7.8%', note: '1.4 pts better', onClick: () => navigate('/app/fleet/trucks') },
-    { label: 'Unbilled loads', value: String(UNINVOICED.length), note: `${money(UNINVOICED.reduce((s, l) => s + dollars(l.amount), 0))} waiting`, onClick: () => navigate('/app/accounting/uninvoiced') },
+    { label: 'Unbilled loads', value: String(unbilled.length), note: `${usd0(unbilled.reduce((s, l) => s + l.amount, 0))} waiting`, onClick: () => navigate('/app/accounting/uninvoiced') },
   ];
 
   return (

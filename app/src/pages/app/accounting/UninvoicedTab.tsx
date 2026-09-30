@@ -1,52 +1,59 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card } from '../../../components/Card';
+import { InvoiceDialog } from '../../../components/InvoiceDialog';
 import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
-import { daysBetween, dollars, money, TODAY, UNINVOICED } from '../../../data/accounting';
+import { TODAY, billableLoads, daysFrom, fmtDate, usd, usd0 } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
 
-const waiting = UNINVOICED.reduce((sum, l) => sum + dollars(l.amount), 0);
-const missingPod = UNINVOICED.filter((l) => l.pod === 'Missing').length;
-const customers = new Set(UNINVOICED.map((l) => l.customer)).size;
-const oldest = UNINVOICED.reduce((best, l) => (daysBetween(l.delivered, TODAY) > daysBetween(best.delivered, TODAY) ? l : best), UNINVOICED[0]);
-
-const KPIS = [
-  { label: 'Loads', value: String(UNINVOICED.length), note: 'Delivered, not yet invoiced' },
-  { label: 'Amount waiting', value: money(waiting), note: `Across ${customers} customers` },
-  { label: 'Missing POD', value: String(missingPod), note: 'Cannot invoice until attached' },
-  { label: 'Oldest (days)', value: String(daysBetween(oldest.delivered, TODAY)), note: `${oldest.id} · delivered ${oldest.delivered}` },
-];
-
 export function UninvoicedTab() {
-  const { query } = useAppShell();
-  const rows = UNINVOICED.filter((l) => matchesQuery(l, query));
+  const { query, loads, invoices } = useAppShell();
+  const [creating, setCreating] = useState<string[] | null>(null);
+  const queue = billableLoads(loads, invoices);
+  const rows = queue.filter((l) => matchesQuery(l, query));
+
+  const waiting = queue.reduce((sum, l) => sum + l.amount, 0);
+  const oldest = queue.reduce<(typeof queue)[number] | null>((best, l) => (!best || l.delivered < best.delivered ? l : best), null);
+  const kpis = [
+    { label: 'Loads', value: String(queue.length), note: 'Delivered, not yet invoiced' },
+    { label: 'Amount waiting', value: usd0(waiting), note: `Across ${new Set(queue.map((l) => l.customer)).size} customers` },
+    { label: 'Missing POD', value: String(queue.filter((l) => l.pod === 'Missing').length), note: 'Attach before invoicing' },
+    { label: 'Oldest (days)', value: oldest ? String(daysFrom(oldest.delivered, TODAY)) : '0', note: oldest ? `${oldest.id} · delivered ${fmtDate(oldest.delivered, true)}` : 'All caught up' },
+  ];
 
   return (
     <>
-      <Kpis items={KPIS} />
+      <Kpis items={kpis} />
 
       <Card title="Delivered, not yet invoiced" flush>
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Load</th><th>Customer</th><th>Route</th><th>Delivered</th><th>POD</th><th className="num">Amount</th>
+              <th>Load</th><th>Customer</th><th>Route</th><th>Delivered</th><th>POD</th><th className="num">Amount</th><th className="num" aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
             {rows.map((l) => (
               <tr key={l.id}>
-                <td className="strong">{l.id}</td>
+                <td className="strong">{loads.some((x) => x.id === l.id) ? <Link className="ui-link" to={`/app/loads/${l.id}`}>{l.id}</Link> : l.id}</td>
                 <td>{l.customer}</td>
                 <td className="muted">{l.route}</td>
-                <td>{l.delivered}</td>
-                <td><Tag label={l.pod} tagClass={l.tagClass} /></td>
-                <td className="num">{l.amount}</td>
+                <td>{fmtDate(l.delivered, true)}</td>
+                <td><Tag label={l.pod} tagClass={l.pod === 'Missing' ? 'tag-outline' : 'tag-green'} /></td>
+                <td className="num">{usd(l.amount)}</td>
+                <td className="num">
+                  <button type="button" className="ui-btn ui-btn-sm" onClick={() => setCreating([l.id])}>New invoice</button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">Nothing matches “{query}”.</div>}
+        {rows.length === 0 && <div className="ui-empty">{query ? `Nothing matches “${query}”.` : 'Every delivered load has an invoice.'}</div>}
       </Card>
+
+      {creating && <InvoiceDialog loadIds={creating} onClose={() => setCreating(null)} />}
     </>
   );
 }

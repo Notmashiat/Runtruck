@@ -97,6 +97,33 @@ truck's driver are one assignment: changing either side updates the other and fr
 replaced; archiving a driver or unit frees its assignment. The New Load driver/truck/trailer pickers and the Dashboard driver list use these records.
 They are stored as `runtruck-drivers`, `runtruck-trucks` and `runtruck-trailers`.
 
+**Invoicing** (`data/invoicing.ts`, `components/InvoiceDialog.tsx`, `BatchDialog.tsx`, `ReminderDialog.tsx`,
+`InvoiceDetail.tsx`). Invoices and batches are records in `AppShellContext`, stored as
+`runtruck-invoices` and `runtruck-batches`; an invoice's status follows from it (Draft, Unsent, Sent,
+Overdue once past its due date, Paid).
+
+- **Uninvoiced** lists delivered loads with no invoice (the billing queue plus Delivered / Needs POD
+  loads on the board). **+ New Invoice** (top right) and **New invoice** on each row open the invoice
+  popup: customer and bill-to, the delivered loads to bill (ticking one adds its line haul and fuel
+  surcharge), invoice date / terms / due date / PO / BOL, shipment details, an editable charges table
+  (detention, lumper, stop-off, discounts…), notes, and a **Preview** of the PDF. Save draft, Create
+  invoice, or Create & email; Edit and Delete from the invoice later.
+- The **PDF** (`lib/invoicePdf.ts`) is written by `lib/pdf.ts`, a small dependency-free PDF writer
+  (standard Helvetica fonts, US Letter): letterhead, key dates and amount due, bill-to and shipment,
+  charges, totals, payment instructions and page footers; PAID / PAST DUE / DRAFT stamps. The preview
+  draws the same page operations as SVG (`components/PdfPages.tsx`).
+- **Email** fills in the message to the billing contact and downloads the PDF to attach, then opens
+  the person's email app (there is no mail server yet) and marks the invoice sent.
+- **Invoiced** lists open invoices (Draft / Unsent / Sent) with **+ New Invoice**; each row drops down
+  to the bill-to, dates, charges and history with Edit, Email, Download PDF and Record payment.
+- **Batches**: **+ New Batch** picks a recipient (a customer, or TriPoint Capital for factoring) and
+  its unpaid invoices. Each batch drops down to its invoices, with Mark as sent, Download batch PDF
+  (every invoice in one file), Edit batch and Delete batch (the invoices stay).
+- **Past due** rows drop down to the full invoice detail. **Send reminders** (top right, or Remind on a
+  row) picks invoices, adds an optional late fee (% of balance or flat, added as a line on the
+  invoice), sends by email and/or text with an editable message per customer, records the reminder
+  on each invoice, and opens the messages in the person's email and messaging apps.
+
 **Facilities** (`pages/app/FacilitiesPage.tsx`, `data/facilities.ts`, `components/FacilityDialog.tsx`)
 is the register of every place a truck stops: customer sites (shippers, receivers, cross-docks,
 ports), Sunridge's terminals, drop yards and shops, and truck stops and scales on the lanes. The demo
