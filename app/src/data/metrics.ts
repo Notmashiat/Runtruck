@@ -9,6 +9,7 @@ export interface Earned {
   amount: number;
   miles: number;
   customer: string;
+  route: string;
 }
 
 const num = (s: string) => Number(s.replace(/[^\d.]/g, '')) || 0;
@@ -19,10 +20,10 @@ const num = (s: string) => Number(s.replace(/[^\d.]/g, '')) || 0;
 export function deliveredRevenue(loads: Load[], invoices: InvoiceRecord[]): Earned[] {
   const invoiced = invoices
     .filter((i) => i.delivery && i.delivery <= TODAY)
-    .map((i) => ({ ref: i.id, date: i.delivery, amount: invoiceTotal(i) - lateFees(i), miles: num(i.miles), customer: i.customer }));
+    .map((i) => ({ ref: i.id, date: i.delivery, amount: invoiceTotal(i) - lateFees(i), miles: num(i.miles), customer: i.customer, route: i.route }));
   const waiting = billableLoads(loads, invoices)
     .filter((l) => l.delivered && l.delivered <= TODAY)
-    .map((l) => ({ ref: l.id, date: l.delivered, amount: l.amount, miles: num(l.miles), customer: l.customer }));
+    .map((l) => ({ ref: l.id, date: l.delivered, amount: l.amount, miles: num(l.miles), customer: l.customer, route: l.route }));
   return [...invoiced, ...waiting];
 }
 

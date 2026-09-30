@@ -5,6 +5,7 @@ import './styles/industry.css'
 import './styles/app.css'
 import './styles/shell.css'
 import './styles/calendar.css'
+import './styles/dashboard.css'
 import { initTheme } from './lib/theme'
 import App from './App.tsx'
 

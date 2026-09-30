@@ -101,6 +101,18 @@ truck's driver are one assignment: changing either side updates the other and fr
 replaced; archiving a driver or unit frees its assignment. The New Load driver/truck/trailer pickers and the Dashboard driver list use these records.
 They are stored as `runtruck-drivers`, `runtruck-trucks` and `runtruck-trailers`.
 
+**Dashboard** (`pages/app/DashboardPage.tsx`, `components/DashboardWidgets.tsx`,
+`DashboardCustomize.tsx`, `data/dashboard.ts`, `styles/dashboard.css`) is a 12-column grid of
+widgets: number cards (active loads, revenue this week, rate per mile, unbilled, past-due AR,
+drivers available, trucks in service, docs to renew), analysis cards (needs attention, revenue
+delivered, receivables aging, revenue by customer, top lanes, cash next 14 days, fleet status) and
+tables/lists (active loads, drivers, next 7 days). **Customize** turns on edit mode: drag a widget's
+handle to move it, its corner to change width (grid columns) and height (10 px steps — how many
+table rows show), × to hide it. **Widgets & options** shows/hides, sizes and orders every widget and
+sets spacing, greeting, notes, the revenue chart's period and style, the customer breakdown's period
+and the active-loads columns. The layout is kept in `runtruck-dashboard`; narrow screens use 6 or 1
+columns.
+
 **Summary numbers.** Every stat box is worked out from the records when the page renders — nothing
 is typed in. Revenue counts on delivery (`data/metrics.ts`: invoices by delivery date, less late
 fees, plus delivered loads not yet invoiced); CRM AR is the unpaid issued invoices per customer;
