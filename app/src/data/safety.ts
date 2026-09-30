@@ -28,34 +28,6 @@ export const MAINTENANCE: WorkOrder[] = [
   { unit: 'T-109', item: 'DOT annual inspection', due: 'Aug 22', shop: 'Valley Truck Center · Stockton', estimate: 185, status: 'Done', tagClass: 'tag-neutral' },
 ];
 
-export interface DriverDocument {
-  driver: string;
-  document: 'CDL' | 'Medical card' | 'MVR' | 'Annual review' | 'Drug test' | 'Clearinghouse query';
-  expires: string;
-  status: 'Valid' | 'Expiring' | 'Expired' | 'Missing';
-  tagClass: string;
-}
-
-// "Expiring" = due within 60 days (before Nov 2). CDL dates follow DRIVERS;
-// the Ellis medical card and Ana MVR/annual review follow COMPLIANCE.
-export const DRIVER_DOCUMENTS: DriverDocument[] = [
-  { driver: 'Marcus Hale', document: 'CDL', expires: 'Apr 2028', status: 'Valid', tagClass: 'tag-green' },
-  { driver: 'Marcus Hale', document: 'Medical card', expires: 'Mar 2027', status: 'Valid', tagClass: 'tag-green' },
-  { driver: 'Marcus Hale', document: 'Clearinghouse query', expires: 'Sep 20', status: 'Expiring', tagClass: 'tag-outline' },
-  { driver: 'Dara Whitfield', document: 'CDL', expires: 'Nov 2027', status: 'Valid', tagClass: 'tag-green' },
-  { driver: 'Dara Whitfield', document: 'Medical card', expires: 'Jun 2027', status: 'Valid', tagClass: 'tag-green' },
-  { driver: 'Ellis Nakamura', document: 'CDL', expires: 'Feb 2027', status: 'Valid', tagClass: 'tag-green' },
-  { driver: 'Ellis Nakamura', document: 'Medical card', expires: 'Oct 12', status: 'Expiring', tagClass: 'tag-outline' },
-  { driver: 'Priya Raman', document: 'CDL', expires: 'Jul 2026', status: 'Expired', tagClass: 'tag-outline' },
-  { driver: 'Priya Raman', document: 'Medical card', expires: 'Jan 2028', status: 'Valid', tagClass: 'tag-green' },
-  { driver: 'Ana Cortez', document: 'CDL', expires: 'Sep 2029', status: 'Valid', tagClass: 'tag-green' },
-  { driver: 'Ana Cortez', document: 'MVR', expires: 'Sep 24', status: 'Expiring', tagClass: 'tag-outline' },
-  { driver: 'Ana Cortez', document: 'Annual review', expires: 'Sep 24', status: 'Expiring', tagClass: 'tag-outline' },
-  { driver: 'Tobias Frey', document: 'CDL', expires: 'Jan 2028', status: 'Valid', tagClass: 'tag-green' },
-  { driver: 'Tobias Frey', document: 'Medical card', expires: 'Dec 2026', status: 'Valid', tagClass: 'tag-green' },
-  { driver: 'Tobias Frey', document: 'Drug test', expires: '—', status: 'Missing', tagClass: 'tag-outline' },
-];
-
 export interface Violation {
   date: string;
   driver: string;

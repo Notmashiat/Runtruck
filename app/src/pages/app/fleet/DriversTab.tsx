@@ -5,7 +5,9 @@ import { DriverDialog } from '../../../components/FleetDialogs';
 import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell, type DriverTab } from '../../../context/AppShellContext';
-import { WATCHLIST, type FleetDriver } from '../../../data/fleet';
+import { byUrgency, driverDocuments, RENEW_WINDOW } from '../../../data/compliance';
+import type { FleetDriver } from '../../../data/fleet';
+import { fmtDate } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
 
 const TABS: DriverTab[] = ['All', 'On duty', 'Available'];
@@ -28,12 +30,15 @@ export function DriversTab() {
   const atRisk = onDuty.filter((d) => hoursLeft(d.hos) < 2);
   const maxMiles = Math.max(1, ...active.map((d) => d.miles));
   const totalMiles = active.reduce((sum, d) => sum + d.miles, 0);
+  // Documents expired, missing or due within the renewal window, from the driver records.
+  const watchlist = driverDocuments(drivers).filter((d) => d.status !== 'Valid').sort(byUrgency);
+  const countDocs = (st: string) => watchlist.filter((d) => d.status === st).length;
 
   const kpis = [
     { label: 'On the roster', value: String(active.length), note: `${onDuty.length} on duty · ${active.length - onDuty.length - available.length} off` },
     { label: 'Available now', value: String(available.length), note: available.map((d) => d.name.split(' ')[0]).join(', ') || 'Nobody free' },
     { label: 'Hours at risk', value: String(atRisk.length), note: atRisk.map((d) => `${d.name.split(' ').at(-1)} · ${d.hos}`).join(', ') || 'Nobody under 2h' },
-    { label: 'Docs to renew', value: String(WATCHLIST.length), note: 'On the watchlist below' },
+    { label: 'Docs to renew', value: String(watchlist.length), note: [`${countDocs('Expired')} expired`, `${countDocs('Expiring')} due within ${RENEW_WINDOW} days`, countDocs('Missing') ? `${countDocs('Missing')} missing` : ''].filter(Boolean).join(' · ') },
   ];
 
   const rows = (showArchived ? drivers : active).filter(
@@ -109,11 +114,13 @@ export function DriversTab() {
               <tr><th>Driver</th><th>Item</th><th className="num">Due</th></tr>
             </thead>
             <tbody>
-              {WATCHLIST.map((c) => (
-                <tr key={c.name + c.item}>
-                  <td className="strong">{c.name}</td>
-                  <td className="muted">{c.item}</td>
-                  <td className="num">{c.due}</td>
+              {watchlist.map((c) => (
+                <tr key={c.driverId + c.document}>
+                  <td className="strong">{c.driver}</td>
+                  <td className="muted">{c.document}</td>
+                  <td className="num" style={{ color: c.status === 'Expired' ? 'var(--ui-red)' : undefined }}>
+                    {c.status === 'Missing' ? 'Missing' : `${c.status === 'Expired' ? 'Expired ' : ''}${fmtDate(c.date, true)}`}
+                  </td>
                 </tr>
               ))}
             </tbody>

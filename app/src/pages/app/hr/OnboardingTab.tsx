@@ -16,8 +16,8 @@ const inOrientation = ONBOARDING.filter((o) => o.stage === 'Orientation');
 
 const KPIS = [
   { label: 'In progress', value: String(inProgress.length), note: `${inOrientation.length} in orientation` },
-  { label: 'Starting this week', value: String(startingThisWeek.length), note: 'Opened since Mon Aug 31' },
-  { label: 'Awaiting documents', value: String(awaitingDocs.length), note: 'MVR consent · medical card' },
+  { label: 'Started this week', value: String(startingThisWeek.length), note: startingThisWeek.map((o) => `${o.candidate.split(' ').at(-1)} ${o.started}`).join(' · ') || 'None since Mon' },
+  { label: 'Awaiting documents', value: String(awaitingDocs.length), note: awaitingDocs.map((o) => o.candidate.split(' ').at(-1)).join(' · ') || 'None' },
   { label: 'Completed this quarter', value: String(completed.length), note: 'Since Jul 1' },
 ];
 

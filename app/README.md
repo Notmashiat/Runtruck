@@ -101,6 +101,14 @@ truck's driver are one assignment: changing either side updates the other and fr
 replaced; archiving a driver or unit frees its assignment. The New Load driver/truck/trailer pickers and the Dashboard driver list use these records.
 They are stored as `runtruck-drivers`, `runtruck-trucks` and `runtruck-trailers`.
 
+**Summary numbers.** Every stat box is worked out from the records when the page renders — nothing
+is typed in. Revenue counts on delivery (`data/metrics.ts`: invoices by delivery date, less late
+fees, plus delivered loads not yet invoiced); CRM AR is the unpaid issued invoices per customer;
+driver documents and the Drivers watchlist come from the dates on each driver record
+(`data/compliance.ts`: CDL, medical card, hazmat, TWIC, and the MVR review, annual review and
+Clearinghouse query each due a year after the last). Figures with no history in the app yet (a
+customer's loads, revenue and on-time % YTD) come from the customer rows and are summed from them.
+
 **Invoicing** (`data/invoicing.ts`, `components/InvoiceDialog.tsx`, `BatchDialog.tsx`, `ReminderDialog.tsx`,
 `InvoiceDetail.tsx`). Invoices and batches are records in `AppShellContext`, stored as
 `runtruck-invoices` and `runtruck-batches`; an invoice's status follows from it (Draft, Unsent, Sent,

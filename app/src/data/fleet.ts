@@ -2,7 +2,7 @@
 // the summary fields the tables show plus `details` — every field of its Add /
 // Edit form, as strings (lists for multi-choice fields). The demo fleet below is
 // complete and consistent with Safety, HR and the load board.
-import { COMPLIANCE, DRIVERS, TRAILERS, TRUCKS, type Driver, type Trailer, type Truck } from './mock';
+import { DRIVERS, TRAILERS, TRUCKS, type Driver, type Trailer, type Truck } from './mock';
 
 export type FormValues = Record<string, string | string[]>;
 
@@ -354,16 +354,3 @@ const TRAILER_DETAILS: Record<string, FormValues> = {
 export const DRIVER_SEED: FleetDriver[] = DRIVERS.map((d, i) => ({ ...d, id: `DRV-${101 + i}`, details: DRIVER_DETAILS[d.name] ?? {} }));
 export const TRUCK_SEED: FleetTruck[] = TRUCKS.map((t, i) => ({ ...t, id: `TRK-${101 + i}`, details: TRUCK_DETAILS[t.unit] ?? {} }));
 export const TRAILER_SEED: FleetTrailer[] = TRAILERS.map((t, i) => ({ ...t, id: `TRL-${101 + i}`, details: TRAILER_DETAILS[t.unit] ?? {} }));
-
-export interface WatchItem {
-  name: string;
-  item: string;
-  due: string;
-}
-
-// Drivers-tab compliance watchlist: the shared COMPLIANCE items plus the
-// other document expiring soon in Safety › Driver Documents (data/safety.ts).
-export const WATCHLIST: WatchItem[] = [
-  ...COMPLIANCE,
-  { name: 'Marcus Hale', item: 'Clearinghouse query', due: 'Sep 20' },
-];

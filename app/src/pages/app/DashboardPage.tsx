@@ -3,16 +3,12 @@ import { Card } from '../../components/Card';
 import { Kpis } from '../../components/Kpis';
 import { Tag } from '../../components/Tag';
 import { useAppShell } from '../../context/AppShellContext';
-import { billableLoads, usd0 } from '../../data/invoicing';
-import { ACTIVE_STATUSES, REVENUE_BARS, REVENUE_DAYS } from '../../data/mock';
+import { TODAY, addDays, billableLoads, fmtDate, usd0 } from '../../data/invoicing';
+import { between, compactUsd, deliveredRevenue, mondayOf, sum } from '../../data/metrics';
+import { ACTIVE_STATUSES } from '../../data/mock';
 import { matchesQuery } from '../../lib/search';
 
-const MAX_BAR = Math.max(...REVENUE_BARS);
-const CHART = REVENUE_BARS.map((v, i) => ({
-  day: REVENUE_DAYS[i],
-  h: `${Math.round((v / MAX_BAR) * 100)}%`,
-  fill: v === MAX_BAR ? 'var(--ui-primary)' : 'var(--ui-primary-soft)',
-}));
+const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -30,10 +26,23 @@ export function DashboardPage() {
   // A search widens the table to every load; otherwise it is the active set.
   const rows = (searching ? loads.filter((l) => matchesQuery(l, query)) : active).slice(0, 6);
 
+  // Revenue counts on delivery (see data/metrics.ts). This week runs Monday to today.
+  const earned = deliveredRevenue(loads, invoices);
+  const monday = mondayOf(TODAY);
+  const thisWeek = between(earned, monday, TODAY);
+  const lastWeek = between(earned, addDays(monday, -7), addDays(monday, -1));
+  const weekMiles = sum(thisWeek, 'miles');
+  const chart = [6, 5, 4, 3, 2, 1, 0].map((back) => {
+    const date = addDays(TODAY, -back);
+    return { date, day: WEEKDAY[new Date(`${date}T12:00:00Z`).getUTCDay()], total: sum(between(earned, date, date)) };
+  });
+  const top = Math.max(1, ...chart.map((c) => c.total));
+  const countOf = (status: string) => active.filter((l) => l.status === status).length;
+
   const kpis = [
-    { label: 'Active loads', value: String(active.length), note: '+4 vs. last week', onClick: () => navigate('/app/loads') },
-    { label: 'Revenue this week', value: '$168K', note: '+9.2%', onClick: () => navigate('/app/accounting/invoiced') },
-    { label: 'Deadhead miles', value: '7.8%', note: '1.4 pts better', onClick: () => navigate('/app/fleet/trucks') },
+    { label: 'Active loads', value: String(active.length), note: `${countOf('In transit')} in transit · ${countOf('Needs driver')} need a driver`, onClick: () => navigate('/app/loads') },
+    { label: 'Revenue this week', value: compactUsd(sum(thisWeek)), note: `${thisWeek.length} deliveries since Mon · last week ${compactUsd(sum(lastWeek))}`, onClick: () => navigate('/app/accounting/invoiced') },
+    { label: 'Rate per mile', value: weekMiles ? `$${(sum(thisWeek) / weekMiles).toFixed(2)}` : '—', note: `${weekMiles.toLocaleString('en-US')} loaded miles delivered this week`, onClick: () => navigate('/app/loads') },
     { label: 'Unbilled loads', value: String(unbilled.length), note: `${usd0(unbilled.reduce((s, l) => s + l.amount, 0))} waiting`, onClick: () => navigate('/app/accounting/uninvoiced') },
   ];
 
@@ -65,12 +74,13 @@ export function DashboardPage() {
         </Card>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
-          <Card title="Revenue, last 7 days">
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${CHART.length}, minmax(0, 1fr))`, gap: 10 }}>
-              {CHART.map((c) => (
-                <div key={c.day} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', width: '100%', height: 120 }}>
-                    <div style={{ width: '100%', height: c.h, background: c.fill, borderRadius: 6 }} />
+          <Card title="Revenue delivered, last 7 days" action={<span style={{ fontSize: 13, color: 'var(--ui-muted)' }}>{usd0(chart.reduce((n, c) => n + c.total, 0))} total</span>}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${chart.length}, minmax(0, 1fr))`, gap: 10 }}>
+              {chart.map((c) => (
+                <div key={c.date} title={`${fmtDate(c.date)} · ${usd0(c.total)}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ui-text-2)', fontVariantNumeric: 'tabular-nums' }}>{c.total ? compactUsd(c.total) : '—'}</div>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', width: '100%', height: 110 }}>
+                    <div style={{ width: '100%', height: `${Math.max(2, Math.round((c.total / top) * 100))}%`, background: c.total === top ? 'var(--ui-primary)' : 'var(--ui-primary-soft)', borderRadius: 6 }} />
                   </div>
                   <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ui-muted)' }}>{c.day}</div>
                 </div>
