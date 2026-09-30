@@ -245,6 +245,24 @@ export function billableLoads(loads: Load[], invoices: InvoiceRecord[]): Billabl
     .sort((a, b) => (a.delivered < b.delivered ? 1 : a.delivered > b.delivered ? -1 : 0));
 }
 
+// The shipment block for the loads on an invoice: one load as it is, several
+// combined (every lane, total miles and weight).
+export function shipmentFor(picked: BillableLoad[]) {
+  const uniq = (xs: string[]) => [...new Set(xs.filter(Boolean))];
+  const sum = (xs: string[]) => xs.reduce((s, x) => s + (Number(x.replace(/[^\d.]/g, '')) || 0), 0);
+  const many = picked.length > 1;
+  return {
+    route: uniq(picked.map((l) => l.route)).join('; '),
+    pickup: picked.map((l) => l.pickup).filter(Boolean).sort()[0] ?? '',
+    delivery: picked.map((l) => l.delivered).filter(Boolean).sort().slice(-1)[0] ?? '',
+    equipment: uniq(picked.map((l) => l.equipment)).join(', '),
+    commodity: uniq(picked.map((l) => l.commodity)).join(', '),
+    weight: many ? `${sum(picked.map((l) => l.weight)).toLocaleString('en-US')} lb total` : picked[0]?.weight ?? '',
+    miles: many ? `${sum(picked.map((l) => l.miles)).toLocaleString('en-US')} total` : picked[0]?.miles ?? '',
+    ref: uniq(picked.map((l) => l.ref)).join(', '),
+  };
+}
+
 // A new invoice for one or more delivered loads of the same customer.
 export function draftForLoads(picked: BillableLoad[], id: string): InvoiceRecord {
   const first = picked[0];
@@ -252,9 +270,7 @@ export function draftForLoads(picked: BillableLoad[], id: string): InvoiceRecord
   const terms = termsFor(customer);
   return {
     id, draft: true, customer, billTo: billToFor(customer), loads: picked.map((l) => l.id),
-    ref: picked.map((l) => l.ref).filter(Boolean).join(', '), bol: '',
-    route: first?.route ?? '', pickup: first?.pickup ?? '', delivery: picked.length ? picked[picked.length - 1].delivered : '',
-    equipment: first?.equipment ?? '', commodity: first?.commodity ?? '', weight: first?.weight ?? '', miles: first?.miles ?? '',
+    bol: '', ...shipmentFor(picked),
     issued: TODAY, terms, due: addDays(TODAY, termDays(terms)),
     lines: picked.flatMap((l) => rateLines(l.amount, `${l.id} · ${l.route}`, l.miles)),
     memo: '', internal: '', history: [],
@@ -307,7 +323,7 @@ const REMINDERS: Record<string, InvoiceEvent[]> = {
     { date: '2026-08-28', text: 'Reminder emailed to accounting@sierraag.example' },
     { date: '2026-09-01', text: 'Called Ben Okafor — promised payment by Sep 10' },
   ],
-  'INV-8815': [{ date: '2026-08-05', text: 'Reminder emailed to ap@vantagehome.example' }, { date: '2026-08-20', text: 'Second reminder emailed and texted' }],
+  'INV-8815': [{ date: '2026-08-05', text: 'Reminder emailed to ap@vantagehome.example' }, { date: '2026-08-20', text: 'Reminder emailed and texted (second notice)' }],
   'INV-8819': [{ date: '2026-09-01', text: 'Reminder emailed to ap@cascadebuild.example' }],
   'INV-8836': [{ date: '2026-08-25', text: 'Reminder emailed to accounting@sierraag.example' }],
 };
@@ -396,7 +412,7 @@ export function invoiceEmail(inv: InvoiceRecord): { subject: string; body: strin
     body: [
       'Hello,',
       '',
-      `Please find attached invoice ${inv.id} for load ${inv.loads.join(', ')}${inv.route ? ` (${inv.route.replace('→', 'to')})` : ''}.`,
+      `Please find attached invoice ${inv.id} for ${inv.loads.length > 1 ? 'loads' : 'load'} ${inv.loads.join(', ') || '—'}${inv.route ? ` (${inv.route.replace(/→/g, 'to')})` : ''}.`,
       '',
       `Amount due: ${total}`,
       `Due date: ${fmtDate(inv.due)} (${inv.terms})`,

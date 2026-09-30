@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import {
   CHARGE_TYPES, PAY_METHODS, TERMS, TODAY, addDays, billToFor, billableLoads, draftForLoads, fmtDate, invoiceEmail, invoiceTotal,
-  lineAmount, nextInvoiceId, rateLines, statusOf, termDays, termsFor, usd, type BillTo, type BillableLoad, type InvoiceLine,
+  lineAmount, nextInvoiceId, rateLines, shipmentFor, statusOf, termDays, termsFor, usd, type BillTo, type BillableLoad, type InvoiceLine,
   type InvoiceRecord,
 } from '../data/invoicing';
 import { CUSTOMERS } from '../data/mock';
@@ -95,24 +95,17 @@ export function InvoiceDialog({ invoice, loadIds, onClose }: { invoice?: Invoice
       lines: p.lines.filter((l) => !p.loads.some((id) => l.description.startsWith(id))),
     }));
 
+  // Ticking a load adds its rate lines; the shipment block is rebuilt from
+  // every ticked load. Unticking removes that load's lines.
   const toggleLoad = (l: BillableLoad, on: boolean) =>
     setD((p) => {
-      if (!on) {
-        return { ...p, loads: p.loads.filter((x) => x !== l.id), lines: p.lines.filter((x) => !x.description.startsWith(l.id)) };
-      }
-      const first = p.loads.length === 0;
+      const ids = on ? [...p.loads, l.id] : p.loads.filter((x) => x !== l.id);
+      const picked = queue.filter((q) => ids.includes(q.id));
       return {
         ...p,
-        loads: [...p.loads, l.id],
-        lines: [...p.lines, ...rateLines(l.amount, `${l.id} · ${l.route}`, l.miles)],
-        ref: [p.ref, l.ref].filter(Boolean).join(', '),
-        route: first ? l.route : p.route,
-        pickup: first ? l.pickup : p.pickup,
-        delivery: l.delivered > p.delivery ? l.delivered : p.delivery,
-        equipment: p.equipment || l.equipment,
-        commodity: p.commodity || l.commodity,
-        weight: first ? l.weight : p.weight,
-        miles: first ? l.miles : p.miles,
+        ...(picked.length ? shipmentFor(picked) : {}),
+        loads: ids,
+        lines: on ? [...p.lines, ...rateLines(l.amount, `${l.id} · ${l.route}`, l.miles)] : p.lines.filter((x) => !x.description.startsWith(l.id)),
       };
     });
 
