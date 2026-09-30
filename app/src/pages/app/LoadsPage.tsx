@@ -31,10 +31,10 @@ export function LoadsPage() {
 
   const countOf = (status: string) => String(loads.filter((l) => l.status === status).length);
   const kpis = [
-    { label: 'Undispatched', value: countOf('Needs driver') },
-    { label: 'In transit', value: countOf('In transit') },
-    { label: 'Delivered', value: countOf('Delivered') },
-    { label: 'Needs POD', value: countOf('Needs POD') },
+    { label: 'Undispatched', value: countOf('Needs driver'), note: 'No driver assigned yet' },
+    { label: 'In transit', value: countOf('In transit'), note: `Loaded and rolling · ${countOf('At pickup')} at pickup` },
+    { label: 'Delivered', value: countOf('Delivered'), note: 'Delivered with POD' },
+    { label: 'Needs POD', value: countOf('Needs POD'), note: 'Delivered, proof of delivery not in' },
   ];
 
   const countText = searching ? `${rows.length} matching “${query}”` : `${rows.length} loads`;

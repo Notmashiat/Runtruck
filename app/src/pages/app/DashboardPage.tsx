@@ -40,7 +40,7 @@ export function DashboardPage() {
   const countOf = (status: string) => active.filter((l) => l.status === status).length;
 
   const kpis = [
-    { label: 'Active loads', value: String(active.length), note: `${countOf('In transit')} in transit · ${countOf('Needs driver')} need a driver`, onClick: () => navigate('/app/loads') },
+    { label: 'Active loads', value: String(active.length), note: `${countOf('In transit') + countOf('At pickup')} rolling · ${countOf('Delayed')} delayed · ${countOf('Needs driver')} need a driver`, onClick: () => navigate('/app/loads') },
     { label: 'Revenue this week', value: compactUsd(sum(thisWeek)), note: `${thisWeek.length} deliveries since Mon · last week ${compactUsd(sum(lastWeek))}`, onClick: () => navigate('/app/accounting/invoiced') },
     { label: 'Rate per mile', value: weekMiles ? `$${(sum(thisWeek) / weekMiles).toFixed(2)}` : '—', note: `${weekMiles.toLocaleString('en-US')} loaded miles delivered this week`, onClick: () => navigate('/app/loads') },
     { label: 'Unbilled loads', value: String(unbilled.length), note: `${usd0(unbilled.reduce((s, l) => s + l.amount, 0))} waiting`, onClick: () => navigate('/app/accounting/uninvoiced') },
