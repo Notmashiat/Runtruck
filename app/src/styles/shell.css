@@ -330,3 +330,14 @@ textarea.ui-input { height: auto; min-height: 96px; padding: 10px 12px; line-hei
 label.ui-btn { position: relative; }
 label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset: 2px; }
 .ui-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+/* — destructive actions (Delete load) — */
+.ui-btn-danger { color: var(--ui-red); border-color: color-mix(in srgb, var(--ui-red) 40%, var(--ui-border)); }
+.ui-btn-danger:hover { background: var(--ui-red-soft); }
+.ui-btn-danger-solid { color: #fff; background: var(--ui-red); border-color: var(--ui-red); }
+.ui-btn-danger-solid:hover { background: color-mix(in srgb, var(--ui-red) 85%, #000); }
+:root[data-theme="dark"] .ui-btn-danger-solid { color: #1a0d0c; }
+.ui-dialog.is-confirm { width: min(460px, calc(100% - 48px)); min-height: 0; }
+.ui-dialog.is-confirm .ui-dialog-body { gap: 12px; padding: 24px 28px 8px; }
+.ui-dialog.is-confirm .ui-dialog-foot { border-top: 0; padding: 16px 28px 24px; }
+.ui-link-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }

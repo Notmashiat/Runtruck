@@ -66,7 +66,10 @@ and **Log out**, which returns to the marketing page.
 (multi-stop), freight, LTL details, carrier (own fleet or a partner carrier from `CARRIERS`), driver
 and equipment, rates, documents, notes and a review page. Required fields are checked on Create; the
 load is added through `addLoad` in `AppShellContext` and shows on the board and its own detail page.
-New loads live in memory only, so a reload drops them until there is a backend.
+**Edit load** (under "Open load →" in an expanded row, and on the load page) reopens the same form
+prefilled; **Delete load** in its footer asks for confirmation first. Loads are kept in this
+browser's storage (`runtruck-loads`) until there is a backend, so new, edited and deleted loads
+survive a reload on that browser only.
 
 **Planner** is a calendar with Day, Week and Month views (`pages/app/PlannerPage.tsx`,
 `styles/calendar.css`). Pickups and deliveries come from the loads (`loadEvents` in

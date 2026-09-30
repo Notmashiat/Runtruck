@@ -89,6 +89,9 @@ export interface Load {
   carrierRate?: string;
   notes?: string;
   createdAt?: string;
+  updatedAt?: string;
+  // The load form's full entry, kept so Edit load reopens exactly what was typed.
+  form?: unknown;
 }
 
 export const LOADS: Load[] = [

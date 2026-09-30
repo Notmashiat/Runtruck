@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import { money } from '../data/accounting';
-import { CARRIERS, CUSTOMERS, DRIVERS, TRAILERS, TRUCKS, USER, type Load } from '../data/mock';
+import { CARRIERS, CUSTOMERS, DRIVERS, stopsOf, TRAILERS, TRUCKS, USER, type Load } from '../data/mock';
+import { shortToIso } from '../lib/dates';
 
 type Section = 'Load info' | 'Stops' | 'Freight' | 'LTL' | 'Carrier' | 'Driver & equipment' | 'Rates' | 'Documents' | 'Notes' | 'Review';
 const SECTIONS: Section[] = ['Load info', 'Stops', 'Freight', 'LTL', 'Carrier', 'Driver & equipment', 'Rates', 'Documents', 'Notes', 'Review'];
@@ -135,7 +136,12 @@ function signedMoney(n: number) {
   return n < 0 ? `-${money(-n)}` : money(n);
 }
 
-function toLoad(d: Draft, id: string): Load {
+// Statuses a load is still "planned" in; editing its coverage there recomputes
+// the status (a driver or carrier → Dispatched, none → Needs driver). Once it is
+// moving, an edit keeps the status it has.
+const PLANNED = ['Needs driver', 'Dispatched'];
+
+function toLoad(d: Draft, id: string, prev?: Load): Load {
   const place = (s: StopDraft) => `${s.city.trim()}, ${s.state.trim().toUpperCase()}`;
   const street = (s: StopDraft) => `${s.address.trim()}, ${place(s)}`;
   const first = d.stops.find((s) => s.kind === 'Pickup') ?? d.stops[0];
@@ -146,8 +152,10 @@ function toLoad(d: Draft, id: string): Load {
   const cost = d.brokered ? num(d.carrierRate) : num(d.driverPay);
   const carrier = d.brokered ? CARRIERS.find((c) => c.name === d.carrier) ?? CARRIERS[0] : CARRIERS[0];
   const covered = d.brokered || Boolean(d.driver);
+  const kept = prev && !PLANNED.includes(prev.status) ? prev : undefined;
   const reefer = d.equipment.startsWith('Reefer');
   const now = new Date();
+  const stamp = `Today ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
   return {
     id,
@@ -158,8 +166,8 @@ function toLoad(d: Draft, id: string): Load {
     driver: d.driver.trim() || 'Unassigned',
     unit: [d.truck.trim(), d.trailer.trim()].filter(Boolean).join(' / ') || '—',
     rate: money(lineHaul),
-    status: covered ? 'Dispatched' : 'Needs driver',
-    tagClass: covered ? 'tag-neutral' : 'tag-outline',
+    status: kept ? kept.status : covered ? 'Dispatched' : 'Needs driver',
+    tagClass: kept ? kept.tagClass : covered ? 'tag-neutral' : 'tag-outline',
     miles: miles > 0 ? miles.toLocaleString('en-US') : '—',
     rpm: miles > 0 ? `$${(lineHaul / miles).toFixed(2)}` : '—',
     pay: cost > 0 ? money(cost) : '—',
@@ -189,7 +197,56 @@ function toLoad(d: Draft, id: string): Load {
     documents: DOCUMENTS.map((name) => ({ name, file: d.docs[name] ?? '' })),
     carrierRate: d.brokered ? money(num(d.carrierRate)) : undefined,
     notes: d.instructions.trim() || undefined,
-    createdAt: `Today ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+    createdAt: prev ? prev.createdAt : stamp,
+    updatedAt: prev ? stamp : undefined,
+    form: d,
+  };
+}
+
+function isDraft(x: unknown): x is Draft {
+  return Boolean(x) && typeof x === 'object' && Array.isArray((x as Draft).stops) && typeof (x as Draft).customer === 'string';
+}
+
+// The form entry for an existing load: what was typed, if it was made or edited
+// with this form; otherwise rebuilt from the load's fields (the demo loads).
+function draftFromLoad(l: Load): Draft {
+  if (isDraft(l.form)) return { ...INITIAL, ...l.form };
+  const digits = (s: string) => s.replace(/[^0-9.-]/g, '');
+  const stops: StopDraft[] = stopsOf(l).map((s) => {
+    // 'addr, City, ST 93725' and 'Sep 8 · 08:00–12:00'
+    const parts = s.address.split(',').map((p) => p.trim());
+    const [state = '', zip = ''] = (parts.pop() ?? '').split(/\s+/);
+    const city = parts.pop() ?? '';
+    const [day, window = ''] = s.when.split(' · ');
+    const [from = '', to = ''] = window.includes('–') ? window.split('–') : [];
+    return {
+      ...emptyStop(s.kind), facility: s.name, address: parts.join(', '), city, state, zip,
+      date: shortToIso(day, 2026) ?? '', from, to,
+    };
+  });
+  const [truck = '', trailer = ''] = l.unit === '—' ? [] : l.unit.split(' / ');
+  const partner = CARRIERS.slice(1).find((c) => c.name === l.carrier);
+  return {
+    ...INITIAL,
+    customer: l.customer,
+    ref: l.ref === '—' ? '' : l.ref,
+    mode: l.mode === 'Less than truckload' ? 'LTL' : l.mode === 'Partial' ? 'Partial' : 'FTL',
+    equipment: l.equip,
+    stops,
+    commodity: l.commodity,
+    weight: digits(l.weight),
+    temp: digits(l.temp),
+    brokered: Boolean(partner),
+    carrier: partner?.name ?? '',
+    carrierRate: partner ? digits(l.carrierRate ?? l.pay) : '',
+    driver: l.driver === 'Unassigned' ? '' : l.driver,
+    truck,
+    trailer,
+    lineHaul: digits(l.rate),
+    miles: digits(l.miles),
+    driverPay: partner ? '' : digits(l.pay),
+    docs: Object.fromEntries((l.documents ?? []).filter((x) => x.file).map((x) => [x.name, x.file])),
+    instructions: l.notes ?? '',
   };
 }
 
@@ -236,16 +293,27 @@ function Choice<T extends string>({ options, value, onChange }: { options: T[]; 
   );
 }
 
-// The New Load popup: the same shell as Settings, sized for a full load entry.
-// Required fields are checked when Create load is pressed; sections with
+interface NewLoadDialogProps {
+  // Given: the dialog edits this load (Save changes, Delete load). Absent: a new load.
+  load?: Load;
+  onClose: () => void;
+  onSaved?: (id: string) => void;
+  onDeleted?: () => void;
+}
+
+// The New Load / Edit load popup: the same shell as Settings, sized for a full
+// load entry. Required fields are checked when the load is saved; sections with
 // something missing get a count in the menu and the dialog jumps to the first.
-export function NewLoadDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
+export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const bodyRef = useRef<HTMLElement>(null);
-  const { loads, addLoad } = useAppShell();
-  const [d, setD] = useState<Draft>(INITIAL);
+  const { loads, addLoad, updateLoad, deleteLoad } = useAppShell();
+  const [initial] = useState<Draft>(() => (load ? draftFromLoad(load) : INITIAL));
+  const [d, setD] = useState<Draft>(initial);
   const [section, setSection] = useState<Section>('Load info');
   const [showErrors, setShowErrors] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const editing = Boolean(load);
 
   useEffect(() => {
     const el = ref.current;
@@ -253,7 +321,7 @@ export function NewLoadDialog({ onClose, onCreated }: { onClose: () => void; onC
   }, []);
 
   const errors = validate(d);
-  const dirty = JSON.stringify(d) !== JSON.stringify(INITIAL);
+  const dirty = JSON.stringify(d) !== JSON.stringify(initial);
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setD((prev) => ({ ...prev, [key]: value }));
   const setStop = (i: number, patch: Partial<StopDraft>) =>
     setD((prev) => ({ ...prev, stops: prev.stops.map((s, j) => (j === i ? { ...s, ...patch } : s)) }));
@@ -271,20 +339,30 @@ export function NewLoadDialog({ onClose, onCreated }: { onClose: () => void; onC
   };
 
   const requestClose = () => {
-    if (!dirty || window.confirm('Discard this new load? What you entered will be lost.')) ref.current?.close();
+    const message = editing ? 'Discard your changes to this load?' : 'Discard this new load? What you entered will be lost.';
+    if (!dirty || window.confirm(message)) ref.current?.close();
   };
 
-  const create = () => {
+  const save = () => {
     const firstBad = SECTIONS.find((s) => errors[s]?.length);
     if (firstBad) {
       setShowErrors(true);
       go(firstBad);
       return;
     }
-    const load = toLoad(d, nextId(loads));
-    addLoad(load);
+    const saved = load ? toLoad(d, load.id, load) : toLoad(d, nextId(loads));
+    if (load) updateLoad(saved);
+    else addLoad(saved);
     ref.current?.close();
-    onCreated(load.id);
+    onSaved?.(saved.id);
+  };
+
+  const remove = () => {
+    if (!load) return;
+    deleteLoad(load.id);
+    setConfirmDelete(false);
+    ref.current?.close();
+    onDeleted?.();
   };
 
   const total = num(d.lineHaul) + num(d.fuel) + num(d.accessorials);
@@ -684,7 +762,11 @@ export function NewLoadDialog({ onClose, onCreated }: { onClose: () => void; onC
             ))}
           </div>
         ) : (
-          <div className="ui-note">Everything required is filled in. It goes on the board as {d.brokered || d.driver ? 'Dispatched' : 'Needs driver'}.</div>
+          <div className="ui-note">
+            {editing
+              ? `Everything required is filled in. Save changes updates ${load?.id} on the board, its load page and the planner.`
+              : `Everything required is filled in. It goes on the board as ${d.brokered || d.driver ? 'Dispatched' : 'Needs driver'}.`}
+          </div>
         )}
         <div className="ui-summary">
           <Stat label="Customer" value={d.customer || '—'} />
@@ -704,7 +786,7 @@ export function NewLoadDialog({ onClose, onCreated }: { onClose: () => void; onC
     <dialog
       ref={ref}
       className="ui-dialog is-large"
-      aria-label="New load"
+      aria-label={editing ? `Edit load ${load?.id}` : 'New load'}
       onClose={onClose}
       onCancel={(e) => {
         // Escape: ask before throwing away a half-entered load.
@@ -713,7 +795,7 @@ export function NewLoadDialog({ onClose, onCreated }: { onClose: () => void; onC
       }}
     >
       <aside className="ui-dialog-nav">
-        <div className="ui-dialog-title">New load</div>
+        <div className="ui-dialog-title">{editing ? `Edit load ${load?.id}` : 'New load'}</div>
         {SECTIONS.map((s) => {
           const n = showErrors ? errors[s]?.length ?? 0 : 0;
           return (
@@ -734,10 +816,44 @@ export function NewLoadDialog({ onClose, onCreated }: { onClose: () => void; onC
         </section>
         <footer className="ui-dialog-foot">
           <button type="button" className="ui-btn" onClick={requestClose}>Cancel</button>
+          {editing && (
+            <button type="button" className="ui-btn ui-btn-danger" onClick={() => setConfirmDelete(true)}>Delete load</button>
+          )}
           <div style={{ flex: 1 }} />
           {section !== SECTIONS[0] && <button type="button" className="ui-btn" onClick={() => step(-1)}>Back</button>}
           {section !== 'Review' && <button type="button" className="ui-btn" onClick={() => step(1)}>Next</button>}
-          <button type="button" className="ui-btn ui-btn-primary" onClick={create}>Create load</button>
+          <button type="button" className="ui-btn ui-btn-primary" onClick={save}>{editing ? 'Save changes' : 'Create load'}</button>
+        </footer>
+      </div>
+      {confirmDelete && load && <ConfirmDelete load={load} onConfirm={remove} onClose={() => setConfirmDelete(false)} />}
+    </dialog>
+  );
+}
+
+// "Are you sure?" for Delete load: its own small modal on top of the form.
+// Cancel is focused first, so Enter never deletes by accident.
+function ConfirmDelete({ load, onConfirm, onClose }: { load: Load; onConfirm: () => void; onClose: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (el && !el.open) el.showModal();
+  }, []);
+
+  return (
+    <dialog ref={ref} className="ui-dialog is-confirm" role="alertdialog" aria-label={`Delete load ${load.id}?`} onClose={onClose}>
+      <div className="ui-dialog-main">
+        <section className="ui-dialog-body">
+          <h2 className="ui-h2" style={{ margin: 0 }}>Delete load {load.id}?</h2>
+          <p className="ui-p" style={{ marginTop: 0 }}>
+            {load.customer} · {load.route}. The load is removed from the board, its load page and the planner.
+            This can’t be undone.
+          </p>
+        </section>
+        <footer className="ui-dialog-foot">
+          <div style={{ flex: 1 }} />
+          <button type="button" className="ui-btn" onClick={() => ref.current?.close()} autoFocus>Cancel</button>
+          <button type="button" className="ui-btn ui-btn-danger-solid" onClick={onConfirm}>Yes, delete load</button>
         </footer>
       </div>
     </dialog>

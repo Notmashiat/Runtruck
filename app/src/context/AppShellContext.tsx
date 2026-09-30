@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { LOADS, type Load } from '../data/mock';
+import { usePersisted } from '../lib/persist';
 
 export type LoadTab = 'Active' | 'Needs POD' | 'Delivered' | 'All';
 export type DriverTab = 'All' | 'On duty' | 'Available';
@@ -13,20 +14,28 @@ interface AppShellState {
   setDriverTab: (t: DriverTab) => void;
   approved: boolean;
   approveAll: () => void;
-  // Every load: the ones entered with New Load (newest first), then the mock set.
-  // New loads live in memory only, so a reload drops them.
+  // Every load, newest entries first. Kept in this browser's storage (there is
+  // no back end yet), so new, edited and deleted loads survive a reload.
   loads: Load[];
   addLoad: (l: Load) => void;
+  updateLoad: (l: Load) => void;
+  deleteLoad: (id: string) => void;
 }
 
 const AppShellContext = createContext<AppShellState | null>(null);
+
+function reviveLoads(raw: unknown): Load[] | null {
+  return Array.isArray(raw) && raw.every((l) => l && typeof l.id === 'string' && typeof l.route === 'string' && typeof l.carrier === 'string')
+    ? (raw as Load[])
+    : null;
+}
 
 export function AppShellProvider({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState('');
   const [loadTab, setLoadTab] = useState<LoadTab>('Active');
   const [driverTab, setDriverTab] = useState<DriverTab>('All');
   const [approved, setApproved] = useState(false);
-  const [created, setCreated] = useState<Load[]>([]);
+  const [loads, setLoads] = usePersisted<Load[]>('runtruck-loads', LOADS, reviveLoads);
 
   const value: AppShellState = {
     query,
@@ -37,8 +46,10 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
     setDriverTab,
     approved,
     approveAll: () => setApproved(true),
-    loads: [...created, ...LOADS],
-    addLoad: (l) => setCreated((prev) => [l, ...prev]),
+    loads,
+    addLoad: (l) => setLoads((prev) => [l, ...prev]),
+    updateLoad: (l) => setLoads((prev) => prev.map((x) => (x.id === l.id ? l : x))),
+    deleteLoad: (id) => setLoads((prev) => prev.filter((x) => x.id !== id)),
   };
 
   return <AppShellContext.Provider value={value}>{children}</AppShellContext.Provider>;

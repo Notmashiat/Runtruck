@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { Card } from '../../components/Card';
 import { Kpis } from '../../components/Kpis';
 import { Tag } from '../../components/Tag';
@@ -7,9 +7,21 @@ import { useAppShell } from '../../context/AppShellContext';
 import { USER } from '../../data/mock';
 
 export function LoadDetailPage() {
-  const { id } = useParams();
+  const { id = '' } = useParams();
   const { loads } = useAppShell();
-  const sel = loads.find((l) => l.id === id) ?? loads[0];
+  const sel = loads.find((l) => l.id.toLowerCase() === id.toLowerCase());
+
+  // A deleted load, or a mistyped link.
+  if (!sel) {
+    return (
+      <Card>
+        <h2 className="ui-h2" style={{ margin: 0 }}>Load {id} not found</h2>
+        <p className="ui-p">It may have been deleted.</p>
+        <Link className="ui-link" to="/app/loads">← Back to loads</Link>
+      </Card>
+    );
+  }
+
   const delivered = sel.status === 'Delivered';
 
   // Loads entered with New Load carry their own stops, documents and history.
@@ -42,17 +54,20 @@ export function LoadDetailPage() {
         { name: 'Bill of lading', state: delivered || sel.status === 'Needs POD' ? 'Attached' : 'Pending' },
         { name: 'Proof of delivery', state: delivered ? 'Attached' : 'Pending' },
       ];
-  const activity = sel.createdAt
-    ? [
-        { when: sel.createdAt, what: `Load created by ${USER.name}` },
-        ...(sel.notes ? [{ when: sel.createdAt, what: `Driver instructions: ${sel.notes}` }] : []),
-      ]
-    : [
-        { when: 'Today 07:12', what: 'Driver accepted the load in the app' },
-        { when: 'Today 08:41', what: `Arrived at ${sel.from}` },
-        { when: 'Today 10:05', what: 'Bill of lading uploaded from the cab' },
-        { when: 'Today 10:06', what: delivered ? 'Invoice queued for billing' : 'Dispatch notified the consignee' },
-      ];
+  const activity = [
+    ...(sel.createdAt
+      ? [
+          { when: sel.createdAt, what: `Load created by ${USER.name}` },
+          ...(sel.notes ? [{ when: sel.createdAt, what: `Driver instructions: ${sel.notes}` }] : []),
+        ]
+      : [
+          { when: 'Today 07:12', what: 'Driver accepted the load in the app' },
+          { when: 'Today 08:41', what: `Arrived at ${sel.from}` },
+          { when: 'Today 10:05', what: 'Bill of lading uploaded from the cab' },
+          { when: 'Today 10:06', what: delivered ? 'Invoice queued for billing' : 'Dispatch notified the consignee' },
+        ]),
+    ...(sel.updatedAt ? [{ when: sel.updatedAt, what: `Load edited by ${USER.name}` }] : []),
+  ];
 
   const rowStyle = (i: number): CSSProperties => ({
     display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0',

@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '../../components/Card';
 import { Kpis } from '../../components/Kpis';
+import { NewLoadDialog } from '../../components/NewLoadDialog';
 import { Tag } from '../../components/Tag';
 import { useAppShell, type LoadTab } from '../../context/AppShellContext';
 import { ACTIVE_STATUSES, stopsOf, type Load } from '../../data/mock';
@@ -26,6 +27,7 @@ export function LoadsPage() {
   // A search looks across every load, regardless of the filter.
   const rows = searching ? loads.filter((l) => matchesQuery(l, query)) : listFor(loads, loadTab);
   const [openId, setOpenId] = useState<string | null>(firstId(rows));
+  const [editing, setEditing] = useState<Load | null>(null);
 
   const countOf = (status: string) => String(loads.filter((l) => l.status === status).length);
   const kpis = [
@@ -123,8 +125,11 @@ export function LoadsPage() {
                                 <div className="ui-kv-value">{l.customer}</div>
                                 <div className="ui-stop-meta">{l.temp} · {l.equip}</div>
                               </div>
-                              <div>
+                              <div className="ui-link-stack">
                                 <Link className="ui-link" to={`/app/loads/${l.id}`}>Open load →</Link>
+                                <button type="button" className="ui-link" onClick={(e) => { e.stopPropagation(); setEditing(l); }}>
+                                  Edit load
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -166,6 +171,10 @@ export function LoadsPage() {
           <div className="ui-empty">{searching ? `Nothing matches “${query}”.` : 'No loads in this view.'}</div>
         )}
       </Card>
+
+      {editing && (
+        <NewLoadDialog load={editing} onClose={() => setEditing(null)} onDeleted={() => setEditing(null)} />
+      )}
     </>
   );
 }

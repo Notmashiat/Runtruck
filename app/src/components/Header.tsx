@@ -17,21 +17,27 @@ const NO_FILTERS: ViewKey[] = ['dashboard', 'planner', 'facilities'];
 export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { query, setQuery, approveAll } = useAppShell();
+  const { query, setQuery, approveAll, loads } = useAppShell();
   const [newLoadOpen, setNewLoadOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   // Route matching is case-insensitive, so normalise before keying off the section.
   const segments = location.pathname.toLowerCase().split('/');
   const view = (segments[2] || 'dashboard') as ViewKey;
   const tab = SECTION_TABS[view] ? segments[3] : undefined;
   const onLoadDetail = view === 'loads' && Boolean(segments[3]);
+  const detailLoad = onLoadDetail ? loads.find((l) => l.id.toLowerCase() === segments[3]) : undefined;
 
   // Keyed by section, or section/tab for the tabbed sections. Most are stubs,
   // as in the original prototype; the ones that navigate are the real flows.
   const actionsFor: Record<string, HeadAction[]> = {
     dashboard: [{ label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) }],
     loads: [{ label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) }],
-    loadDetail: [{ label: 'Message driver' }, { label: 'Update status', primary: true }],
+    loadDetail: [
+      { label: 'Message driver' },
+      ...(detailLoad ? [{ label: 'Edit load', onClick: () => setEditOpen(true) }] : []),
+      { label: 'Update status', primary: true },
+    ],
     'fleet/drivers': [{ label: '+ Add Driver', primary: true }],
     'fleet/trucks': [{ label: 'Log service' }, { label: '+ Add Unit', primary: true }],
     'fleet/trailers': [{ label: '+ Add Trailer', primary: true }],
@@ -80,7 +86,10 @@ export function Header() {
         </button>
       ))}
       {newLoadOpen && (
-        <NewLoadDialog onClose={() => setNewLoadOpen(false)} onCreated={(id) => navigate(`/app/loads/${id}`)} />
+        <NewLoadDialog onClose={() => setNewLoadOpen(false)} onSaved={(id) => navigate(`/app/loads/${id}`)} />
+      )}
+      {editOpen && detailLoad && (
+        <NewLoadDialog load={detailLoad} onClose={() => setEditOpen(false)} onDeleted={() => { setEditOpen(false); navigate('/app/loads'); }} />
       )}
     </header>
   );
