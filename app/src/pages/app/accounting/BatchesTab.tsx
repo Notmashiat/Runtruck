@@ -12,6 +12,7 @@ import {
 import { combinedDoc, invoiceDoc, invoiceFileName } from '../../../lib/invoicePdf';
 import { downloadPdf } from '../../../lib/pdf';
 import { matchesQuery } from '../../../lib/search';
+import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
 export function BatchesTab() {
   const { query, batches, invoices, saveBatch, deleteBatch } = useAppShell();
@@ -28,7 +29,17 @@ export function BatchesTab() {
     { label: 'Sent this week', value: String(sorted.filter((b) => b.sentOn && daysFrom(b.sentOn, TODAY) < 7).length), note: 'Last 7 days' },
     { label: 'Total batched', value: usd0(batches.reduce((s, b) => s + batchTotal(b, invoices), 0)), note: 'Ready, sent and settled' },
   ];
-  const rows = sorted.filter((b) => matchesQuery({ ...b, invoices: b.invoiceIds.join(' ') }, query));
+  const filters: FilterDef<Batch>[] = [
+    { key: 'status', label: 'Status', type: 'select', get: (b) => batchStatus(b, invoices), options: ['Ready', 'Sent', 'Settled'] },
+    { key: 'recipient', label: 'Sent to', type: 'select', get: (b) => b.recipient },
+    { key: 'method', label: 'How it is sent', type: 'select', get: (b) => b.method },
+    { key: 'created', label: 'Created', type: 'dates', get: (b) => b.created },
+    { key: 'total', label: 'Total', type: 'range', get: (b) => batchTotal(b, invoices), prefix: '$' },
+  ];
+  const sort = useSort(usePageFilters(sorted.filter((b) => matchesQuery({ ...b, invoices: b.invoiceIds.join(' ') }, query)), filters), {
+    count: (b) => b.invoiceIds.length, total: (b) => batchTotal(b, invoices), status: (b) => batchStatus(b, invoices),
+  });
+  const rows = sort.rows;
   const members = (b: Batch) => invoices.filter((i) => b.invoiceIds.includes(i.id));
 
   return (
@@ -39,8 +50,8 @@ export function BatchesTab() {
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Batch</th><th>Created</th><th className="num">Invoices</th><th>Sent to</th><th>How</th>
-              <th className="num">Total</th><th className="num">Status</th>
+              <SortTh sort={sort} k="id">Batch</SortTh><SortTh sort={sort} k="created">Created</SortTh><SortTh sort={sort} k="count" num>Invoices</SortTh><SortTh sort={sort} k="recipient">Sent to</SortTh><SortTh sort={sort} k="method">How</SortTh>
+              <SortTh sort={sort} k="total" num>Total</SortTh><SortTh sort={sort} k="status" num>Status</SortTh>
             </tr>
           </thead>
           <tbody>
@@ -112,7 +123,7 @@ export function BatchesTab() {
             })}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">{query ? `Nothing matches “${query}”.` : 'No batches yet.'}</div>}
+        {rows.length === 0 && <div className="ui-empty">{batches.length ? 'Nothing matches the search or filters.' : 'No batches yet.'}</div>}
       </Card>
 
       {editing && <BatchDialog batch={editing} onClose={() => setEditing(null)} />}

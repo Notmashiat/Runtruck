@@ -101,6 +101,13 @@ truck's driver are one assignment: changing either side updates the other and fr
 replaced; archiving a driver or unit frees its assignment. The New Load driver/truck/trailer pickers and the Dashboard driver list use these records.
 They are stored as `runtruck-drivers`, `runtruck-trucks` and `runtruck-trailers`.
 
+**Sorting and filters** (`lib/tableTools.tsx`, `components/FilterPanel.tsx`). Every table column
+sorts: click a header for ascending, again for descending, a third time for the original order;
+money, miles, weights, percentages, hours, dates and ids sort by value, blanks last. **Filters** in
+the top bar opens a side panel with filters made for that page (status, customer, driver,
+equipment, dates, amounts, yes/no checks …; choices show how many rows have them). Active filters
+show as chips under the top bar, with × and Clear all; they are kept per page while you move around.
+
 **Dashboard** (`pages/app/DashboardPage.tsx`, `components/DashboardWidgets.tsx`,
 `DashboardCustomize.tsx`, `data/dashboard.ts`, `styles/dashboard.css`) is a 12-column grid of
 widgets: number cards (active loads, revenue this week, rate per mile, unbilled, past-due AR,

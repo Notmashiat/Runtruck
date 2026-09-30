@@ -10,6 +10,7 @@ import {
 import { between, compactUsd, deliveredRevenue, mondayOf, sum, type Earned } from '../data/metrics';
 import { ACTIVE_STATUSES, stopsOf } from '../data/mock';
 import { matchesQuery } from '../lib/search';
+import { SortTh, useSort } from '../lib/tableTools';
 import { Tag } from './Tag';
 
 const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -325,19 +326,20 @@ function Upcoming({ d }: { d: DashData }) {
 function ActiveLoads({ d, o }: { d: DashData; o: DashOptions }) {
   const navigate = useNavigate();
   const c = o.loadColumns;
-  const rows = d.query.trim() ? d.loads.filter((l) => matchesQuery(l, d.query)) : d.active;
+  const sort = useSort(d.query.trim() ? d.loads.filter((l) => matchesQuery(l, d.query)) : d.active);
+  const rows = sort.rows;
   return (
     <>
       <table className="ui-table">
         <thead>
           <tr>
-            <th>Load</th>
-            {c.customer && <th>Customer</th>}
-            {c.route && <th>Route</th>}
-            {c.pickup && <th>Pickup</th>}
-            {c.driver && <th>Driver</th>}
-            {c.rate && <th className="num">Rate</th>}
-            {c.status && <th className="num">Status</th>}
+            <SortTh sort={sort} k="id">Load</SortTh>
+            {c.customer && <SortTh sort={sort} k="customer">Customer</SortTh>}
+            {c.route && <SortTh sort={sort} k="route">Route</SortTh>}
+            {c.pickup && <SortTh sort={sort} k="pickup">Pickup</SortTh>}
+            {c.driver && <SortTh sort={sort} k="driver">Driver</SortTh>}
+            {c.rate && <SortTh sort={sort} k="rate" num>Rate</SortTh>}
+            {c.status && <SortTh sort={sort} k="status" num>Status</SortTh>}
           </tr>
         </thead>
         <tbody>

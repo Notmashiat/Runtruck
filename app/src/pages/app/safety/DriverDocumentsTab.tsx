@@ -2,12 +2,22 @@ import { Card } from '../../../components/Card';
 import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
-import { byUrgency, driverDocuments, RENEW_WINDOW, renewBy } from '../../../data/compliance';
+import { byUrgency, driverDocuments, RENEW_WINDOW, renewBy, type DriverDoc } from '../../../data/compliance';
 import { fmtDate } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
+import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
 // Every qualification document of every active driver, worked out from the
 // dates on their driver record (Fleet › Drivers › Edit), most urgent first.
+const STATUS_ORDER = ['Expired', 'Missing', 'Expiring', 'Valid'];
+
+const FILTERS: FilterDef<DriverDoc>[] = [
+  { key: 'status', label: 'Status', type: 'select', get: (d) => d.status, options: STATUS_ORDER },
+  { key: 'document', label: 'Document', type: 'select', get: (d) => d.document },
+  { key: 'driver', label: 'Driver', type: 'select', get: (d) => d.driver },
+  { key: 'date', label: 'Expires / due', type: 'dates', get: (d) => (d.onFile ? '' : d.date) },
+];
+
 export function DriverDocumentsTab() {
   const { query, drivers } = useAppShell();
   const docs = driverDocuments(drivers).sort(byUrgency);
@@ -20,7 +30,8 @@ export function DriverDocumentsTab() {
     { label: 'Expired', value: String(of('Expired').length), note: list('Expired') },
     { label: 'Missing', value: String(of('Missing').length), note: list('Missing') },
   ];
-  const rows = docs.filter((d) => matchesQuery(d, query));
+  const sort = useSort(usePageFilters(docs.filter((d) => matchesQuery(d, query)), FILTERS), { status: (d) => STATUS_ORDER.indexOf(d.status), date: (d) => (d.onFile ? '' : d.date) });
+  const rows = sort.rows;
 
   return (
     <>
@@ -30,7 +41,7 @@ export function DriverDocumentsTab() {
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Driver</th><th>Document</th><th>Expires / due</th><th className="num">Status</th>
+              <SortTh sort={sort} k="driver">Driver</SortTh><SortTh sort={sort} k="document">Document</SortTh><SortTh sort={sort} k="date">Expires / due</SortTh><SortTh sort={sort} k="status" num>Status</SortTh>
             </tr>
           </thead>
           <tbody>
@@ -44,7 +55,7 @@ export function DriverDocumentsTab() {
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">{query ? `Nothing matches “${query}”.` : 'No active drivers.'}</div>}
+        {rows.length === 0 && <div className="ui-empty">{docs.length ? 'Nothing matches the search or filters.' : 'No active drivers.'}</div>}
       </Card>
     </>
   );

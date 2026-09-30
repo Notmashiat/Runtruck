@@ -7,13 +7,23 @@ import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
 import { TODAY, billableLoads, daysFrom, fmtDate, usd, usd0, type BillableLoad } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
+import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
 export function UninvoicedTab() {
   const { query, loads, invoices } = useAppShell();
   const [creating, setCreating] = useState<string[] | null>(null);
   const [viewing, setViewing] = useState<BillableLoad | null>(null);
   const queue = billableLoads(loads, invoices);
-  const rows = queue.filter((l) => matchesQuery(l, query));
+  const filters: FilterDef<BillableLoad>[] = [
+    { key: 'customer', label: 'Customer', type: 'select', get: (l) => l.customer },
+    { key: 'pod', label: 'Proof of delivery', type: 'select', get: (l) => l.pod, options: ['Attached', 'Missing'] },
+    { key: 'equipment', label: 'Equipment', type: 'select', get: (l) => l.equipment },
+    { key: 'delivered', label: 'Delivered', type: 'dates', get: (l) => l.delivered },
+    { key: 'waiting', label: 'Days since delivery', type: 'range', get: (l) => daysFrom(l.delivered, TODAY), suffix: ' d' },
+    { key: 'amount', label: 'Amount', type: 'range', get: (l) => l.amount, prefix: '$' },
+  ];
+  const sort = useSort(usePageFilters(queue.filter((l) => matchesQuery(l, query)), filters));
+  const rows = sort.rows;
 
   const waiting = queue.reduce((sum, l) => sum + l.amount, 0);
   const oldest = queue.reduce<(typeof queue)[number] | null>((best, l) => (!best || l.delivered < best.delivered ? l : best), null);
@@ -32,7 +42,7 @@ export function UninvoicedTab() {
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Load</th><th>Customer</th><th>Route</th><th>Delivered</th><th>POD</th><th className="num">Amount</th><th className="num" aria-label="Actions" />
+              <SortTh sort={sort} k="id">Load</SortTh><SortTh sort={sort} k="customer">Customer</SortTh><SortTh sort={sort} k="route">Route</SortTh><SortTh sort={sort} k="delivered">Delivered</SortTh><SortTh sort={sort} k="pod">POD</SortTh><SortTh sort={sort} k="amount" num>Amount</SortTh><th className="num" aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -53,7 +63,7 @@ export function UninvoicedTab() {
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">{query ? `Nothing matches “${query}”.` : 'Every delivered load has an invoice.'}</div>}
+        {rows.length === 0 && <div className="ui-empty">{queue.length ? 'Nothing matches the search or filters.' : 'Every delivered load has an invoice.'}</div>}
       </Card>
 
       {viewing && <LoadInfoDialog load={viewing} onInvoice={() => setCreating([viewing.id])} onClose={() => setViewing(null)} />}

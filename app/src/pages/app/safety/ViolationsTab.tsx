@@ -2,8 +2,9 @@ import { Card } from '../../../components/Card';
 import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
-import { VIOLATIONS } from '../../../data/safety';
+import { VIOLATIONS, type Violation } from '../../../data/safety';
 import { matchesQuery } from '../../../lib/search';
+import { isoOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
 const OPEN = VIOLATIONS.filter((v) => v.status === 'Open');
 const CONTESTED = VIOLATIONS.filter((v) => v.status === 'Contested');
@@ -17,9 +18,19 @@ const KPIS = [
   { label: 'Closed', value: String(CLOSED.length), note: 'Resolved, on file' },
 ];
 
+const FILTERS: FilterDef<Violation>[] = [
+  { key: 'status', label: 'Status', type: 'select', get: (v) => v.status, options: ['Open', 'Contested', 'Closed'] },
+  { key: 'driver', label: 'Driver', type: 'select', get: (v) => v.driver },
+  { key: 'unit', label: 'Unit', type: 'select', get: (v) => v.unit },
+  { key: 'type', label: 'Violation type', type: 'select', get: (v) => v.type },
+  { key: 'date', label: 'Date', type: 'dates', get: (v) => isoOf(v.date) },
+  { key: 'points', label: 'Severity points', type: 'range', get: (v) => v.severityPoints },
+];
+
 export function ViolationsTab() {
   const { query } = useAppShell();
-  const rows = VIOLATIONS.filter((v) => matchesQuery(v, query));
+  const sort = useSort(usePageFilters(VIOLATIONS.filter((v) => matchesQuery(v, query)), FILTERS));
+  const rows = sort.rows;
 
   return (
     <>
@@ -29,7 +40,7 @@ export function ViolationsTab() {
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Date</th><th>Driver</th><th>Unit</th><th>Type</th><th className="num">Points</th><th>Location</th><th className="num">Status</th>
+              <SortTh sort={sort} k="date">Date</SortTh><SortTh sort={sort} k="driver">Driver</SortTh><SortTh sort={sort} k="unit">Unit</SortTh><SortTh sort={sort} k="type">Type</SortTh><SortTh sort={sort} k="severityPoints" num>Points</SortTh><SortTh sort={sort} k="location">Location</SortTh><SortTh sort={sort} k="status" num>Status</SortTh>
             </tr>
           </thead>
           <tbody>
@@ -46,7 +57,7 @@ export function ViolationsTab() {
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">Nothing matches “{query}”.</div>}
+        {rows.length === 0 && <div className="ui-empty">Nothing matches the search or filters.</div>}
       </Card>
     </>
   );

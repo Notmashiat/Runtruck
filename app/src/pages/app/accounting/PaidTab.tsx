@@ -6,6 +6,7 @@ import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
 import { daysFrom, fmtDate, invoiceTotal, usd, usd0, type InvoiceRecord } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
+import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
 export function PaidTab() {
   const { query, invoices } = useAppShell();
@@ -25,7 +26,19 @@ export function PaidTab() {
     { label: 'Avg days to pay', value: String(Math.round(paid.reduce((s, p) => s + p.days, 0) / Math.max(paid.length, 1))), note: 'Issued to paid' },
     { label: 'Paid via factoring', value: String(factored.length), note: `TriPoint Capital · ${usd0(factored.reduce((s, p) => s + invoiceTotal(p.inv), 0))}` },
   ];
-  const rows = paid.filter((p) => matchesQuery({ ...p.inv, via: p.via, loads: p.inv.loads.join(' ') }, query));
+  type PaidRow = (typeof paid)[number];
+  const filters: FilterDef<PaidRow>[] = [
+    { key: 'via', label: 'Paid via', type: 'select', get: (p) => p.via },
+    { key: 'customer', label: 'Customer', type: 'select', get: (p) => p.inv.customer },
+    { key: 'paid', label: 'Paid on', type: 'dates', get: (p) => p.date },
+    { key: 'amount', label: 'Amount', type: 'range', get: (p) => invoiceTotal(p.inv), prefix: '$' },
+    { key: 'days', label: 'Days to pay', type: 'range', get: (p) => p.days, suffix: ' d' },
+  ];
+  const sort = useSort(usePageFilters(paid.filter((p) => matchesQuery({ ...p.inv, via: p.via, loads: p.inv.loads.join(' ') }, query)), filters), {
+    id: (p) => p.inv.id, customer: (p) => p.inv.customer, loads: (p) => p.inv.loads.join(', '), issued: (p) => p.inv.issued,
+    paid: (p) => p.date, amount: (p) => invoiceTotal(p.inv),
+  });
+  const rows = sort.rows;
 
   return (
     <>
@@ -35,8 +48,8 @@ export function PaidTab() {
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Invoice</th><th>Customer</th><th>Load</th><th>Issued</th><th>Paid</th><th>Via</th>
-              <th className="num">Amount</th><th className="num">Days to pay</th>
+              <SortTh sort={sort} k="id">Invoice</SortTh><SortTh sort={sort} k="customer">Customer</SortTh><SortTh sort={sort} k="loads">Load</SortTh><SortTh sort={sort} k="issued">Issued</SortTh><SortTh sort={sort} k="paid">Paid</SortTh><SortTh sort={sort} k="via">Via</SortTh>
+              <SortTh sort={sort} k="amount" num>Amount</SortTh><SortTh sort={sort} k="days" num>Days to pay</SortTh>
             </tr>
           </thead>
           <tbody>
@@ -54,7 +67,7 @@ export function PaidTab() {
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">{query ? `Nothing matches “${query}”.` : 'No paid invoices yet.'}</div>}
+        {rows.length === 0 && <div className="ui-empty">{paid.length ? 'Nothing matches the search or filters.' : 'No paid invoices yet.'}</div>}
       </Card>
 
       {viewing && <InvoiceDialog invoice={viewing} onClose={() => setViewing(null)} />}

@@ -5,10 +5,11 @@ import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
 import {
-  daysPastDue, fmtDate, invoiceTotal, lateFees, statusOf, usd, usd0,
+  daysPastDue, fmtDate, invoiceTotal, lateFees, statusOf, usd, usd0, type InvoiceRecord,
 } from '../../../data/invoicing';
 import { CUSTOMERS } from '../../../data/mock';
 import { matchesQuery } from '../../../lib/search';
+import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
 export function PastDueTab() {
   const { query, invoices } = useAppShell();
@@ -26,8 +27,19 @@ export function PastDueTab() {
     { label: 'Accounts affected', value: String(new Set(overdue.map((i) => i.customer)).size), note: `of ${CUSTOMERS.length} accounts` },
   ];
 
-  const rows = overdue.filter((i) => matchesQuery({ ...i, ...i.billTo, loads: i.loads.join(' ') }, query));
   const lastReminder = (id: string) => [...(invoices.find((i) => i.id === id)?.history ?? [])].reverse().find((h) => h.text.startsWith('Reminder'));
+  const filters: FilterDef<InvoiceRecord>[] = [
+    { key: 'customer', label: 'Customer', type: 'select', get: (i) => i.customer },
+    { key: 'late', label: 'Days late', type: 'range', get: (i) => daysPastDue(i), suffix: ' d' },
+    { key: 'balance', label: 'Balance', type: 'range', get: (i) => invoiceTotal(i), prefix: '$' },
+    { key: 'due', label: 'Was due', type: 'dates', get: (i) => i.due },
+    { key: 'fee', label: 'Late fee', type: 'toggle', get: (i) => lateFees(i) > 0, hint: 'Only invoices with a late fee added' },
+    { key: 'never', label: 'Not reminded', type: 'toggle', get: (i) => !lastReminder(i.id), hint: 'Only invoices never reminded' },
+  ];
+  const sort = useSort(usePageFilters(overdue.filter((i) => matchesQuery({ ...i, ...i.billTo, loads: i.loads.join(' ') }, query)), filters), {
+    loads: (i) => i.loads.join(', '), late: (i) => daysPastDue(i), reminder: (i) => lastReminder(i.id)?.date ?? '', balance: (i) => invoiceTotal(i),
+  });
+  const rows = sort.rows;
 
   return (
     <>
@@ -37,8 +49,8 @@ export function PastDueTab() {
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Invoice</th><th>Customer</th><th>Load</th><th>Due</th><th className="num">Days late</th>
-              <th>Last reminder</th><th className="num">Balance</th><th className="num" aria-label="Actions" />
+              <SortTh sort={sort} k="id">Invoice</SortTh><SortTh sort={sort} k="customer">Customer</SortTh><SortTh sort={sort} k="loads">Load</SortTh><SortTh sort={sort} k="due">Due</SortTh><SortTh sort={sort} k="late" num>Days late</SortTh>
+              <SortTh sort={sort} k="reminder">Last reminder</SortTh><SortTh sort={sort} k="balance" num>Balance</SortTh><th className="num" aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -72,7 +84,7 @@ export function PastDueTab() {
             })}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">{query ? `Nothing matches “${query}”.` : 'Nothing is past due.'}</div>}
+        {rows.length === 0 && <div className="ui-empty">{overdue.length ? 'Nothing matches the search or filters.' : 'Nothing is past due.'}</div>}
       </Card>
 
       {actions.dialogs}

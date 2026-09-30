@@ -7,6 +7,7 @@ import { Tag } from '../../components/Tag';
 import { useAppShell, type LoadTab } from '../../context/AppShellContext';
 import { ACTIVE_STATUSES, stopsOf, type Load } from '../../data/mock';
 import { matchesQuery } from '../../lib/search';
+import { isoOf, numberOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../lib/tableTools';
 
 const TABS: LoadTab[] = ['Active', 'Needs POD', 'Delivered', 'All'];
 
@@ -25,7 +26,21 @@ export function LoadsPage() {
   const searching = query.trim().length > 0;
 
   // A search looks across every load, regardless of the filter.
-  const rows = searching ? loads.filter((l) => matchesQuery(l, query)) : listFor(loads, loadTab);
+  const base = searching ? loads.filter((l) => matchesQuery(l, query)) : listFor(loads, loadTab);
+  const filters: FilterDef<Load>[] = [
+    { key: 'status', label: 'Status', type: 'select', get: (l) => l.status },
+    { key: 'customer', label: 'Customer', type: 'select', get: (l) => l.customer },
+    { key: 'driver', label: 'Driver', type: 'select', get: (l) => l.driver },
+    { key: 'equipment', label: 'Equipment', type: 'select', get: (l) => l.equip },
+    { key: 'carrier', label: 'Carrier', type: 'select', get: (l) => (l.carrier.includes('own fleet') ? 'Own fleet' : l.carrier) },
+    { key: 'pickup', label: 'Pickup date', type: 'dates', get: (l) => isoOf(l.pickup) },
+    { key: 'delivery', label: 'Delivery date', type: 'dates', get: (l) => isoOf(l.delivery) },
+    { key: 'rate', label: 'Rate', type: 'range', get: (l) => numberOf(l.rate), prefix: '$' },
+    { key: 'miles', label: 'Miles', type: 'range', get: (l) => numberOf(l.miles), suffix: ' mi' },
+    { key: 'rpm', label: 'Rate per mile', type: 'range', get: (l) => numberOf(l.rpm), prefix: '$' },
+  ];
+  const sort = useSort(usePageFilters(base, filters), { unit: (l) => (l.unit === '—' ? null : l.unit) });
+  const rows = sort.rows;
   const [openId, setOpenId] = useState<string | null>(firstId(rows));
   const [editing, setEditing] = useState<Load | null>(null);
 
@@ -62,8 +77,8 @@ export function LoadsPage() {
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Load #</th><th>Tender #</th><th>Truck</th><th>Route</th><th>Pickup</th><th>Driver</th>
-              <th className="num">Rate</th><th className="num">Status</th>
+              <SortTh sort={sort} k="id">Load #</SortTh><SortTh sort={sort} k="ref">Tender #</SortTh><SortTh sort={sort} k="unit">Truck</SortTh><SortTh sort={sort} k="route">Route</SortTh><SortTh sort={sort} k="pickup">Pickup</SortTh><SortTh sort={sort} k="driver">Driver</SortTh>
+              <SortTh sort={sort} k="rate" num>Rate</SortTh><SortTh sort={sort} k="status" num>Status</SortTh>
             </tr>
           </thead>
           <tbody>
@@ -168,7 +183,7 @@ export function LoadsPage() {
           </tbody>
         </table>
         {rows.length === 0 && (
-          <div className="ui-empty">{searching ? `Nothing matches “${query}”.` : 'No loads in this view.'}</div>
+          <div className="ui-empty">{base.length ? 'Nothing matches the search or filters.' : searching ? `Nothing matches “${query}”.` : 'No loads in this view.'}</div>
         )}
       </Card>
 

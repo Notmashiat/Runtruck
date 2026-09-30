@@ -6,6 +6,7 @@ import { BILLING, invoiceTotal, statusOf, usd0 } from '../../data/invoicing';
 import { compactUsd } from '../../data/metrics';
 import { CUSTOMERS } from '../../data/mock';
 import { matchesQuery } from '../../lib/search';
+import { SortTh, useSort, usePageFilters, type FilterDef } from '../../lib/tableTools';
 
 // '$412K' → 412000; '96%' → 96.
 const amount = (s: string) => (Number(s.replace(/[^\d.]/g, '')) || 0) * (/K$/i.test(s) ? 1000 : /M$/i.test(s) ? 1_000_000 : 1);
@@ -31,7 +32,16 @@ export function CustomersPage() {
     { label: 'On time', value: `${Math.round(onTime)}%`, note: `Weighted by ${loadsYtd.toLocaleString('en-US')} loads YTD` },
     { label: 'Open AR', value: compactUsd(accounts.reduce((s, c) => s + c.arValue, 0)), note: `${open.length} unpaid invoices · ${pastDueAccounts.length} account(s) past due` },
   ];
-  const rows = accounts.filter((c) => matchesQuery(c, query));
+  type Account = (typeof accounts)[number];
+  const filters: FilterDef<Account>[] = [
+    { key: 'tier', label: 'Standing', type: 'select', get: (c) => c.tier },
+    { key: 'terms', label: 'Terms', type: 'select', get: (c) => c.terms },
+    { key: 'pastDue', label: 'Past due', type: 'toggle', get: (c) => c.pastDue > 0, hint: 'Only accounts with past-due invoices' },
+    { key: 'ar', label: 'AR balance', type: 'range', get: (c) => c.arValue, prefix: '$' },
+    { key: 'onTime', label: 'On time', type: 'range', get: (c) => pct(c.onTime), suffix: '%' },
+  ];
+  const sort = useSort(usePageFilters(accounts.filter((c) => matchesQuery(c, query)), filters), { ar: (c) => c.arValue });
+  const rows = sort.rows;
 
   return (
     <>
@@ -59,8 +69,8 @@ export function CustomersPage() {
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Customer</th><th>Primary contact</th><th className="num">Loads YTD</th><th className="num">Revenue</th>
-              <th className="num">On time</th><th className="num">Terms</th><th className="num">AR balance</th><th className="num">Standing</th>
+              <SortTh sort={sort} k="name">Customer</SortTh><SortTh sort={sort} k="contact">Primary contact</SortTh><SortTh sort={sort} k="loads" num>Loads YTD</SortTh><SortTh sort={sort} k="revenue" num>Revenue</SortTh>
+              <SortTh sort={sort} k="onTime" num>On time</SortTh><SortTh sort={sort} k="terms" num>Terms</SortTh><SortTh sort={sort} k="ar" num>AR balance</SortTh><SortTh sort={sort} k="tier" num>Standing</SortTh>
             </tr>
           </thead>
           <tbody>
@@ -78,7 +88,7 @@ export function CustomersPage() {
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">Nothing matches “{query}”.</div>}
+        {rows.length === 0 && <div className="ui-empty">Nothing matches the search or filters.</div>}
       </Card>
     </>
   );

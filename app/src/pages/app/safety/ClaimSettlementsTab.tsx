@@ -2,8 +2,9 @@ import { Card } from '../../../components/Card';
 import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
-import { CLAIMS, money } from '../../../data/safety';
+import { CLAIMS, money, type Claim } from '../../../data/safety';
 import { matchesQuery } from '../../../lib/search';
+import { isoOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
 // "Open" here covers anything not yet resolved, i.e. Open and Under review.
 const OPEN = CLAIMS.filter((c) => c.status === 'Open' || c.status === 'Under review');
@@ -18,9 +19,19 @@ const KPIS = [
   { label: 'Settled', value: String(SETTLED.length), note: `${DENIED.length} denied` },
 ];
 
+const FILTERS: FilterDef<Claim>[] = [
+  { key: 'status', label: 'Status', type: 'select', get: (c) => c.status, options: ['Open', 'Under review', 'Settled', 'Denied'] },
+  { key: 'type', label: 'Claim type', type: 'select', get: (c) => c.type },
+  { key: 'driver', label: 'Driver', type: 'select', get: (c) => c.driver },
+  { key: 'claimant', label: 'Claimant', type: 'select', get: (c) => c.claimant },
+  { key: 'date', label: 'Date', type: 'dates', get: (c) => isoOf(c.date) },
+  { key: 'reserved', label: 'Reserved', type: 'range', get: (c) => c.reserved, prefix: '$' },
+];
+
 export function ClaimSettlementsTab() {
   const { query } = useAppShell();
-  const rows = CLAIMS.filter((c) => matchesQuery(c, query));
+  const sort = useSort(usePageFilters(CLAIMS.filter((c) => matchesQuery(c, query)), FILTERS));
+  const rows = sort.rows;
 
   return (
     <>
@@ -30,8 +41,8 @@ export function ClaimSettlementsTab() {
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Claim</th><th>Date</th><th>Driver</th><th>Unit</th><th>Type</th><th>Claimant</th>
-              <th className="num">Reserved</th><th className="num">Paid</th><th className="num">Status</th>
+              <SortTh sort={sort} k="id">Claim</SortTh><SortTh sort={sort} k="date">Date</SortTh><SortTh sort={sort} k="driver">Driver</SortTh><SortTh sort={sort} k="unit">Unit</SortTh><SortTh sort={sort} k="type">Type</SortTh><SortTh sort={sort} k="claimant">Claimant</SortTh>
+              <SortTh sort={sort} k="reserved" num>Reserved</SortTh><SortTh sort={sort} k="paid" num>Paid</SortTh><SortTh sort={sort} k="status" num>Status</SortTh>
             </tr>
           </thead>
           <tbody>
@@ -50,7 +61,7 @@ export function ClaimSettlementsTab() {
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">Nothing matches “{query}”.</div>}
+        {rows.length === 0 && <div className="ui-empty">Nothing matches the search or filters.</div>}
       </Card>
     </>
   );

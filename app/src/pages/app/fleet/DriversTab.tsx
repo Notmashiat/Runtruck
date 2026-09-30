@@ -9,6 +9,7 @@ import { byUrgency, driverDocuments, RENEW_WINDOW } from '../../../data/complian
 import type { FleetDriver } from '../../../data/fleet';
 import { fmtDate } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
+import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
 const TABS: DriverTab[] = ['All', 'On duty', 'Available'];
 
@@ -41,9 +42,24 @@ export function DriversTab() {
     { label: 'Docs to renew', value: String(watchlist.length), note: [`${countDocs('Expired')} expired`, `${countDocs('Expiring')} due within ${RENEW_WINDOW} days`, countDocs('Missing') ? `${countDocs('Missing')} missing` : ''].filter(Boolean).join(' · ') },
   ];
 
-  const rows = (showArchived ? drivers : active).filter(
+  const dv = (d: FleetDriver, k: string) => (typeof d.details[k] === 'string' ? (d.details[k] as string) : '');
+  const needsDocs = new Set(watchlist.map((w) => w.driverId));
+  const filters: FilterDef<FleetDriver>[] = [
+    { key: 'status', label: 'Status', type: 'select', get: (d) => (d.archived ? 'Archived' : d.status) },
+    { key: 'driverType', label: 'Driver type', type: 'select', get: (d) => dv(d, 'driverType') },
+    { key: 'terminal', label: 'Home terminal', type: 'select', get: (d) => dv(d, 'terminal') },
+    { key: 'dispatcher', label: 'Dispatcher', type: 'select', get: (d) => dv(d, 'dispatcher') },
+    { key: 'cdlClass', label: 'CDL class', type: 'select', get: (d) => (dv(d, 'cdlClass') ? `Class ${dv(d, 'cdlClass')}` : '') },
+    { key: 'endorsements', label: 'Endorsements', type: 'select', get: (d) => (Array.isArray(d.details.endorsements) ? d.details.endorsements : []) },
+    { key: 'payType', label: 'Pay type', type: 'select', get: (d) => dv(d, 'payType') },
+    { key: 'truck', label: 'Truck', type: 'toggle', get: (d) => d.unit === '—', hint: 'Only drivers without a truck' },
+    { key: 'docs', label: 'Documents', type: 'toggle', get: (d) => needsDocs.has(d.id), hint: 'Only drivers with documents to renew' },
+    { key: 'miles', label: 'Miles this week', type: 'range', get: (d) => d.miles },
+  ];
+  const sort = useSort(usePageFilters((showArchived ? drivers : active).filter(
     (d) => (driverTab === 'All' || d.status === driverTab) && matchesQuery({ ...d, ...d.details }, query),
-  );
+  ), filters), { unit: (d) => (d.unit === '—' ? null : d.unit), cdl: (d) => dv(d, 'cdlExpiry') });
+  const rows = sort.rows;
 
   const action = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -71,8 +87,8 @@ export function DriversTab() {
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Driver</th><th>Status</th><th>Unit</th><th>Current load</th>
-              <th className="num">Hours left</th><th className="num">CDL</th><th className="num">Pay YTD</th><th className="num" aria-label="Actions" />
+              <SortTh sort={sort} k="name">Driver</SortTh><SortTh sort={sort} k="status">Status</SortTh><SortTh sort={sort} k="unit">Unit</SortTh><SortTh sort={sort} k="load">Current load</SortTh>
+              <SortTh sort={sort} k="hos" num>Hours left</SortTh><SortTh sort={sort} k="cdl" num>CDL</SortTh><SortTh sort={sort} k="pay" num>Pay YTD</SortTh><th className="num" aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -90,7 +106,7 @@ export function DriversTab() {
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">{query ? `Nothing matches “${query}”.` : 'No drivers in this view.'}</div>}
+        {rows.length === 0 && <div className="ui-empty">{query || rows.length < active.length ? 'Nothing matches the search or filters.' : 'No drivers in this view.'}</div>}
       </Card>
 
       <div className="ui-grid-2">

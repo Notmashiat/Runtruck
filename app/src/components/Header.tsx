@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppShell } from '../context/AppShellContext';
-import { SECTION_TABS, type ViewKey } from '../data/mock';
+import { NAV, SECTION_TABS, type ViewKey } from '../data/mock';
+import { isActive, pageKeyOf } from '../lib/tableTools';
+import { describe, FilterPanel } from './FilterPanel';
 import { BatchDialog } from './BatchDialog';
 import { FacilityDialog } from './FacilityDialog';
 import { InvoiceDialog } from './InvoiceDialog';
@@ -21,7 +23,8 @@ const NO_FILTERS: ViewKey[] = ['dashboard', 'planner'];
 export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { query, setQuery, approveAll, loads } = useAppShell();
+  const { query, setQuery, approveAll, loads, filterMeta, filterValues, setFilter, clearFilters } = useAppShell();
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [newLoadOpen, setNewLoadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | null>(null);
@@ -63,9 +66,16 @@ export function Header() {
     'safety/settlements': [{ label: '+ New Claim', primary: true }],
   };
   const headActions = actionsFor[onLoadDetail ? 'loadDetail' : tab ? `${view}/${tab}` : view] ?? [];
-  const showFilters = !onLoadDetail && !NO_FILTERS.includes(view);
+  const page = pageKeyOf(location.pathname);
+  const meta = filterMeta[page] ?? [];
+  const values = filterValues[page] ?? {};
+  const activeFilters = meta.filter((m) => isActive(values[m.key]));
+  const showFilters = !onLoadDetail && !NO_FILTERS.includes(view) && meta.length > 0;
+  const navLabel = NAV.find((n) => 'key' in n && n.key === view);
+  const pageTitle = [navLabel && 'label' in navLabel ? navLabel.label : view, tab ? SECTION_TABS[view]?.find((t) => t.key === tab)?.label : ''].filter(Boolean).join(' › ');
 
   return (
+    <>
     <header className="ui-topbar">
       {onLoadDetail ? (
         <button onClick={() => navigate('/app/loads')} className="ui-btn" type="button">
@@ -82,8 +92,8 @@ export function Header() {
       )}
       <div style={{ flex: 1 }} />
       {showFilters && (
-        <button className="ui-btn" type="button">
-          Filters
+        <button className={`ui-btn ui-filters-btn${activeFilters.length ? ' is-on' : ''}`} type="button" onClick={() => setFiltersOpen(true)} aria-haspopup="dialog">
+          Filters{activeFilters.length > 0 && <span className="ui-filters-count">{activeFilters.length}</span>}
         </button>
       )}
       {headActions.map((a) => (
@@ -104,6 +114,19 @@ export function Header() {
       {adding === 'invoice' && <InvoiceDialog onClose={() => setAdding(null)} />}
       {adding === 'batch' && <BatchDialog onClose={() => setAdding(null)} />}
       {adding === 'reminders' && <ReminderDialog onClose={() => setAdding(null)} />}
+      {filtersOpen && <FilterPanel page={page} title={pageTitle} onClose={() => setFiltersOpen(false)} />}
     </header>
+    {showFilters && activeFilters.length > 0 && (
+      <div className="ui-filterbar" role="region" aria-label="Active filters">
+        {activeFilters.map((m) => (
+          <span key={m.key} className="ui-filter-chip">
+            <button type="button" className="ui-filter-chip-text" onClick={() => setFiltersOpen(true)}>{describe(m, values[m.key])}</button>
+            <button type="button" className="ui-filter-chip-x" aria-label={`Remove ${m.label} filter`} onClick={() => setFilter(page, m.key, undefined)}>×</button>
+          </span>
+        ))}
+        <button type="button" className="ui-link" onClick={() => clearFilters(page)}>Clear all</button>
+      </div>
+    )}
+    </>
   );
 }

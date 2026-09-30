@@ -6,6 +6,7 @@ import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
 import type { FleetTrailer } from '../../../data/fleet';
 import { matchesQuery } from '../../../lib/search';
+import { numberOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
 export function TrailersTab() {
   const { query, trailers } = useAppShell();
@@ -28,7 +29,20 @@ export function TrailersTab() {
     { label: 'Inspection / shop', value: String(inspection.length), note: inspection.map((t) => t.unit).join(', ') || 'None pending' },
   ];
 
-  const rows = (showArchived ? trailers : active).filter((t) => matchesQuery({ ...t, ...t.details }, query));
+  const lv = (t: FleetTrailer, k: string) => (typeof t.details[k] === 'string' ? (t.details[k] as string) : '');
+  const filters: FilterDef<FleetTrailer>[] = [
+    { key: 'type', label: 'Type', type: 'select', get: (t) => lv(t, 'type') || t.kind.split(' · ')[0] },
+    { key: 'status', label: 'Status', type: 'select', get: (t) => (t.archived ? 'Archived' : t.status) },
+    { key: 'length', label: 'Length', type: 'select', get: (t) => (lv(t, 'length') ? `${lv(t, 'length')} ft` : '') },
+    { key: 'where', label: 'Location', type: 'select', get: (t) => (t.where.startsWith('Yard') ? 'In a yard' : t.where.startsWith('En route') ? 'On the road' : 'At a customer') },
+    { key: 'ownership', label: 'Ownership', type: 'select', get: (t) => lv(t, 'ownership') },
+    { key: 'make', label: 'Make', type: 'select', get: (t) => lv(t, 'make') },
+    { key: 'year', label: 'Model year', type: 'range', get: (t) => numberOf(lv(t, 'year')) },
+  ];
+  const sort = useSort(usePageFilters((showArchived ? trailers : active).filter((t) => matchesQuery({ ...t, ...t.details }, query)), filters), {
+    make: (t) => [lv(t, 'make'), lv(t, 'year')].filter(Boolean).join(' '), plate: (t) => [lv(t, 'plateState'), lv(t, 'plateNumber')].filter(Boolean).join(' '),
+  });
+  const rows = sort.rows;
 
   const action = archivedCount > 0 && (
     <label className="ui-check">
@@ -45,7 +59,7 @@ export function TrailersTab() {
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Unit</th><th>Type</th><th>Make / year</th><th>Plate</th><th>Status</th><th>Location</th><th className="num" aria-label="Actions" />
+              <SortTh sort={sort} k="unit">Unit</SortTh><SortTh sort={sort} k="kind">Type</SortTh><SortTh sort={sort} k="make">Make / year</SortTh><SortTh sort={sort} k="plate">Plate</SortTh><SortTh sort={sort} k="status">Status</SortTh><SortTh sort={sort} k="where">Location</SortTh><th className="num" aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -62,7 +76,7 @@ export function TrailersTab() {
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">{query ? `Nothing matches “${query}”.` : 'No trailers yet.'}</div>}
+        {rows.length === 0 && <div className="ui-empty">{trailers.length ? 'Nothing matches the search or filters.' : 'No trailers yet.'}</div>}
       </Card>
 
       {editing && <TrailerDialog trailer={editing} onClose={() => setEditing(null)} />}

@@ -2,9 +2,10 @@ import { Card } from '../../../components/Card';
 import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
-import { CONTRACTS } from '../../../data/hr';
+import { CONTRACTS, type Contract } from '../../../data/hr';
 import { TODAY, daysFrom } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
+import { isoOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 // 'Oct 1' (this year) or 'Mar 14, 2027' → ISO date.
@@ -27,9 +28,18 @@ const KPIS = [
   { label: 'Drafts', value: String(drafts.length), note: drafts.map((c) => `${last(c.employee)} · starts ${c.start}`).join(' · ') || 'None' },
 ];
 
+const FILTERS: FilterDef<Contract>[] = [
+  { key: 'status', label: 'Status', type: 'select', get: (c) => c.status, options: ['Active', 'Renewal due', 'Expiring', 'Draft'] },
+  { key: 'role', label: 'Role', type: 'select', get: (c) => c.role },
+  { key: 'type', label: 'Contract type', type: 'select', get: (c) => c.type },
+  { key: 'renews', label: 'Renews or ends', type: 'dates', get: (c) => iso(c.renews) },
+  { key: 'start', label: 'Started', type: 'dates', get: (c) => isoOf(c.start) },
+];
+
 export function EmployeeContractsTab() {
   const { query } = useAppShell();
-  const rows = CONTRACTS.filter((c) => matchesQuery(c, query));
+  const sort = useSort(usePageFilters(CONTRACTS.filter((c) => matchesQuery(c, query)), FILTERS), { renews: (c) => iso(c.renews) });
+  const rows = sort.rows;
 
   return (
     <>
@@ -39,7 +49,7 @@ export function EmployeeContractsTab() {
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Employee</th><th>Role</th><th>Type</th><th>Start</th><th>Renews</th><th>Pay basis</th><th className="num">Status</th>
+              <SortTh sort={sort} k="employee">Employee</SortTh><SortTh sort={sort} k="role">Role</SortTh><SortTh sort={sort} k="type">Type</SortTh><SortTh sort={sort} k="start">Start</SortTh><SortTh sort={sort} k="renews">Renews</SortTh><SortTh sort={sort} k="payBasis">Pay basis</SortTh><SortTh sort={sort} k="status" num>Status</SortTh>
             </tr>
           </thead>
           <tbody>
@@ -56,7 +66,7 @@ export function EmployeeContractsTab() {
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">Nothing matches “{query}”.</div>}
+        {rows.length === 0 && <div className="ui-empty">Nothing matches the search or filters.</div>}
       </Card>
     </>
   );

@@ -5,9 +5,10 @@ import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
 import {
-  STATUS_TAG, TODAY, daysFrom, fmtDate, invoiceTotal, statusOf, usd, usd0, type InvoiceStatus,
+  STATUS_TAG, TODAY, daysFrom, fmtDate, invoiceTotal, statusOf, usd, usd0, type InvoiceRecord, type InvoiceStatus,
 } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
+import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
 type View = 'All' | 'Draft' | 'Unsent' | 'Sent';
 const VIEWS: View[] = ['All', 'Draft', 'Unsent', 'Sent'];
@@ -30,7 +31,19 @@ export function InvoicedTab() {
     { label: 'Due in 7 days', value: usd0(dueSoon.reduce((s, i) => s + invoiceTotal(i), 0)), note: `${dueSoon.length} invoice(s)` },
   ];
 
-  const rows = open.filter((i) => (view === 'All' || statusOf(i) === view) && matchesQuery({ ...i, ...i.billTo, loads: i.loads.join(' ') }, query));
+  const filters: FilterDef<InvoiceRecord>[] = [
+    { key: 'status', label: 'Status', type: 'select', get: (i) => statusOf(i), options: ['Draft', 'Unsent', 'Sent'] },
+    { key: 'customer', label: 'Customer', type: 'select', get: (i) => i.customer },
+    { key: 'terms', label: 'Terms', type: 'select', get: (i) => i.terms },
+    { key: 'issued', label: 'Issued', type: 'dates', get: (i) => (i.draft ? '' : i.issued) },
+    { key: 'due', label: 'Due', type: 'dates', get: (i) => i.due },
+    { key: 'amount', label: 'Amount', type: 'range', get: (i) => invoiceTotal(i), prefix: '$' },
+  ];
+  const base = open.filter((i) => (view === 'All' || statusOf(i) === view) && matchesQuery({ ...i, ...i.billTo, loads: i.loads.join(' ') }, query));
+  const sort = useSort(usePageFilters(base, filters), {
+    loads: (i) => i.loads.join(', '), issued: (i) => (i.draft ? '' : i.issued), amount: (i) => invoiceTotal(i), status: (i) => statusOf(i),
+  });
+  const rows = sort.rows;
 
   const filter = (
     <div className="ui-filter">
@@ -48,8 +61,8 @@ export function InvoicedTab() {
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Invoice</th><th>Customer</th><th>Load</th><th>Issued</th><th>Due</th>
-              <th className="num">Amount</th><th className="num">Status</th><th className="num" aria-label="Actions" />
+              <SortTh sort={sort} k="id">Invoice</SortTh><SortTh sort={sort} k="customer">Customer</SortTh><SortTh sort={sort} k="loads">Load</SortTh><SortTh sort={sort} k="issued">Issued</SortTh><SortTh sort={sort} k="due">Due</SortTh>
+              <SortTh sort={sort} k="amount" num>Amount</SortTh><SortTh sort={sort} k="status" num>Status</SortTh><th className="num" aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -80,7 +93,7 @@ export function InvoicedTab() {
             })}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">{query ? `Nothing matches “${query}”.` : 'No open invoices in this view.'}</div>}
+        {rows.length === 0 && <div className="ui-empty">{base.length ? 'Nothing matches the search or filters.' : 'No open invoices in this view.'}</div>}
       </Card>
 
       {actions.dialogs}

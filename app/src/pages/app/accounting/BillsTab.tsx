@@ -4,6 +4,7 @@ import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
 import { BILLS, daysBetween, dollars, money, TODAY, type Bill } from '../../../data/accounting';
 import { matchesQuery } from '../../../lib/search';
+import { isoOf, numberOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
 const total = (list: Bill[]) => money(list.reduce((sum, b) => sum + dollars(b.amount), 0));
 
@@ -19,9 +20,18 @@ const KPIS = [
   { label: 'Paid this month', value: String(paidThisMonth.length), note: total(paidThisMonth) },
 ];
 
+const FILTERS: FilterDef<Bill>[] = [
+  { key: 'status', label: 'Status', type: 'select', get: (b) => b.status, options: ['Overdue', 'Due', 'Scheduled', 'Paid'] },
+  { key: 'category', label: 'Category', type: 'select', get: (b) => b.category },
+  { key: 'vendor', label: 'Vendor', type: 'select', get: (b) => b.vendor },
+  { key: 'due', label: 'Due date', type: 'dates', get: (b) => isoOf(b.due) },
+  { key: 'amount', label: 'Amount', type: 'range', get: (b) => numberOf(b.amount), prefix: '$' },
+];
+
 export function BillsTab() {
   const { query } = useAppShell();
-  const rows = BILLS.filter((b) => matchesQuery(b, query));
+  const sort = useSort(usePageFilters(BILLS.filter((b) => matchesQuery(b, query)), FILTERS));
+  const rows = sort.rows;
 
   return (
     <>
@@ -31,7 +41,7 @@ export function BillsTab() {
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Vendor</th><th>Category</th><th>Due</th><th className="num">Amount</th><th className="num">Status</th>
+              <SortTh sort={sort} k="vendor">Vendor</SortTh><SortTh sort={sort} k="category">Category</SortTh><SortTh sort={sort} k="due">Due</SortTh><SortTh sort={sort} k="amount" num>Amount</SortTh><SortTh sort={sort} k="status" num>Status</SortTh>
             </tr>
           </thead>
           <tbody>
@@ -46,7 +56,7 @@ export function BillsTab() {
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">Nothing matches “{query}”.</div>}
+        {rows.length === 0 && <div className="ui-empty">Nothing matches the search or filters.</div>}
       </Card>
     </>
   );

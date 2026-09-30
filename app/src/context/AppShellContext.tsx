@@ -1,9 +1,10 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { BATCH_SEED, INVOICE_SEED, type Batch, type InvoiceRecord } from '../data/invoicing';
 import { FACILITY_SEED, renameInLoad, sameName, type Facility } from '../data/facilities';
 import { DRIVER_SEED, TRAILER_SEED, TRUCK_SEED, type FleetDriver, type FleetTrailer, type FleetTruck } from '../data/fleet';
 import { LOADS, type Load } from '../data/mock';
 import { usePersisted } from '../lib/persist';
+import type { FilterMeta, FilterValue, FilterValues } from '../lib/tableTools';
 
 export type LoadTab = 'Active' | 'Needs POD' | 'Delivered' | 'All';
 export type DriverTab = 'All' | 'On duty' | 'Available';
@@ -46,6 +47,13 @@ interface AppShellState {
   batches: Batch[];
   saveBatch: (b: Batch) => void;
   deleteBatch: (id: string) => void;
+  // Table filters, per page ('loads', 'fleet/drivers', …): what each page
+  // offers (registered by the page) and what is chosen (kept while you move around).
+  filterMeta: Record<string, FilterMeta[]>;
+  registerFilters: (page: string, meta: FilterMeta[]) => void;
+  filterValues: Record<string, FilterValues>;
+  setFilter: (page: string, key: string, value: FilterValue | undefined) => void;
+  clearFilters: (page: string) => void;
 }
 
 const AppShellContext = createContext<AppShellState | null>(null);
@@ -84,6 +92,18 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
   const [trailers, setTrailers] = usePersisted<FleetTrailer[]>('runtruck-trailers', TRAILER_SEED, (raw) => reviveRecords<FleetTrailer>(raw));
   const [invoices, setInvoices] = usePersisted<InvoiceRecord[]>('runtruck-invoices', INVOICE_SEED, (raw) => reviveInvoices(raw));
   const [batches, setBatches] = usePersisted<Batch[]>('runtruck-batches', BATCH_SEED, (raw) => reviveBatches(raw));
+  const [filterMeta, setFilterMeta] = useState<Record<string, FilterMeta[]>>({});
+  const [filterValues, setFilterValues] = useState<Record<string, FilterValues>>({});
+  const registerFilters = useCallback((page: string, meta: FilterMeta[]) =>
+    setFilterMeta((prev) => (JSON.stringify(prev[page]) === JSON.stringify(meta) ? prev : { ...prev, [page]: meta })), []);
+  const setFilter = useCallback((page: string, key: string, value: FilterValue | undefined) =>
+    setFilterValues((prev) => {
+      const next = { ...(prev[page] ?? {}) };
+      if (value === undefined) delete next[key];
+      else next[key] = value;
+      return { ...prev, [page]: next };
+    }), []);
+  const clearFilters = useCallback((page: string) => setFilterValues((prev) => ({ ...prev, [page]: {} })), []);
   const [facilities, setFacilities] = usePersisted<Facility[]>('runtruck-facilities', FACILITY_SEED, (raw) => reviveRecords<Facility>(raw));
 
   // A driver's truck and a truck's driver describe the same assignment, so
@@ -181,6 +201,11 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
     batches,
     saveBatch: (b) => setBatches((list) => upsert(list, b)),
     deleteBatch: (id) => setBatches((list) => list.filter((b) => b.id !== id)),
+    filterMeta,
+    registerFilters,
+    filterValues,
+    setFilter,
+    clearFilters,
   };
 
   return <AppShellContext.Provider value={value}>{children}</AppShellContext.Provider>;

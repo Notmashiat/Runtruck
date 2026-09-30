@@ -13,6 +13,7 @@ import type { FormValues } from '../../data/fleet';
 import { ACTIVE_STATUSES, stopsOf } from '../../data/mock';
 import { MAINTENANCE } from '../../data/safety';
 import { matchesQuery } from '../../lib/search';
+import { SortTh, useSort, usePageFilters, type FilterDef } from '../../lib/tableTools';
 
 type Group = 'All' | 'Customer sites' | 'Yards & shops' | 'On the road';
 const GROUPS: Group[] = ['All', 'Customer sites', 'Yards & shops', 'On the road'];
@@ -82,7 +83,23 @@ export function FacilitiesPage() {
     { label: 'Detention risk', value: String(risky.length), note: risky.length ? `${risky.slice(0, 2).map((f) => f.name).join(', ')}${risky.length > 2 ? '…' : ''}` : 'Every dock turns within free time' },
   ];
 
-  const rows = (showArchived ? facilities : active).filter((f) => inGroup(f, group) && matchesQuery({ ...f, ...f.details }, query));
+  const filters: FilterDef<Facility>[] = [
+    { key: 'type', label: 'Type', type: 'select', get: (f) => f.type },
+    { key: 'customer', label: 'Customer account', type: 'select', get: (f) => f.customer },
+    { key: 'state', label: 'State', type: 'select', get: (f) => f.state },
+    { key: 'scheduling', label: 'Scheduling', type: 'select', get: (f) => (isCustomerSite(f.type) ? text(f.details, 'scheduling') : '') },
+    { key: 'lumper', label: 'Lumper', type: 'select', get: (f) => (isCustomerSite(f.type) ? text(f.details, 'lumper') : '') },
+    { key: 'rating', label: 'Driver rating', type: 'select', get: (f) => text(f.details, 'rating') },
+    { key: 'open24', label: 'Open 24 hours', type: 'toggle', get: (f) => text(f.details, 'open24') === 'Yes', hint: 'Only sites open 24 hours' },
+    { key: 'openToday', label: 'Open today', type: 'toggle', get: (f) => hoursOn(f.details, TODAY_DOW) !== 'Closed', hint: `Only sites open today (${DAY})` },
+    { key: 'risk', label: 'Detention risk', type: 'toggle', get: (f) => detentionRisk(f.details), hint: 'Only sites where trucks usually wait past free time' },
+  ];
+  const base = (showArchived ? facilities : active).filter((f) => inGroup(f, group) && matchesQuery({ ...f, ...f.details }, query));
+  const sort = useSort(usePageFilters(base, filters), {
+    location: (f) => `${f.state} ${f.city}`, hours: (f) => hoursOn(f.details, TODAY_DOW), scheduling: (f) => (isCustomerSite(f.type) ? schedulingShort(f.details) : ''),
+    loads: (f) => (isCustomerSite(f.type) ? stopsUsing(loads, f.name).length : null),
+  });
+  const rows = sort.rows;
 
   const action = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -265,8 +282,8 @@ export function FacilitiesPage() {
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Facility</th><th>Type</th><th>Location</th><th>Hours · {DAY}</th><th>Scheduling</th>
-              <th className="num">Loads</th><th className="num" aria-label="Actions" />
+              <SortTh sort={sort} k="name">Facility</SortTh><SortTh sort={sort} k="type">Type</SortTh><SortTh sort={sort} k="location">Location</SortTh><SortTh sort={sort} k="hours">Hours · {DAY}</SortTh><SortTh sort={sort} k="scheduling">Scheduling</SortTh>
+              <SortTh sort={sort} k="loads" num>Loads</SortTh><th className="num" aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -297,7 +314,7 @@ export function FacilitiesPage() {
             })}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">{query ? `Nothing matches “${query}”.` : 'No facilities in this view.'}</div>}
+        {rows.length === 0 && <div className="ui-empty">{base.length ? 'Nothing matches the search or filters.' : 'No facilities in this view.'}</div>}
       </Card>
 
       {unknown.size > 0 && (

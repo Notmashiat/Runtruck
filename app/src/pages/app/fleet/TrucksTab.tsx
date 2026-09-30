@@ -6,6 +6,7 @@ import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
 import type { FleetTruck } from '../../../data/fleet';
 import { matchesQuery } from '../../../lib/search';
+import { numberOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
 // Odometer and service readings are display strings: '528,900' → 528900.
 const miles = (s: string) => Number(s.replace(/,/g, '')) || 0;
@@ -32,7 +33,22 @@ export function TrucksTab() {
     },
   ];
 
-  const rows = (showArchived ? trucks : active).filter((t) => matchesQuery({ ...t, ...t.details }, query));
+  const tv = (t: FleetTruck, k: string) => (typeof t.details[k] === 'string' ? (t.details[k] as string) : '');
+  const filters: FilterDef<FleetTruck>[] = [
+    { key: 'status', label: 'Status', type: 'select', get: (t) => (t.archived ? 'Archived' : t.status) },
+    { key: 'make', label: 'Make', type: 'select', get: (t) => tv(t, 'make') },
+    { key: 'ownership', label: 'Ownership', type: 'select', get: (t) => tv(t, 'ownership') },
+    { key: 'terminal', label: 'Home terminal', type: 'select', get: (t) => tv(t, 'terminal') },
+    { key: 'fuel', label: 'Fuel', type: 'select', get: (t) => tv(t, 'fuel') },
+    { key: 'assigned', label: 'Driver', type: 'select', get: (t) => (t.driver === 'Unassigned' ? 'No driver' : 'Has a driver') },
+    { key: 'year', label: 'Model year', type: 'range', get: (t) => numberOf(tv(t, 'year')) },
+    { key: 'odo', label: 'Odometer', type: 'range', get: (t) => numberOf(t.odo), suffix: ' mi' },
+    { key: 'toService', label: 'Miles to next service', type: 'range', get: (t) => (numberOf(t.service) !== null && numberOf(t.odo) !== null ? (numberOf(t.service) as number) - (numberOf(t.odo) as number) : null), suffix: ' mi' },
+  ];
+  const sort = useSort(usePageFilters((showArchived ? trucks : active).filter((t) => matchesQuery({ ...t, ...t.details }, query)), filters), {
+    driver: (t) => (t.driver === 'Unassigned' ? null : t.driver),
+  });
+  const rows = sort.rows;
 
   const action = archivedCount > 0 && (
     <label className="ui-check">
@@ -49,8 +65,8 @@ export function TrucksTab() {
         <table className="ui-table">
           <thead>
             <tr>
-              <th>Unit</th><th>Make / year</th><th>Plate</th><th>Assigned to</th>
-              <th className="num">Odometer</th><th className="num">Next service</th><th className="num">Status</th><th className="num" aria-label="Actions" />
+              <SortTh sort={sort} k="unit">Unit</SortTh><SortTh sort={sort} k="make">Make / year</SortTh><SortTh sort={sort} k="plate">Plate</SortTh><SortTh sort={sort} k="driver">Assigned to</SortTh>
+              <SortTh sort={sort} k="odo" num>Odometer</SortTh><SortTh sort={sort} k="service" num>Next service</SortTh><SortTh sort={sort} k="status" num>Status</SortTh><th className="num" aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -68,7 +84,7 @@ export function TrucksTab() {
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">{query ? `Nothing matches “${query}”.` : 'No units yet.'}</div>}
+        {rows.length === 0 && <div className="ui-empty">{trucks.length ? 'Nothing matches the search or filters.' : 'No units yet.'}</div>}
       </Card>
 
       {editing && <TruckDialog truck={editing} onClose={() => setEditing(null)} />}
