@@ -1,10 +1,8 @@
-import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { NAV, USER, type ViewKey } from '../data/mock';
 import { useAppShell } from '../context/AppShellContext';
 import { usePersisted } from '../lib/persist';
 import { NavIcon } from './NavIcons';
-import { SettingsDialog } from './SettingsDialog';
 
 const NARROW = '(max-width: 760px)';
 const isNarrow = () => typeof window !== 'undefined' && window.matchMedia?.(NARROW).matches;
@@ -16,11 +14,10 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2)
 export function Sidebar() {
   const location = useLocation();
   const { setQuery } = useAppShell();
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [collapsed, setCollapsed] = usePersisted<boolean>('runtruck-sidebar-collapsed', Boolean(isNarrow()), (raw) =>
     typeof raw === 'boolean' ? raw : null,
   );
-  const activeKey = (location.pathname.toLowerCase().split('/')[2] || 'dashboard') as ViewKey;
+  const activeKey = (location.pathname.toLowerCase().split('/')[2] || 'dashboard') as ViewKey | 'settings';
 
   // Picking a page on a phone closes the overlay again.
   const navigated = () => {
@@ -81,17 +78,23 @@ export function Sidebar() {
               <div className="ui-user-meta">{USER.role} · {USER.company}</div>
             </div>
           </div>
-          <button type="button" className="ui-nav-item" onClick={() => setSettingsOpen(true)} data-tip={tip('Settings')} aria-label={tip('Settings')}>
+          <Link
+            to="/app/settings"
+            onClick={navigated}
+            className={`ui-nav-item${activeKey === 'settings' ? ' is-active' : ''}`}
+            aria-current={activeKey === 'settings' ? 'page' : undefined}
+            data-tip={tip('Settings')}
+            aria-label={tip('Settings')}
+          >
             <NavIcon name="settings" />
             <span className="ui-nav-label">Settings</span>
-          </button>
+          </Link>
           <Link to="/" className="ui-nav-item" data-tip={tip('Log out')} aria-label={tip('Log out')}>
             <NavIcon name="logout" />
             <span className="ui-nav-label">Log out</span>
           </Link>
         </div>
 
-        {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
       </aside>
     </>
   );

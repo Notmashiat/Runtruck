@@ -9,6 +9,7 @@ import { CUSTOMERS } from '../data/mock';
 import { invoiceDoc, invoiceFileName } from '../lib/invoicePdf';
 import { downloadPdf, openPdf } from '../lib/pdf';
 import { Field, isEmail, launch, mailtoHref, useModal } from './FormBits';
+import { getSettings } from '../lib/settingsStore';
 import { PdfPages } from './PdfPages';
 import { ConfirmDialog } from './RecordDialog';
 
@@ -22,8 +23,8 @@ const SECTIONS: { key: SectionKey; title: string; help: string }[] = [
   { key: 'Preview', title: 'Preview', help: 'Exactly what the PDF will look like.' },
 ];
 
-const QUICK: { label: string; line: InvoiceLine }[] = [
-  { label: '+ Detention', line: { kind: 'Detention', description: 'Detention beyond 2 h free time', qty: '1', rate: '75' } },
+const QUICK = (): { label: string; line: InvoiceLine }[] => [
+  { label: '+ Detention', line: { kind: 'Detention', description: `Detention beyond ${getSettings().operations.detentionFreeHours} h free time`, qty: '1', rate: getSettings().operations.detentionRate } },
   { label: '+ Lumper', line: { kind: 'Lumper', description: 'Lumper receipt attached', qty: '1', rate: '' } },
   { label: '+ Stop-off', line: { kind: 'Stop-off', description: 'Additional stop', qty: '1', rate: '100' } },
   { label: '+ Discount', line: { kind: 'Discount', description: '', qty: '1', rate: '-50' } },
@@ -278,7 +279,7 @@ export function InvoiceDialog({ invoice, loadIds, onClose }: { invoice?: Invoice
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" className="ui-btn" onClick={() => setD((p) => ({ ...p, lines: [...p.lines, { kind: '', description: '', qty: '1', rate: '' }] }))}>+ Add charge</button>
-          {QUICK.map((q) => (
+          {QUICK().map((q) => (
             <button key={q.label} type="button" className="ui-btn" onClick={() => setD((p) => ({ ...p, lines: [...p.lines, { ...q.line }] }))}>{q.label}</button>
           ))}
         </div>

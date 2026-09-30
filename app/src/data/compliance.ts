@@ -3,6 +3,7 @@
 // and Safety › Driver documents.
 import type { FleetDriver } from './fleet';
 import { TODAY, addDays, daysFrom } from './invoicing';
+import { getSettings, numSetting } from '../lib/settingsStore';
 
 export type DocStatus = 'Valid' | 'Expiring' | 'Expired' | 'Missing';
 
@@ -17,8 +18,8 @@ export interface DriverDoc {
   tagClass: string;
 }
 
-// "Expiring" means within this many days of today.
-export const RENEW_WINDOW = 60;
+// "Expiring" means within this many days of today (Settings › Operations).
+export const renewWindow = () => numSetting(getSettings().operations.renewWindowDays, 60);
 
 export const DOC_TAG: Record<DocStatus, string> = { Valid: 'tag-green', Expiring: 'tag-outline', Expired: 'tag-outline', Missing: 'tag-outline' };
 const ORDER: Record<DocStatus, number> = { Expired: 0, Missing: 1, Expiring: 2, Valid: 3 };
@@ -29,7 +30,7 @@ const nextYear = (iso: string) => (/^\d{4}-/.test(iso) ? `${Number(iso.slice(0, 
 function status(date: string): DocStatus {
   if (!date) return 'Missing';
   const left = daysFrom(TODAY, date);
-  return left < 0 ? 'Expired' : left <= RENEW_WINDOW ? 'Expiring' : 'Valid';
+  return left < 0 ? 'Expired' : left <= renewWindow() ? 'Expiring' : 'Valid';
 }
 
 export function driverDocuments(drivers: FleetDriver[]): DriverDoc[] {
@@ -64,4 +65,4 @@ export function byUrgency(a: DriverDoc, b: DriverDoc) {
   return ORDER[a.status] - ORDER[b.status] || (a.date || '9999').localeCompare(b.date || '9999') || a.driver.localeCompare(b.driver);
 }
 
-export const renewBy = () => addDays(TODAY, RENEW_WINDOW);
+export const renewBy = () => addDays(TODAY, renewWindow());

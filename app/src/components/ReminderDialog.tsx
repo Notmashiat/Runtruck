@@ -1,28 +1,16 @@
 import { useState } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import {
-  COMPANY, TODAY, daysPastDue, fmtDate, invoiceTotal, round2, statusOf, usd, type InvoiceRecord,
+  COMPANY, TODAY, daysPastDue, fmtDate, invoiceTotal, round2, senderVars, statusOf, usd, type InvoiceRecord,
 } from '../data/invoicing';
-import { USER } from '../data/mock';
+import { fillTemplate, getSettings } from '../lib/settingsStore';
 import { Choice, Field, isEmail, launch, mailtoHref, smsHref, useModal } from './FormBits';
 
 type FeeType = '% of balance' | 'Flat amount';
 
-const TEMPLATE = [
-  'Hello {customer} team,',
-  '',
-  `Our records show the following invoice(s) from ${COMPANY.name} are past due:`,
-  '',
-  '{invoices}',
-  '',
-  'Balance due: {balance}',
-  '',
-  `Please remit by ACH to ${COMPANY.bank}, account ending ${COMPANY.accountLast4}, or by check to ${COMPANY.legal}, ${COMPANY.remit}. If payment is already on its way, reply with the remittance details and we will apply it.`,
-  '',
-  'Thank you,',
-  USER.name,
-  `${COMPANY.name} · ${COMPANY.phone}`,
-].join('\n');
+// Settings › Messages, with the company and sender filled in; {customer},
+// {invoices} and {balance} are filled for each customer below.
+const template0 = () => fillTemplate(getSettings().messages.reminderBody, senderVars());
 
 interface Group {
   customer: string;
@@ -48,7 +36,7 @@ export function ReminderDialog({ invoiceIds, onClose }: { invoiceIds?: string[];
   const [feeOn, setFeeOn] = useState(false);
   const [feeType, setFeeType] = useState<FeeType>('% of balance');
   const [feeValue, setFeeValue] = useState(String(COMPANY.lateFeePct));
-  const [template, setTemplate] = useState(TEMPLATE);
+  const [template, setTemplate] = useState(template0);
   const [contacts, setContacts] = useState<Record<string, { email: string; phone: string }>>(() =>
     Object.fromEntries(invoices.map((i) => [i.customer, { email: i.billTo.email, phone: i.billTo.phone }])),
   );
@@ -73,7 +61,7 @@ export function ReminderDialog({ invoiceIds, onClose }: { invoiceIds?: string[];
       phone: c.phone,
       subject: `Past due: ${list.map((i) => i.id).join(', ')} — ${COMPANY.name}`,
       message: template.replace(/\{customer\}/g, customer).replace(/\{invoices\}/g, rows).replace(/\{balance\}/g, usd(balance)),
-      text: `${COMPANY.name}: ${list.length === 1 ? `invoice ${list[0].id} is` : `${list.length} invoices are`} past due, balance ${usd(balance)}.${byEmail && c.email ? ` Details sent to ${c.email}.` : ''} Questions: ${COMPANY.phone}`,
+      text: fillTemplate(getSettings().messages.reminderText, { ...senderVars(), count: list.length === 1 ? `invoice ${list[0].id}` : `${list.length} invoices`, balance: usd(balance), customer }),
     };
   });
 

@@ -10,6 +10,8 @@ import {
 import { between, compactUsd, deliveredRevenue, mondayOf, sum, type Earned } from '../data/metrics';
 import { ACTIVE_STATUSES, stopsOf } from '../data/mock';
 import { matchesQuery } from '../lib/search';
+import { getSettings, numSetting } from '../lib/settingsStore';
+import type { AlertKey } from '../data/settings';
 import { SortTh, useSort } from '../lib/tableTools';
 import { Tag } from './Tag';
 
@@ -119,6 +121,7 @@ export function kpiFor(id: WidgetId, d: DashData): KpiView | null {
 // — cards —
 
 interface AttentionItem {
+  key: AlertKey;
   n: number;
   label: string;
   to: string;
@@ -127,19 +130,22 @@ interface AttentionItem {
 
 function Attention({ d }: { d: DashData }) {
   const n = (status: string) => d.active.filter((l) => l.status === status).length;
+  const s = getSettings();
+  const warnHours = numSetting(s.operations.hosWarnHours, 2);
+  const oldDays = numSetting(s.operations.unbilledDays, 3);
   const all: AttentionItem[] = [
-    { n: n('Needs driver'), label: 'Loads without a driver', to: '/app/loads', tone: 'red' },
-    { n: n('Delayed'), label: 'Delayed loads', to: '/app/loads', tone: 'red' },
-    { n: d.overdue.length, label: `Past-due invoices · ${usd0(d.overdue.reduce((s, i) => s + invoiceTotal(i), 0))}`, to: '/app/accounting/past-due', tone: 'red' },
-    { n: d.docs.filter((x) => x.status === 'Expired' || x.status === 'Missing').length, label: 'Driver documents expired or missing', to: '/app/safety/driver-documents', tone: 'red' },
-    { n: d.unbilled.filter((l) => l.pod === 'Missing').length, label: 'Delivered loads missing a POD', to: '/app/accounting/uninvoiced', tone: 'amber' },
-    { n: d.unbilled.filter((l) => daysFrom(l.delivered, TODAY) > 3).length, label: 'Delivered 3+ days ago, not invoiced', to: '/app/accounting/uninvoiced', tone: 'amber' },
-    { n: d.docs.filter((x) => x.status === 'Expiring').length, label: 'Driver documents due within 60 days', to: '/app/safety/driver-documents', tone: 'amber' },
-    { n: d.trucks.filter((t) => t.status !== 'In service').length, label: 'Trucks in the shop or due for service', to: '/app/fleet/trucks', tone: 'amber' },
-    { n: d.drivers.filter((x) => x.status === 'On duty' && hoursLeft(x.hos) < 2).length, label: 'Drivers under 2 h of driving time', to: '/app/fleet/drivers', tone: 'amber' },
-    { n: d.invoices.filter((i) => i.draft).length, label: 'Draft invoices not issued', to: '/app/accounting/invoiced', tone: 'blue' },
+    { key: 'noDriver', n: n('Needs driver'), label: 'Loads without a driver', to: '/app/loads', tone: 'red' },
+    { key: 'delayed', n: n('Delayed'), label: 'Delayed loads', to: '/app/loads', tone: 'red' },
+    { key: 'pastDue', n: d.overdue.length, label: `Past-due invoices · ${usd0(d.overdue.reduce((s, i) => s + invoiceTotal(i), 0))}`, to: '/app/accounting/past-due', tone: 'red' },
+    { key: 'docsExpired', n: d.docs.filter((x) => x.status === 'Expired' || x.status === 'Missing').length, label: 'Driver documents expired or missing', to: '/app/safety/driver-documents', tone: 'red' },
+    { key: 'missingPod', n: d.unbilled.filter((l) => l.pod === 'Missing').length, label: 'Delivered loads missing a POD', to: '/app/accounting/uninvoiced', tone: 'amber' },
+    { key: 'unbilledOld', n: d.unbilled.filter((l) => daysFrom(l.delivered, TODAY) > oldDays).length, label: `Delivered ${oldDays}+ days ago, not invoiced`, to: '/app/accounting/uninvoiced', tone: 'amber' },
+    { key: 'docsExpiring', n: d.docs.filter((x) => x.status === 'Expiring').length, label: `Driver documents due within ${numSetting(s.operations.renewWindowDays, 60)} days`, to: '/app/safety/driver-documents', tone: 'amber' },
+    { key: 'trucksShop', n: d.trucks.filter((t) => t.status !== 'In service').length, label: 'Trucks in the shop or due for service', to: '/app/fleet/trucks', tone: 'amber' },
+    { key: 'lowHours', n: d.drivers.filter((x) => x.status === 'On duty' && hoursLeft(x.hos) < warnHours).length, label: `Drivers under ${warnHours} h of driving time`, to: '/app/fleet/drivers', tone: 'amber' },
+    { key: 'drafts', n: d.invoices.filter((i) => i.draft).length, label: 'Draft invoices not issued', to: '/app/accounting/invoiced', tone: 'blue' },
   ];
-  const items = all.filter((i) => i.n > 0);
+  const items = all.filter((i) => i.n > 0 && s.alerts[i.key]);
   if (items.length === 0) return <div className="dash-empty">All clear — nothing is waiting on anyone.</div>;
   return (
     <div className="dash-list">

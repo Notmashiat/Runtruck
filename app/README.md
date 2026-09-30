@@ -63,10 +63,20 @@ The sidebar collapses to an icon rail (the button beside the logo; the choice is
 `runtruck-sidebar-collapsed`). Each section has a line icon (`components/NavIcons.tsx`), and in the
 rail its name shows as a hover tip. On narrow screens it starts collapsed and opens over the page.
 
-The sidebar foot has the signed-in user (`USER` in `data/mock.ts`, with Member ID and Company ID),
-**Settings** — a popup with a Profile page and an Appearance page whose dark-mode switch darkens the
-whole site (app and marketing page; `:root[data-theme="dark"]` tokens in `shell.css` and `app.css`) —
-and **Log out**, which returns to the marketing page.
+The sidebar foot has the signed-in user, **Settings** and **Log out** (back to the marketing page).
+
+**Settings** (`/app/settings/<section>`, `pages/app/SettingsPage.tsx`, `data/settings.ts`,
+`lib/settingsStore.ts`, `lib/applySettings.ts`; stored as `runtruck-settings`). Sections: Profile
+(name, title, email, phone, time zone — the sidebar, greeting and email signatures), Company (names,
+USDOT/MC/EIN, address, phone, billing email, website — the invoice letterhead and emails), Invoicing
+& payments (number prefix and start, default terms, fuel surcharge %, late fee %, bank, account last
+4, remit-to, payment note, footer, factoring company), Messages (invoice email and reminder
+email/text templates with {placeholders} and a live preview), Operations (home terminals for the
+fleet forms, hours-of-service warning, document renewal window, unbilled-days flag, detention
+defaults), Alerts (which Needs attention items the dashboard shows), Team (members and roles; Admins
+and Dispatchers are the dispatchers on driver records), Appearance (light/dark/system, accent colour,
+text size, table spacing, start page) and Data (back up to a file, restore, reset records or
+settings). Text sections save with Save/Discard; toggles and appearance apply at once.
 
 **+ New Load** (Dashboard and Loads) opens a large popup with sections for load info, stops
 (multi-stop), freight, LTL details, carrier (own fleet or a partner carrier from `CARRIERS`), driver

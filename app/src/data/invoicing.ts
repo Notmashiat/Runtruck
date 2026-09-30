@@ -4,6 +4,7 @@
 // Dates are ISO strings ('2026-09-03'); "today" is the planner's.
 import { CUSTOMERS, INVOICES, LOADS, USER, type Load } from './mock';
 import { TODAY } from './planner';
+import { fillTemplate, getSettings, numSetting } from '../lib/settingsStore';
 
 export { TODAY };
 
@@ -64,6 +65,7 @@ export const COMPANY = {
   zip: '95354',
   phone: '(209) 555-0100',
   email: 'billing@sunridgefreight.com',
+  website: 'sunridgefreight.com',
   mc: 'MC 812044',
   dot: 'USDOT 2291176',
   remit: 'PO Box 1187, Modesto, CA 95353',
@@ -104,7 +106,7 @@ export function billToFor(customer: string): BillTo {
 }
 
 export function termsFor(customer: string): string {
-  return CUSTOMERS.find((c) => c.name === customer)?.terms ?? 'Net 30';
+  return CUSTOMERS.find((c) => c.name === customer)?.terms ?? getSettings().invoicing.defaultTerms;
 }
 
 // — invoices —
@@ -175,19 +177,22 @@ export function statusOf(inv: InvoiceRecord): InvoiceStatus {
 
 export const daysPastDue = (inv: InvoiceRecord) => (inv.due ? Math.max(0, daysFrom(inv.due, TODAY)) : 0);
 
+// Settings › Invoicing: the prefix, and the number to start from.
 export function nextInvoiceId(invoices: InvoiceRecord[]): string {
-  const n = Math.max(8845, ...invoices.map((i) => Number(i.id.replace(/\D/g, '')) || 0)) + 1;
-  return `INV-${n}`;
+  const { prefix, startAt } = getSettings().invoicing;
+  const n = Math.max(numSetting(startAt, 1) - 1, ...invoices.map((i) => Number(i.id.replace(/\D/g, '')) || 0)) + 1;
+  return `${prefix}${n}`;
 }
 
 // A rate as line haul plus fuel surcharge (12% of line haul), the way the
 // rate confirmations quote it. Descriptions start with the load number, which
 // is how a load's charges are found again when it is taken off an invoice.
 export function rateLines(amount: number, route: string, miles: string): InvoiceLine[] {
-  const haul = Math.round(amount / 1.12);
+  const fsc = numSetting(getSettings().invoicing.fscPct, 0);
+  const haul = Math.round(amount / (1 + fsc / 100));
   return [
     { kind: 'Line haul', description: `${route}${miles ? ` · ${miles} mi` : ''}`, qty: '1', rate: String(haul) },
-    { kind: 'Fuel surcharge', description: `${route.split(' · ')[0]} · FSC per rate confirmation (12%)`, qty: '1', rate: String(round2(amount - haul)) },
+    ...(fsc > 0 ? [{ kind: 'Fuel surcharge', description: `${route.split(' · ')[0]} · FSC per rate confirmation (${fsc}%)`, qty: '1', rate: String(round2(amount - haul)) }] : []),
   ];
 }
 
@@ -405,24 +410,26 @@ export const BATCH_SEED: Batch[] = [
 
 // — messages —
 
-export function invoiceEmail(inv: InvoiceRecord): { subject: string; body: string } {
-  const total = usd(invoiceTotal(inv));
+// How to pay, in words, for emails and reminders.
+export function paymentText(): string {
+  return `by ACH to ${COMPANY.bank}, account ending ${COMPANY.accountLast4}, or by check to ${COMPANY.legal}, ${COMPANY.remit}`;
+}
+
+// Values the message templates in Settings › Messages can use.
+export function senderVars(): Record<string, string> {
   return {
-    subject: `Invoice ${inv.id} from ${COMPANY.name} — ${total} due ${fmtDate(inv.due)}`,
-    body: [
-      'Hello,',
-      '',
-      `Please find attached invoice ${inv.id} for ${inv.loads.length > 1 ? 'loads' : 'load'} ${inv.loads.join(', ') || '—'}${inv.route ? ` (${inv.route.replace(/→/g, 'to')})` : ''}.`,
-      '',
-      `Amount due: ${total}`,
-      `Due date: ${fmtDate(inv.due)} (${inv.terms})`,
-      inv.ref ? `Your reference: ${inv.ref}` : '',
-      '',
-      `Remit by ACH to ${COMPANY.bank}, account ending ${COMPANY.accountLast4}, or by check to ${COMPANY.legal}, ${COMPANY.remit}.`,
-      '',
-      'Thank you for your business,',
-      `${USER.name}`,
-      `${COMPANY.name} · ${COMPANY.phone} · ${COMPANY.email}`,
-    ].filter((line, i, all) => line !== '' || all[i - 1] !== '').join('\n'),
+    company: COMPANY.name, sender: USER.role ? `${USER.name}, ${USER.role}` : USER.name, phone: COMPANY.phone, email: COMPANY.email,
+    payment: paymentText(),
   };
+}
+
+export function invoiceEmail(inv: InvoiceRecord): { subject: string; body: string } {
+  const m = getSettings().messages;
+  const vars = {
+    ...senderVars(),
+    invoice: inv.id, customer: inv.customer, amount: usd(invoiceTotal(inv)), due: fmtDate(inv.due), terms: inv.terms,
+    loads: `${inv.loads.length > 1 ? 'loads' : 'load'} ${inv.loads.join(', ') || '—'}`,
+    route: inv.route ? ` (${inv.route.replace(/→/g, 'to')})` : '', reference: inv.ref,
+  };
+  return { subject: fillTemplate(m.invoiceSubject, vars), body: fillTemplate(m.invoiceBody, vars) };
 }

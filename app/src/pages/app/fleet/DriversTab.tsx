@@ -5,7 +5,8 @@ import { DriverDialog } from '../../../components/FleetDialogs';
 import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell, type DriverTab } from '../../../context/AppShellContext';
-import { byUrgency, driverDocuments, RENEW_WINDOW } from '../../../data/compliance';
+import { byUrgency, driverDocuments, renewWindow } from '../../../data/compliance';
+import { getSettings, numSetting } from '../../../lib/settingsStore';
 import type { FleetDriver } from '../../../data/fleet';
 import { fmtDate } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
@@ -28,7 +29,8 @@ export function DriversTab() {
   const archivedCount = drivers.length - active.length;
   const onDuty = active.filter((d) => d.status === 'On duty');
   const available = active.filter((d) => d.status === 'Available');
-  const atRisk = onDuty.filter((d) => hoursLeft(d.hos) < 2);
+  const warnHours = numSetting(getSettings().operations.hosWarnHours, 2);
+  const atRisk = onDuty.filter((d) => hoursLeft(d.hos) < warnHours);
   const maxMiles = Math.max(1, ...active.map((d) => d.miles));
   const totalMiles = active.reduce((sum, d) => sum + d.miles, 0);
   // Documents expired, missing or due within the renewal window, from the driver records.
@@ -38,8 +40,8 @@ export function DriversTab() {
   const kpis = [
     { label: 'On the roster', value: String(active.length), note: `${onDuty.length} on duty · ${active.length - onDuty.length - available.length} off` },
     { label: 'Available now', value: String(available.length), note: available.map((d) => d.name.split(' ')[0]).join(', ') || 'Nobody free' },
-    { label: 'Hours at risk', value: String(atRisk.length), note: atRisk.map((d) => `${d.name.split(' ').at(-1)} · ${d.hos}`).join(', ') || 'Nobody under 2h' },
-    { label: 'Docs to renew', value: String(watchlist.length), note: [`${countDocs('Expired')} expired`, `${countDocs('Expiring')} due within ${RENEW_WINDOW} days`, countDocs('Missing') ? `${countDocs('Missing')} missing` : ''].filter(Boolean).join(' · ') },
+    { label: 'Hours at risk', value: String(atRisk.length), note: atRisk.map((d) => `${d.name.split(' ').at(-1)} · ${d.hos}`).join(', ') || `Nobody under ${warnHours}h` },
+    { label: 'Docs to renew', value: String(watchlist.length), note: [`${countDocs('Expired')} expired`, `${countDocs('Expiring')} due within ${renewWindow()} days`, countDocs('Missing') ? `${countDocs('Missing')} missing` : ''].filter(Boolean).join(' · ') },
   ];
 
   const dv = (d: FleetDriver, k: string) => (typeof d.details[k] === 'string' ? (d.details[k] as string) : '');

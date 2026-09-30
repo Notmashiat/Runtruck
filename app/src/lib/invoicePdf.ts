@@ -5,6 +5,7 @@ import {
   COMPANY, fmtDate, invoiceTotal, lateFees, lineAmount, statusOf, usd, type InvoiceRecord,
 } from '../data/invoicing';
 import { PAGE_H, PAGE_W, PdfDoc, textWidth, wrap } from './pdf';
+import { getSettings } from './settingsStore';
 
 const BRAND = '#1e5eff';
 const BRAND_SOFT = '#eef3ff';
@@ -39,8 +40,8 @@ export function invoiceDoc(inv: InvoiceRecord): PdfDoc {
   doc.text(L + 19, 58, initials(COMPANY.name), { size: 15, bold: true, color: '#ffffff', align: 'center' });
   doc.text(L + 50, 48, COMPANY.legal, { size: 15, bold: true, color: INK });
   doc.text(L + 50, 62, `${COMPANY.street}, ${COMPANY.city}, ${COMPANY.state} ${COMPANY.zip}`, { size: 8.5, color: MUTED });
-  doc.text(L + 50, 73, `${COMPANY.phone}  ·  ${COMPANY.email}`, { size: 8.5, color: MUTED });
-  doc.text(L + 50, 84, `${COMPANY.dot}  ·  ${COMPANY.mc}`, { size: 8.5, color: MUTED });
+  doc.text(L + 50, 73, [COMPANY.phone, COMPANY.email, COMPANY.website].filter(Boolean).join('  ·  '), { size: 8.5, color: MUTED });
+  doc.text(L + 50, 84, [COMPANY.dot, COMPANY.mc].filter(Boolean).join('  ·  '), { size: 8.5, color: MUTED });
 
   doc.text(R, 56, 'INVOICE', { size: 26, bold: true, color: INK, align: 'right' });
   doc.text(R, 74, inv.id, { size: 11, bold: true, color: BRAND, align: 'right' });
@@ -194,7 +195,7 @@ export function invoiceDoc(inv: InvoiceRecord): PdfDoc {
     doc.text(L + 14, y + 36 + i * 14, k, { size: 8.5, bold: true, color: INK });
     doc.text(L + 84, y + 36 + i * 14, v, { size: 8.5, color: '#374151' });
   });
-  wrap(`Please include the invoice number with your payment. Balances unpaid after the due date accrue a late fee of ${COMPANY.lateFeePct}% per month.`, W - 28, 7.5)
+  wrap([getSettings().invoicing.paymentNote, COMPANY.lateFeePct > 0 ? `Balances unpaid after the due date accrue a late fee of ${COMPANY.lateFeePct}% per month.` : ''].filter(Boolean).join(' '), W - 28, 7.5)
     .slice(0, 2)
     .forEach((s, i) => doc.text(L + 14, y + 80 + i * 9, s, { size: 7.5, color: MUTED }));
 
@@ -203,9 +204,9 @@ export function invoiceDoc(inv: InvoiceRecord): PdfDoc {
   doc.pages.forEach((_, i) => {
     doc.goToPage(i);
     doc.line(L, PAGE_H - 46, R, PAGE_H - 46, BORDER);
-    doc.text(L, PAGE_H - 30, 'Thank you for your business.', { size: 8.5, bold: true, color: INK });
+    doc.text(L, PAGE_H - 30, getSettings().invoicing.footer, { size: 8.5, bold: true, color: INK });
     doc.text(R, PAGE_H - 30, `${inv.id}  ·  Page ${i + 1} of ${count}`, { size: 7.5, color: MUTED, align: 'right' });
-    doc.text(PAGE_W / 2, PAGE_H - 18, `${COMPANY.legal} · ${COMPANY.dot} · ${COMPANY.mc} · Issued with RunTruck TMS`, { size: 7, color: '#9ca3af', align: 'center' });
+    doc.text(PAGE_W / 2, PAGE_H - 18, [COMPANY.legal, COMPANY.dot, COMPANY.mc, 'Issued with RunTruck TMS'].filter(Boolean).join(' · '), { size: 7, color: '#9ca3af', align: 'center' });
   });
   doc.goToPage(count - 1);
   return doc;

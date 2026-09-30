@@ -8,6 +8,8 @@ import { LoadDetailPage } from './pages/app/LoadDetailPage';
 import { PlannerPage } from './pages/app/PlannerPage';
 import { CustomersPage } from './pages/app/CustomersPage';
 import { FacilitiesPage } from './pages/app/FacilitiesPage';
+import { SettingsPage } from './pages/app/SettingsPage';
+import { getSettings } from './lib/settingsStore';
 import { DriversTab } from './pages/app/fleet/DriversTab';
 import { TrucksTab } from './pages/app/fleet/TrucksTab';
 import { TrailersTab } from './pages/app/fleet/TrailersTab';
@@ -30,7 +32,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/app" element={<AppLayout />}>
-        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route index element={<Navigate to={getSettings().appearance.startPage} replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="loads" element={<LoadsPage />} />
         <Route path="loads/:id" element={<LoadDetailPage />} />
@@ -43,6 +45,8 @@ export default function App() {
         </Route>
         <Route path="crm" element={<CustomersPage />} />
         <Route path="facilities" element={<FacilitiesPage />} />
+        <Route path="settings" element={<Navigate to="profile" replace />} />
+        <Route path="settings/:section" element={<SettingsPage />} />
         <Route path="accounting" element={<TabbedSection />}>
           <Route index element={<Navigate to="uninvoiced" replace />} />
           <Route path="uninvoiced" element={<UninvoicedTab />} />

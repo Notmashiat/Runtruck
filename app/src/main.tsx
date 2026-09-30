@@ -7,9 +7,11 @@ import './styles/shell.css'
 import './styles/calendar.css'
 import './styles/dashboard.css'
 import { initTheme } from './lib/theme'
+import { initSettings } from './lib/applySettings'
 import App from './App.tsx'
 
 initTheme()
+initSettings()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

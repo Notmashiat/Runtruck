@@ -2,7 +2,7 @@ import { Card } from '../../../components/Card';
 import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
-import { byUrgency, driverDocuments, RENEW_WINDOW, renewBy, type DriverDoc } from '../../../data/compliance';
+import { byUrgency, driverDocuments, renewBy, renewWindow, type DriverDoc } from '../../../data/compliance';
 import { fmtDate } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
@@ -26,7 +26,7 @@ export function DriverDocumentsTab() {
 
   const kpis = [
     { label: 'Documents', value: String(docs.length), note: `${new Set(docs.map((d) => d.driverId)).size} active drivers on file` },
-    { label: `Expiring (${RENEW_WINDOW} d)`, value: String(of('Expiring').length), note: `Renew before ${fmtDate(renewBy(), true)}` },
+    { label: `Expiring (${renewWindow()} d)`, value: String(of('Expiring').length), note: `Renew before ${fmtDate(renewBy(), true)}` },
     { label: 'Expired', value: String(of('Expired').length), note: list('Expired') },
     { label: 'Missing', value: String(of('Missing').length), note: list('Missing') },
   ];

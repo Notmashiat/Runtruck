@@ -7,6 +7,7 @@ import {
 import { nextId, YES_NO, type FormValues } from '../data/fleet';
 import { CUSTOMERS } from '../data/mock';
 import { NON_NEGATIVE, PHONE, POSITIVE, STATE, ZIP } from '../lib/rules';
+import { getSettings } from '../lib/settingsStore';
 import { RecordDialog, type SectionSpec } from './RecordDialog';
 
 const val = (v: FormValues, k: string) => (typeof v[k] === 'string' ? (v[k] as string) : '');
@@ -142,7 +143,10 @@ function sections(takenNames: string[]): SectionSpec[] {
 export function FacilityDialog({ facility, prefill, onClose }: { facility?: Facility; prefill?: FormValues; onClose: () => void }) {
   const { facilities, loads, saveFacility, archiveFacility, deleteFacility } = useAppShell();
   const id = facility?.id ?? nextId('FAC', facilities.map((f) => f.id));
-  const initial: FormValues = facility ? { ...FACILITY_BLANK, ...facility.details } : { ...FACILITY_BLANK, type: 'Shipper', ...prefill };
+  const ops = getSettings().operations;
+  const initial: FormValues = facility
+    ? { ...FACILITY_BLANK, ...facility.details }
+    : { ...FACILITY_BLANK, type: 'Shipper', freeTime: ops.detentionFreeHours, detentionRate: ops.detentionRate, ...prefill };
   const onLoads = facility ? stopsUsing(loads, facility.name).length : 0;
 
   return (
