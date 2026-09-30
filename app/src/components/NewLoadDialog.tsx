@@ -787,8 +787,13 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
       ref={ref}
       className="ui-dialog is-large"
       aria-label={editing ? `Edit load ${load?.id}` : 'New load'}
-      onClose={onClose}
+      // React passes a nested dialog's close/cancel up to this one, so only
+      // react to this dialog's own events (not the Delete load prompt's).
+      onClose={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
       onCancel={(e) => {
+        if (e.target !== e.currentTarget) return;
         // Escape: ask before throwing away a half-entered load.
         e.preventDefault();
         requestClose();
@@ -841,7 +846,17 @@ function ConfirmDelete({ load, onConfirm, onClose }: { load: Load; onConfirm: ()
   }, []);
 
   return (
-    <dialog ref={ref} className="ui-dialog is-confirm" role="alertdialog" aria-label={`Delete load ${load.id}?`} onClose={onClose}>
+    <dialog
+      ref={ref}
+      className="ui-dialog is-confirm"
+      role="alertdialog"
+      aria-label={`Delete load ${load.id}?`}
+      onClose={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
+      onCancel={(e) => e.stopPropagation()}
+    >
       <div className="ui-dialog-main">
         <section className="ui-dialog-body">
           <h2 className="ui-h2" style={{ margin: 0 }}>Delete load {load.id}?</h2>
