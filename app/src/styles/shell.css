@@ -87,6 +87,9 @@
 .ui-shell :focus-visible { outline-color: var(--ui-primary); }
 .ui-column { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 .ui-main { flex: 1; overflow-y: auto; padding: 20px 24px 32px; display: flex; flex-direction: column; gap: 20px; }
+/* Sections keep their natural height and the main area scrolls; without this the
+   cards (overflow: hidden) shrink to the window and clip their content. */
+.ui-main > * { flex-shrink: 0; }
 
 /* — sidebar: the table-header grey with the same bold uppercase labels — */
 .ui-sidebar {

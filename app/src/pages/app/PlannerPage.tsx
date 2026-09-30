@@ -507,7 +507,7 @@ function TimeGrid({ days, events, prefs, look, time, dnd, onOpenDay, onCreate, o
   };
 
   return (
-    <div className="cal" ref={rootRef}>
+    <div className="cal cal-time" ref={rootRef}>
       <div className="cal-scroll" ref={scrollRef}>
         <div className="cal-sticky">
           <div className="cal-head" style={cols}>
@@ -606,7 +606,7 @@ function MonthGrid({ weeks, month, events, look, time, dnd, onOpenDay, onCreate,
     if (rootRef.current) dnd.start(e, o, { kind: 'month', mode: 'move', root: rootRef.current });
   };
   return (
-    <div className="cal" ref={rootRef}>
+    <div className="cal cal-month" ref={rootRef}>
       <div className="cal-month-head" style={cols}>
         {(weeks[0] ?? []).map((d) => <div key={d.getDay()}>{WEEKDAYS[d.getDay()].slice(0, 3)}</div>)}
       </div>

@@ -43,8 +43,12 @@
 .cal-dot { width: 8px; height: 8px; flex: none; border-radius: 999px; background: var(--c); }
 .cal-dot.is-ring { width: 10px; height: 10px; background: transparent; border: 2px solid var(--c); }
 
-.cal { background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 16px; overflow: hidden; }
-.cal-scroll { max-height: max(420px, calc(100vh - 300px)); overflow: auto; }
+.cal { display: flex; flex-direction: column; background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 16px; overflow: hidden; }
+/* Day/Week: the card takes the rest of the page and its hours scroll inside it.
+   Month: the card is at least as tall as the rest of the page and its weeks stretch. */
+.cal.cal-time { flex: 1 0 0; min-height: 420px; }
+.cal.cal-month { flex: 1 0 auto; }
+.cal-scroll { flex: 1; min-height: 0; overflow: auto; }
 /* day headers and the all-day row stay pinned while the hours scroll */
 .cal-sticky { position: sticky; top: 0; z-index: 3; background: var(--ui-card); }
 .cal-head { display: grid; border-bottom: 1px solid var(--ui-border); }
@@ -116,7 +120,7 @@ body.cal-resizing, body.cal-resizing * { cursor: ns-resize !important; user-sele
 
 .cal-month-head { display: grid; border-bottom: 1px solid var(--ui-border); }
 .cal-month-head > div { padding: 10px; text-align: center; font-size: 12px; font-weight: 600; color: var(--ui-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-.cal-month-row { display: grid; }
+.cal-month-row { display: grid; flex: 1 0 auto; }
 .cal-month-row + .cal-month-row { border-top: 1px solid var(--ui-border); }
 .cal-month-cell { min-width: 0; min-height: 118px; display: flex; flex-direction: column; gap: 3px; padding: 6px; cursor: cell; }
 .cal-month-cell + .cal-month-cell { border-left: 1px solid var(--ui-border); }
