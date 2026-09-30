@@ -27,12 +27,17 @@ import { DriverDocumentsTab } from './pages/app/safety/DriverDocumentsTab';
 import { ViolationsTab } from './pages/app/safety/ViolationsTab';
 import { ClaimSettlementsTab } from './pages/app/safety/ClaimSettlementsTab';
 
+// /app opens the start page chosen in Settings › Appearance (read when it is visited).
+function StartPage() {
+  return <Navigate to={getSettings().appearance.startPage} replace />;
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/app" element={<AppLayout />}>
-        <Route index element={<Navigate to={getSettings().appearance.startPage} replace />} />
+        <Route index element={<StartPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="loads" element={<LoadsPage />} />
         <Route path="loads/:id" element={<LoadDetailPage />} />
