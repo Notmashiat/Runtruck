@@ -107,7 +107,8 @@ They are stored as `runtruck-drivers`, `runtruck-trucks` and `runtruck-trailers`
 Overdue once past its due date, Paid).
 
 - **Uninvoiced** lists delivered loads with no invoice (the billing queue plus Delivered / Needs POD
-  loads on the board). **+ New Invoice** (top right) and **New invoice** on each row open the invoice
+  loads on the board). Clicking a load number opens a small popup with the load's details (dates,
+  reference, freight, stops, rate breakdown, bill-to and terms). **+ New Invoice** (top right) and **New invoice** on each row open the invoice
   popup: customer and bill-to, the delivered loads to bill (ticking one adds its line haul and fuel
   surcharge), invoice date / terms / due date / PO / BOL, shipment details, an editable charges table
   (detention, lumper, stop-off, discounts…), notes, and a **Preview** of the PDF. Save draft, Create

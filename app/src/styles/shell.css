@@ -436,3 +436,17 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 /* invoice preview: the PDF's pages drawn on screen */
 .ui-pdf-pages { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 16px; background: var(--ui-thead); border-radius: 12px; }
 .ui-pdf-page { width: 100%; max-width: 720px; height: auto; background: #fff; box-shadow: 0 2px 10px rgba(15, 23, 42, 0.16); }
+
+/* — load number as a button (opens the load popup) and the compact popup — */
+.ui-id-btn {
+  padding: 0; font: inherit; font-weight: 700; color: var(--ui-primary); background: none; border: 0; cursor: pointer;
+  text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--ui-primary) 35%, transparent); text-underline-offset: 3px;
+}
+.ui-id-btn:hover { color: var(--ui-primary-hover); text-decoration-color: currentColor; }
+.ui-dialog.is-compact { width: min(540px, calc(100% - 24px)); max-height: calc(100vh - 48px); min-height: 0; }
+.ui-dialog.is-compact .ui-dialog-main { min-height: 0; }
+.ui-dialog.is-compact .ui-dialog-body { gap: 16px; padding: 24px 28px; }
+.ui-dialog.is-compact .ui-dialog-foot { padding: 14px 28px; }
+.ui-kv-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; }
+.ui-rate-rows { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; font-size: 13px; font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+.ui-rate-rows > :nth-last-child(-n + 2) { padding-top: 6px; border-top: 1px solid var(--ui-border); }

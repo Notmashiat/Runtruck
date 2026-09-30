@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Card } from '../../../components/Card';
 import { InvoiceDialog } from '../../../components/InvoiceDialog';
 import { Kpis } from '../../../components/Kpis';
+import { LoadInfoDialog } from '../../../components/LoadInfoDialog';
 import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
-import { TODAY, billableLoads, daysFrom, fmtDate, usd, usd0 } from '../../../data/invoicing';
+import { TODAY, billableLoads, daysFrom, fmtDate, usd, usd0, type BillableLoad } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
 
 export function UninvoicedTab() {
   const { query, loads, invoices } = useAppShell();
   const [creating, setCreating] = useState<string[] | null>(null);
+  const [viewing, setViewing] = useState<BillableLoad | null>(null);
   const queue = billableLoads(loads, invoices);
   const rows = queue.filter((l) => matchesQuery(l, query));
 
@@ -37,7 +38,9 @@ export function UninvoicedTab() {
           <tbody>
             {rows.map((l) => (
               <tr key={l.id}>
-                <td className="strong">{loads.some((x) => x.id === l.id) ? <Link className="ui-link" to={`/app/loads/${l.id}`}>{l.id}</Link> : l.id}</td>
+                <td className="strong">
+                  <button type="button" className="ui-id-btn" onClick={() => setViewing(l)} aria-label={`Show load ${l.id}`}>{l.id}</button>
+                </td>
                 <td>{l.customer}</td>
                 <td className="muted">{l.route}</td>
                 <td>{fmtDate(l.delivered, true)}</td>
@@ -53,6 +56,7 @@ export function UninvoicedTab() {
         {rows.length === 0 && <div className="ui-empty">{query ? `Nothing matches “${query}”.` : 'Every delivered load has an invoice.'}</div>}
       </Card>
 
+      {viewing && <LoadInfoDialog load={viewing} onInvoice={() => setCreating([viewing.id])} onClose={() => setViewing(null)} />}
       {creating && <InvoiceDialog loadIds={creating} onClose={() => setCreating(null)} />}
     </>
   );
