@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import { money } from '../data/accounting';
+import { facilityFor, stopHint, type Facility } from '../data/facilities';
 import { CARRIERS, CUSTOMERS, stopsOf, USER, type Load } from '../data/mock';
 import { shortToIso } from '../lib/dates';
 
@@ -307,7 +308,8 @@ interface NewLoadDialogProps {
 export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const bodyRef = useRef<HTMLElement>(null);
-  const { loads, addLoad, updateLoad, deleteLoad, drivers, trucks, trailers } = useAppShell();
+  const { loads, addLoad, updateLoad, deleteLoad, drivers, trucks, trailers, facilities } = useAppShell();
+  const activeFacilities = facilities.filter((x) => !x.archived);
   // Archived fleet records are kept on file but are not offered for new work.
   const activeDrivers = drivers.filter((x) => !x.archived);
   const activeTrucks = trucks.filter((x) => !x.archived);
@@ -330,6 +332,23 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
   const setStop = (i: number, patch: Partial<StopDraft>) =>
     setD((prev) => ({ ...prev, stops: prev.stops.map((s, j) => (j === i ? { ...s, ...patch } : s)) }));
   const missing = (s: Section, msg: string) => showErrors && Boolean(errors[s]?.includes(msg));
+  // Picking a registered facility fills the stop's address and site contact.
+  const setFacility = (i: number, name: string) => {
+    const f = facilityFor(activeFacilities, name);
+    if (!f) {
+      setStop(i, { facility: name });
+      return;
+    }
+    const t = (k: string) => (typeof f.details[k] === 'string' ? (f.details[k] as string).trim() : '');
+    const pickup = d.stops[i].kind === 'Pickup';
+    const who = (pickup ? t('shipName') : t('recvName')) || t('shipName');
+    const phone = (pickup ? t('shipPhone') : t('recvPhone')) || t('shipPhone') || t('phone');
+    setStop(i, {
+      facility: f.name, address: t('street'), city: t('city'), state: t('state'), zip: t('zip'),
+      contact: d.stops[i].contact || [who, phone].filter(Boolean).join(' · '),
+    });
+  };
+  const knownFacility = (name: string): Facility | undefined => facilityFor(activeFacilities, name);
 
   const go = (s: Section) => {
     setSection(s);
@@ -431,6 +450,9 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
       <>
         <Head title="Stops" help="In the order the truck runs them. Add more for multi-stop loads." />
         {showErrors && errors.Stops && <div className="ui-errors">{errors.Stops.join(' · ')}</div>}
+        <datalist id="ui-facility-options">
+          {activeFacilities.map((f) => <option key={f.id} value={f.name}>{`${f.type} · ${f.city}, ${f.state}`}</option>)}
+        </datalist>
         {d.stops.map((s, i) => (
           <div key={i} className="ui-panel">
             <div className="ui-panel-head">
@@ -445,7 +467,7 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
             </div>
             <div className="ui-form-grid">
               <Field label="Facility" required wide invalid={showErrors && !s.facility.trim()}>
-                <input className="ui-input" value={s.facility} onChange={(e) => setStop(i, { facility: e.target.value })} placeholder="e.g. Northgate Cold Storage" />
+                <input className="ui-input" list="ui-facility-options" value={s.facility} onChange={(e) => setFacility(i, e.target.value)} placeholder="Start typing — registered facilities fill in the address" />
               </Field>
               <Field label="Street address" required wide invalid={showErrors && !s.address.trim()}>
                 <input className="ui-input" value={s.address} onChange={(e) => setStop(i, { address: e.target.value })} />
@@ -477,6 +499,11 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
                 <input className="ui-input" value={s.contact} onChange={(e) => setStop(i, { contact: e.target.value })} placeholder="Name and phone" />
               </Field>
             </div>
+            {knownFacility(s.facility) && (
+              <div className="ui-note" style={{ marginTop: 14 }}>
+                <strong>Registered facility.</strong> {stopHint(knownFacility(s.facility) as Facility)}
+              </div>
+            )}
           </div>
         ))}
         <div style={{ display: 'flex', gap: 10 }}>

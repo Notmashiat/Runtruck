@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { FormValues } from '../data/fleet';
 
-export type FieldType = 'text' | 'number' | 'date' | 'select' | 'textarea' | 'tel' | 'email' | 'checks';
+export type FieldType = 'text' | 'number' | 'date' | 'time' | 'url' | 'select' | 'textarea' | 'tel' | 'email' | 'checks';
 
 export interface FieldSpec {
   key: string;
@@ -64,6 +64,7 @@ function validate(sections: SectionSpec[], v: FormValues): Record<string, string
       const value = Array.isArray(raw) ? raw.join(',') : (raw ?? '').trim();
       if (f.required && !value) errors[f.key] = 'Required';
       else if (value && f.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) errors[f.key] = 'Enter a valid email';
+      else if (value && f.type === 'url' && !/^https?:\/\/\S+\.\S+$/.test(value)) errors[f.key] = 'Enter a full link, starting with https://';
       else if (value && f.check) {
         const msg = f.check(value, v);
         if (msg) errors[f.key] = msg;

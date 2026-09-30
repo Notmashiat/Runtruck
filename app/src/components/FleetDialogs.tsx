@@ -7,23 +7,13 @@ import {
   type FleetDriver, type FleetTrailer, type FleetTruck, type FormValues,
 } from '../data/fleet';
 import { USER } from '../data/mock';
+import { NON_NEGATIVE, PHONE, POSITIVE, STATE, UNIQUE, VIN, YEAR, ZIP } from '../lib/rules';
 import { RecordDialog, type SectionSpec } from './RecordDialog';
 
-// — shared field rules —
+// — form helpers —
 
 const val = (v: FormValues, k: string) => (typeof v[k] === 'string' ? (v[k] as string) : '');
 const has = (v: FormValues, k: string, option: string) => Array.isArray(v[k]) && (v[k] as string[]).includes(option);
-
-const STATE = (value: string) => (/^[A-Z]{2}$/.test(value.toUpperCase()) ? null : 'Two-letter state, e.g. CA');
-const ZIP = (value: string) => (/^\d{5}(-\d{4})?$/.test(value) ? null : 'Five digits, e.g. 95355');
-const PHONE = (value: string) => (value.replace(/\D/g, '').length >= 10 ? null : 'Ten digits, e.g. (209) 555-0147');
-const POSITIVE = (value: string) => (Number(value) > 0 ? null : 'Must be more than 0');
-const NON_NEGATIVE = (value: string) => (Number(value) >= 0 ? null : 'Cannot be negative');
-const YEAR = (value: string) => (/^\d{4}$/.test(value) && Number(value) >= 1980 && Number(value) <= 2027 ? null : 'Model year between 1980 and 2027');
-// 17 characters, no I, O or Q (they are never used in a VIN).
-const VIN = (value: string) => (/^[A-HJ-NPR-Z0-9]{17}$/.test(value.toUpperCase()) ? null : '17 letters and digits, no I, O or Q');
-const UNIQUE = (taken: string[], what: string) => (value: string) =>
-  taken.some((t) => t.toUpperCase() === value.trim().toUpperCase()) ? `Another ${what} already uses ${value.trim().toUpperCase()}` : null;
 
 // — driver —
 

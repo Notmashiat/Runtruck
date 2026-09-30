@@ -20,7 +20,7 @@ handoff bundle in the repo root.
 src/
   components/       Sidebar (with Settings and Log out), SettingsDialog (Profile + Appearance),
                      NewLoadDialog (the "+ New Load" form), RecordDialog + FleetDialogs (the
-                     driver, unit and trailer forms), Header
+                     driver, unit and trailer forms), FacilityDialog, Header
                      (the top bar: search, Filters, per-screen actions), AppLayout, SectionTabs +
                      TabbedSection (the pill tab bar), and shared pieces: Card, Kpis,
                      Tag (status chip), ComingSoon, Blueprint (marketing site only)
@@ -30,7 +30,7 @@ src/
                      sidebar entries (NAV) and each section's tabs (SECTION_TABS);
                      accounting.ts, fleet.ts, hr.ts, safety.ts — data for those sections' tabs
                      (fleet.ts: the demo fleet's full records, form choices and form → table
-                     conversions)
+                     conversions; facilities.ts: the facility register)
   lib/               search.ts (the top-bar search filters whichever table is on screen) and
                      theme.ts (light/dark, stored in localStorage, applied as data-theme on <html>)
   pages/app/         One file per screen; tabbed sections keep their tabs in a subfolder
@@ -41,8 +41,7 @@ src/
 ```
 
 The sidebar has nine sections. Four are split into tabs (a centred pill bar; each tab is its own
-URL, and a section's root URL opens its first tab) and one is a placeholder (`ComingSoon`) until
-it is designed:
+URL, and a section's root URL opens its first tab):
 
 | Sidebar    | URL                                                                            | Screen                                                        |
 | ---------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------- |
@@ -51,7 +50,7 @@ it is designed:
 | Planner    | `/app/planner`                                                                 | `PlannerPage` — day / week / month calendar                   |
 | Fleet      | `/app/fleet/{drivers,trucks,trailers}`                                         | `fleet/DriversTab`, `TrucksTab`, `TrailersTab`                |
 | CRM        | `/app/crm`                                                                     | `CustomersPage`                                               |
-| Facilities | `/app/facilities`                                                              | `FacilitiesPage` (placeholder)                                |
+| Facilities | `/app/facilities`                                                              | `FacilitiesPage`                                              |
 | Accounting | `/app/accounting/{uninvoiced,invoiced,batches,past-due,paid,payroll,bills}`    | `accounting/UninvoicedTab` … `BillsTab`                       |
 | HR         | `/app/hr/{employee-contracts,onboarding}`                                      | `hr/EmployeeContractsTab`, `OnboardingTab`                    |
 | Safety     | `/app/safety/{maintenance,driver-documents,violations,settlements}`            | `safety/MaintenanceTab`, `DriverDocumentsTab`, `ViolationsTab`, `ClaimSettlementsTab` |
@@ -97,6 +96,21 @@ from lists, pickers and totals but keep it — **Show archived** on each table b
 truck's driver are one assignment: changing either side updates the other and frees what it
 replaced; archiving a driver or unit frees its assignment. The New Load driver/truck/trailer pickers and the Dashboard driver list use these records.
 They are stored as `runtruck-drivers`, `runtruck-trucks` and `runtruck-trailers`.
+
+**Facilities** (`pages/app/FacilitiesPage.tsx`, `data/facilities.ts`, `components/FacilityDialog.tsx`)
+is the register of every place a truck stops: customer sites (shippers, receivers, cross-docks,
+ports), Sunridge's terminals, drop yards and shops, and truck stops and scales on the lanes. The demo
+register has the sites on the load board, the three yards, the shops from Safety › Maintenance and
+three road stops. **+ Add Facility** / **Edit** open a sectioned form (site and customer account,
+address and map point, weekly hours, scheduling and booking, dock and loading, lumper and detention,
+yard space and services, PPE and site rules, contacts, driver rating); Archive and Delete work as for
+the fleet. Each row expands to the site's details plus what happens there: the loads that stop at a
+customer site, the trailers parked and trucks and drivers based at a yard, a shop's open work orders.
+Load stops link to a facility by name (ignoring case): the New Load form suggests registered
+facilities and fills in the address and contact, the load page shows each stop's hours, booking,
+lumper, PPE and a **Facility →** link (`/app/facilities?open=FAC-…`), renaming a facility renames it
+on its loads, and stops whose facility is not registered are listed with **+ Add to register**.
+Stored as `runtruck-facilities`.
 
 **Planner** is a calendar with Day, Week and Month views (`pages/app/PlannerPage.tsx`,
 `styles/calendar.css`). Pickups and deliveries come from the loads (`loadEvents` in

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppShell } from '../context/AppShellContext';
 import { UNINVOICED } from '../data/accounting';
 import { SECTION_TABS, type ViewKey } from '../data/mock';
+import { FacilityDialog } from './FacilityDialog';
 import { DriverDialog, TrailerDialog, TruckDialog } from './FleetDialogs';
 import { NewLoadDialog } from './NewLoadDialog';
 
@@ -13,7 +14,7 @@ interface HeadAction {
 }
 
 // Screens with nothing to filter get no Filters button.
-const NO_FILTERS: ViewKey[] = ['dashboard', 'planner', 'facilities'];
+const NO_FILTERS: ViewKey[] = ['dashboard', 'planner'];
 
 export function Header() {
   const location = useLocation();
@@ -21,7 +22,7 @@ export function Header() {
   const { query, setQuery, approveAll, loads } = useAppShell();
   const [newLoadOpen, setNewLoadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | null>(null);
+  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | null>(null);
 
   // Route matching is case-insensitive, so normalise before keying off the section.
   const segments = location.pathname.toLowerCase().split('/');
@@ -44,6 +45,7 @@ export function Header() {
     'fleet/trucks': [{ label: 'Log service' }, { label: '+ Add Unit', primary: true, onClick: () => setAdding('truck') }],
     'fleet/trailers': [{ label: '+ Add Trailer', primary: true, onClick: () => setAdding('trailer') }],
     crm: [{ label: '+ Add Customer', primary: true }],
+    facilities: [{ label: '+ Add Facility', primary: true, onClick: () => setAdding('facility') }],
     'accounting/uninvoiced': [{ label: `Invoice ${UNINVOICED.length} loads`, primary: true, onClick: () => navigate('/app/accounting/invoiced') }],
     'accounting/invoiced': [{ label: 'Export batch' }, { label: '+ New Batch', primary: true, onClick: () => navigate('/app/accounting/batches') }],
     'accounting/batches': [{ label: '+ New Batch', primary: true }],
@@ -96,6 +98,7 @@ export function Header() {
       {adding === 'driver' && <DriverDialog onClose={() => setAdding(null)} />}
       {adding === 'truck' && <TruckDialog onClose={() => setAdding(null)} />}
       {adding === 'trailer' && <TrailerDialog onClose={() => setAdding(null)} />}
+      {adding === 'facility' && <FacilityDialog onClose={() => setAdding(null)} />}
     </header>
   );
 }

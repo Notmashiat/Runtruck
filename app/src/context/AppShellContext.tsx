@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
+import { FACILITY_SEED, renameInLoad, sameName, type Facility } from '../data/facilities';
 import { DRIVER_SEED, TRAILER_SEED, TRUCK_SEED, type FleetDriver, type FleetTrailer, type FleetTruck } from '../data/fleet';
 import { LOADS, type Load } from '../data/mock';
 import { usePersisted } from '../lib/persist';
@@ -33,6 +34,10 @@ interface AppShellState {
   deleteDriver: (id: string) => void;
   deleteTruck: (id: string) => void;
   deleteTrailer: (id: string) => void;
+  facilities: Facility[];
+  saveFacility: (f: Facility) => void;
+  archiveFacility: (id: string, archived: boolean) => void;
+  deleteFacility: (id: string) => void;
 }
 
 const AppShellContext = createContext<AppShellState | null>(null);
@@ -61,6 +66,7 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
   const [drivers, setDrivers] = usePersisted<FleetDriver[]>('runtruck-drivers', DRIVER_SEED, (raw) => reviveRecords<FleetDriver>(raw));
   const [trucks, setTrucks] = usePersisted<FleetTruck[]>('runtruck-trucks', TRUCK_SEED, (raw) => reviveRecords<FleetTruck>(raw));
   const [trailers, setTrailers] = usePersisted<FleetTrailer[]>('runtruck-trailers', TRAILER_SEED, (raw) => reviveRecords<FleetTrailer>(raw));
+  const [facilities, setFacilities] = usePersisted<Facility[]>('runtruck-facilities', FACILITY_SEED, (raw) => reviveRecords<Facility>(raw));
 
   // A driver's truck and a truck's driver describe the same assignment, so
   // saving either side updates the other (and frees whatever it replaced).
@@ -137,6 +143,15 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
       if (gone) setDrivers((list) => list.map((d) => (d.unit === gone.unit ? { ...d, unit: '—', details: { ...d.details, truck: '' } } : d)));
     },
     deleteTrailer: (id) => setTrailers((list) => list.filter((t) => t.id !== id)),
+    facilities,
+    // Loads name their stops, so renaming a facility renames it on its loads.
+    saveFacility: (f) => {
+      const prev = facilities.find((x) => x.id === f.id);
+      setFacilities((list) => upsert(list, f));
+      if (prev && !sameName(prev.name, f.name)) setLoads((list) => list.map((l) => renameInLoad(l, prev.name, f.name)));
+    },
+    archiveFacility: (id, archived) => setFacilities((list) => list.map((f) => (f.id === id ? { ...f, archived } : f))),
+    deleteFacility: (id) => setFacilities((list) => list.filter((f) => f.id !== id)),
   };
 
   return <AppShellContext.Provider value={value}>{children}</AppShellContext.Provider>;

@@ -4,11 +4,12 @@ import { Card } from '../../components/Card';
 import { Kpis } from '../../components/Kpis';
 import { Tag } from '../../components/Tag';
 import { useAppShell } from '../../context/AppShellContext';
+import { facilityFor, stopHint } from '../../data/facilities';
 import { USER } from '../../data/mock';
 
 export function LoadDetailPage() {
   const { id = '' } = useParams();
-  const { loads } = useAppShell();
+  const { loads, facilities } = useAppShell();
   const sel = loads.find((l) => l.id.toLowerCase() === id.toLowerCase());
 
   // A deleted load, or a mistyped link.
@@ -98,14 +99,23 @@ export function LoadDetailPage() {
       <div className="ui-grid-2">
         <Card title="Stops">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {stops.map((s, i) => (
-              <div key={i} className="ui-stop">
-                <div className={`ui-stop-kind${s.kindClass ? ` ${s.kindClass}` : ''}`}>{s.kind}</div>
-                <div className="ui-stop-name">{s.name}</div>
-                <div className="ui-stop-meta">{s.address}</div>
-                <div className="ui-stop-meta">{s.window}</div>
-              </div>
-            ))}
+            {stops.map((s, i) => {
+              // Registered sites add what the driver needs to know there.
+              const site = facilityFor(facilities.filter((f) => !f.archived), s.name);
+              return (
+                <div key={i} className="ui-stop">
+                  <div className={`ui-stop-kind${s.kindClass ? ` ${s.kindClass}` : ''}`}>{s.kind}</div>
+                  <div className="ui-stop-name">{s.name}</div>
+                  <div className="ui-stop-meta">{s.address}</div>
+                  <div className="ui-stop-meta">{s.window}</div>
+                  {site && (
+                    <div className="ui-stop-meta">
+                      {stopHint(site)} · <Link className="ui-link" style={{ fontSize: 12 }} to={`/app/facilities?open=${site.id}`}>Facility →</Link>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
           <div className="ui-placeholder" style={{ marginTop: 20 }}>Live map / ELD trace</div>
         </Card>
