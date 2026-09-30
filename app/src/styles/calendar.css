@@ -84,6 +84,34 @@ button.cal-head-btn:hover { background: var(--ui-hover); }
 }
 .cal-ev:hover, .cal-chip:hover { box-shadow: 0 2px 8px var(--ui-shadow); }
 .cal-ev-title { font-size: 12px; font-weight: 600; line-height: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* — drag and drop — */
+.cal-ev.is-draggable, .cal-chip.is-draggable, .cal-month-ev.is-draggable {
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.cal-ev.is-dragging, .cal-chip.is-dragging, .cal-month-ev.is-dragging {
+  z-index: 4; cursor: grabbing; outline: 2px solid var(--c); outline-offset: 1px; box-shadow: 0 10px 28px var(--ui-shadow);
+}
+.cal-month-ev.is-dragging { background: var(--c-soft); }
+body.cal-dragging, body.cal-dragging * { cursor: grabbing !important; user-select: none; }
+body.cal-resizing, body.cal-resizing * { cursor: ns-resize !important; user-select: none; }
+.cal-ev-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; cursor: ns-resize; }
+.cal-ev-drag {
+  position: absolute; top: 3px; right: 4px; padding: 1px 6px; pointer-events: none; white-space: nowrap;
+  font-size: 11px; font-weight: 700; color: var(--ui-text); background: var(--ui-card); border-radius: 6px;
+  box-shadow: 0 1px 4px var(--ui-shadow);
+}
+.cal-toast {
+  position: fixed; left: 50%; bottom: 24px; z-index: 70; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 14px; max-width: calc(100% - 32px); padding: 12px 12px 12px 18px;
+  font-size: 13px; color: var(--ui-text); background: var(--ui-card); border: 1px solid var(--ui-border);
+  border-radius: 12px; box-shadow: 0 12px 32px var(--ui-shadow);
+}
+.cal-toast-close {
+  width: 26px; height: 26px; padding: 0; font: inherit; font-size: 18px; line-height: 1; color: var(--ui-muted);
+  background: transparent; border: 0; border-radius: 999px; cursor: pointer;
+}
+.cal-toast-close:hover { background: var(--ui-hover); color: var(--ui-text); }
+
 .cal-ev-line { font-size: 11px; line-height: 14px; color: var(--ui-text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .cal-month-head { display: grid; border-bottom: 1px solid var(--ui-border); }

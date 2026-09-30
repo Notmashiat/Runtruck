@@ -76,6 +76,9 @@ codes (rename, recolor, add and delete what each color means; color load stops b
 Loaded / Empty — or by driver, customer or truck) and Event cards (what each of a card's three lines
 shows; by default the city and state where the truck loads or goes empty, then time and load #).
 Events, color codes and preferences are saved in localStorage; Layout › Reset puts all of it back.
+Office events can be dragged (pointer events, 15-minute snap in Day/Week, whole days in the
+all-day row and Month view) and resized from their bottom edge; each drop can be undone. Load
+stops come from the load board and are not draggable.
 
 Routing replaces the original prototype's internal view-state + localStorage persistence:
 every screen (including a given load's detail view) is a real URL, so reloading or sharing a

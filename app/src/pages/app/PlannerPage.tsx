@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarSettings, type SettingsPage } from '../../components/CalendarSettings';
 import { EventDialog } from '../../components/EventDialog';
@@ -28,6 +28,22 @@ interface Occurrence {
 interface Look {
   tone: (ev: PlannerEvent) => string;
   lines: (o: Occurrence) => string[];
+}
+
+// Drag and drop: where the drag started and what it changes. `timed` drags in
+// the Day/Week hour grid move or resize by 15 minutes; `allday` and `month`
+// drags move by whole days.
+interface DragOpts {
+  kind: 'timed' | 'allday' | 'month';
+  mode: 'move' | 'resize';
+  root: HTMLElement;
+  scroller?: HTMLElement | null;
+  rowH?: number;
+}
+
+interface Dnd {
+  start: (e: ReactPointerEvent<HTMLElement>, o: Occurrence, opts: DragOpts) => void;
+  activeId?: string;
 }
 
 function occurrencesOn(events: PlannerEvent[], date: string): Occurrence[] {
@@ -103,8 +119,18 @@ export function PlannerPage() {
   const [selected, setSelected] = useState<{ o: Occurrence; x: number; y: number } | null>(null);
   const [editing, setEditing] = useState<{ ev: PlannerEvent; isNew: boolean } | null>(null);
   const [settings, setSettings] = useState<SettingsPage | null>(null);
+  const [drag, setDrag] = useState<{ id: string; patch: Partial<PlannerEvent> } | null>(null);
+  const [toast, setToast] = useState<{ text: string; prev: PlannerEvent } | null>(null);
+  // The click that ends a drag must not also open the popover or the Add event dialog.
+  const suppressClick = useRef(false);
 
-  const pref = <K extends keyof Prefs>(key: K, value: Prefs[K]) => setPrefs((p) => ({ ...p, [key]: value }));
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const pref =<K extends keyof Prefs>(key: K, value: Prefs[K]) => setPrefs((p) => ({ ...p, [key]: value }));
   const { view, colorBy } = prefs;
   const byValue = colorBy !== 'type';
   const time = (min: number) => formatTime(min, prefs.hour24);
@@ -148,7 +174,8 @@ export function PlannerPage() {
       ]
     : categories.map((c) => ({ key: c.key, label: c.label, tone: c.tone }));
 
-  const shown = all.filter(
+  // While dragging, the grids draw the event where it would land.
+  const shown = (drag ? all.map((e) => (e.id === drag.id ? { ...e, ...drag.patch } : e)) : all).filter(
     (e) => !prefs.hidden.includes(colorKey(e))
       && matchesQuery({ title: e.title, place: e.place, notes: e.notes, people: e.people?.join(' '), customer: e.customer, truck: e.truck }, query),
   );
@@ -199,6 +226,7 @@ export function PlannerPage() {
     setSelected(null);
   };
   const create = (date: string, startMin?: number) => {
+    if (suppressClick.current) return;
     setSelected(null);
     const s = startMin ?? 9 * 60;
     const category = categories.find((c) => !c.locked)?.key ?? 'meeting';
@@ -209,7 +237,106 @@ export function PlannerPage() {
   };
   const select = (o: Occurrence, e: MouseEvent) => {
     e.stopPropagation();
+    if (suppressClick.current) return;
     setSelected({ o, x: e.clientX, y: e.clientY });
+  };
+
+  // — drag and drop —
+  // Pointer events rather than HTML drag-and-drop: precise positions, a live
+  // preview and one code path for mouse, pen and touch. Events from the load
+  // board are read-only and are not draggable.
+  const describe = (e: PlannerEvent) => {
+    const day = shortLabel(fromIso(e.date));
+    if (e.start) return `${day} · ${time(toMinutes(e.start))} – ${time(toMinutes(e.end ?? e.start))}`;
+    return e.endDate ? `${day} – ${shortLabel(fromIso(e.endDate))}` : day;
+  };
+
+  const beginDrag = (e: ReactPointerEvent<HTMLElement>, o: Occurrence, opts: DragOpts) => {
+    if (o.ev.readOnly || e.button !== 0) return;
+    e.stopPropagation();
+    const ev = o.ev;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const scroll0 = opts.scroller?.scrollTop ?? 0;
+    const selector = opts.kind === 'timed' ? '.cal-col[data-date]' : opts.kind === 'allday' ? '.cal-allday-cell[data-date]' : '.cal-month-cell[data-date]';
+    const cells = [...opts.root.querySelectorAll<HTMLElement>(selector)].map((el) => ({ date: el.dataset.date ?? '', rect: el.getBoundingClientRect() }));
+    const cellAt = (x: number, y: number) =>
+      cells.find((c) => x >= c.rect.left && x < c.rect.right && (opts.kind !== 'month' || (y >= c.rect.top && y < c.rect.bottom)));
+    const shiftDate = (d: string, n: number) => iso(addDays(fromIso(d), n));
+    const daysBetween = (a: string, b: string) => Math.round((fromIso(b).getTime() - fromIso(a).getTime()) / 86_400_000);
+    const endHhmm = (m: number) => (m >= 24 * 60 ? '23:59' : toHhmm(m));
+    let active = false;
+    let lastDate = o.date;
+    let patch: Partial<PlannerEvent> | null = null;
+
+    const onMove = (m: PointerEvent) => {
+      const dx = m.clientX - startX;
+      const dy = m.clientY - startY;
+      if (!active) {
+        if (Math.hypot(dx, dy) < 5) return; // a click, not a drag
+        active = true;
+        setSelected(null);
+        document.body.classList.add(opts.mode === 'resize' ? 'cal-resizing' : 'cal-dragging');
+      }
+      // Scroll the hour grid when the pointer nears its top or bottom edge.
+      const sc = opts.scroller;
+      if (sc && opts.kind === 'timed') {
+        const r = sc.getBoundingClientRect();
+        if (m.clientY < r.top + 48) sc.scrollTop -= 14;
+        else if (m.clientY > r.bottom - 48) sc.scrollTop += 14;
+      }
+      lastDate = cellAt(m.clientX, m.clientY)?.date ?? lastDate;
+      if (opts.kind === 'timed') {
+        const rowH = opts.rowH ?? 56;
+        const scrolled = sc ? sc.scrollTop - scroll0 : 0;
+        const delta = Math.round((((dy + scrolled) / rowH) * 60) / 15) * 15;
+        if (opts.mode === 'resize') {
+          patch = { end: endHhmm(Math.min(Math.max(o.end + delta, o.start + 15), 24 * 60)) };
+        } else {
+          const length = o.end - o.start;
+          const start = Math.min(Math.max(o.start + delta, 0), 24 * 60 - length);
+          patch = { date: lastDate, start: toHhmm(start), end: endHhmm(start + length) };
+        }
+      } else {
+        // Whole days; an all-day span keeps its length (the grabbed day follows the pointer).
+        const n = daysBetween(o.date, lastDate);
+        patch = ev.start ? { date: lastDate } : { date: shiftDate(ev.date, n), endDate: ev.endDate ? shiftDate(ev.endDate, n) : undefined };
+      }
+      setDrag({ id: ev.id, patch });
+    };
+
+    const finish = (commit: boolean) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+      window.removeEventListener('keydown', onKey);
+      document.body.classList.remove('cal-dragging', 'cal-resizing');
+      setDrag(null);
+      if (!active) return;
+      suppressClick.current = true;
+      setTimeout(() => { suppressClick.current = false; }, 0);
+      if (!commit || !patch) return;
+      const next: PlannerEvent = { ...ev, ...patch };
+      if (next.date === ev.date && next.start === ev.start && next.end === ev.end && next.endDate === ev.endDate) return;
+      setEvents((list) => list.map((x) => (x.id === ev.id ? next : x)));
+      setToast({ text: `${opts.mode === 'resize' ? 'Resized' : 'Moved'} “${ev.title}” — ${describe(next)}`, prev: ev });
+    };
+    const onUp = () => finish(true);
+    const onCancel = () => finish(false);
+    const onKey = (k: KeyboardEvent) => {
+      if (k.key === 'Escape') finish(false);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+    window.addEventListener('keydown', onKey);
+  };
+  const dnd: Dnd = { start: beginDrag, activeId: drag?.id };
+  const undo = () => {
+    if (!toast) return;
+    const prev = toast.prev;
+    setEvents((list) => list.map((x) => (x.id === prev.id ? prev : x)));
+    setToast(null);
   };
 
   const monthName = MONTHS[cursor.getMonth()];
@@ -270,7 +397,7 @@ export function PlannerPage() {
       </div>
 
       {view === 'Month' ? (
-        <MonthGrid weeks={weeks} month={cursor.getMonth()} events={shown} look={look} time={time} onOpenDay={openDay} onCreate={create} onSelect={select} />
+        <MonthGrid weeks={weeks} month={cursor.getMonth()} events={shown} look={look} time={time} dnd={dnd} onOpenDay={openDay} onCreate={create} onSelect={select} />
       ) : (
         <TimeGrid
           days={days}
@@ -278,10 +405,19 @@ export function PlannerPage() {
           prefs={prefs}
           look={look}
           time={time}
+          dnd={dnd}
           onOpenDay={view === 'Week' ? openDay : undefined}
           onCreate={create}
           onSelect={select}
         />
+      )}
+
+      {toast && (
+        <div className="cal-toast" role="status">
+          <span>{toast.text}</span>
+          <button type="button" className="ui-link" onClick={undo}>Undo</button>
+          <button type="button" className="cal-toast-close" onClick={() => setToast(null)} aria-label="Dismiss">×</button>
+        </div>
       )}
 
       {selected && (
@@ -331,12 +467,18 @@ interface GridProps {
   events: PlannerEvent[];
   look: Look;
   time: (min: number) => string;
+  dnd: Dnd;
   onOpenDay?: (d: Date) => void;
   onCreate: (date: string, startMin?: number) => void;
   onSelect: (o: Occurrence, e: MouseEvent) => void;
 }
 
-function TimeGrid({ days, events, prefs, look, time, onOpenDay, onCreate, onSelect }: GridProps & { days: Date[]; prefs: Prefs }) {
+// Class names that show whether an event can be dragged and whether it is being dragged.
+function dragClass(o: Occurrence, dnd: Dnd) {
+  return `${o.ev.readOnly ? '' : ' is-draggable'}${dnd.activeId === o.ev.id ? ' is-dragging' : ''}`;
+}
+
+function TimeGrid({ days, events, prefs, look, time, dnd, onOpenDay, onCreate, onSelect }: GridProps & { days: Date[]; prefs: Prefs }) {
   const rowH = ROW_H[prefs.density];
   const visStart = prefs.dayStart * 60;
   const visEnd = prefs.dayEnd * 60;
@@ -344,13 +486,19 @@ function TimeGrid({ days, events, prefs, look, time, onOpenDay, onCreate, onSele
   const cols = { gridTemplateColumns: `64px repeat(${days.length}, minmax(0, 1fr))` };
   const byDay = days.map((d) => occurrencesOn(events, iso(d)));
   const hasAllDay = byDay.some((list) => list.some((o) => o.allDay));
+  const rootRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const startDrag = (e: ReactPointerEvent<HTMLElement>, o: Occurrence, kind: DragOpts['kind'], mode: DragOpts['mode']) => {
+    if (rootRef.current) dnd.start(e, o, { kind, mode, root: rootRef.current, scroller: scrollRef.current, rowH });
+  };
 
   // Open on the first event of the range (or the working morning), not at midnight.
+  // Keyed on the range only, so moving an event does not make the grid jump.
   const firstStart = Math.min(...byDay.flat().filter((o) => !o.allDay && o.end > visStart).map((o) => o.start), 8 * 60);
+  const rangeKey = days.length ? `${iso(days[0])}:${days.length}` : '';
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: Math.max(0, ((firstStart - visStart) / 60) * rowH - 12) });
-  }, [firstStart, visStart, rowH, days.length]);
+  }, [rangeKey, visStart, rowH]);
 
   const clickSlot = (date: string, e: MouseEvent<HTMLDivElement>) => {
     if (e.target !== e.currentTarget) return;
@@ -359,7 +507,7 @@ function TimeGrid({ days, events, prefs, look, time, onOpenDay, onCreate, onSele
   };
 
   return (
-    <div className="cal">
+    <div className="cal" ref={rootRef}>
       <div className="cal-scroll" ref={scrollRef}>
         <div className="cal-sticky">
           <div className="cal-head" style={cols}>
@@ -388,9 +536,15 @@ function TimeGrid({ days, events, prefs, look, time, onOpenDay, onCreate, onSele
             <div className="cal-allday" style={cols}>
               <div className="cal-gutter-label">All day</div>
               {byDay.map((list, i) => (
-                <div key={i} className="cal-allday-cell">
+                <div key={i} className="cal-allday-cell" data-date={iso(days[i])}>
                   {list.filter((o) => o.allDay).map((o) => (
-                    <button key={o.ev.id} type="button" className={`cal-chip t-${look.tone(o.ev)}`} onClick={(e) => onSelect(o, e)}>
+                    <button
+                      key={o.ev.id}
+                      type="button"
+                      className={`cal-chip t-${look.tone(o.ev)}${dragClass(o, dnd)}`}
+                      onPointerDown={(e) => startDrag(e, o, 'allday', 'move')}
+                      onClick={(e) => onSelect(o, e)}
+                    >
                       {look.lines(o)[0]}
                     </button>
                   ))}
@@ -410,7 +564,7 @@ function TimeGrid({ days, events, prefs, look, time, onOpenDay, onCreate, onSele
             const date = iso(d);
             const timed = byDay[i].filter((o) => !o.allDay && o.end > visStart && o.start < visEnd);
             return (
-              <div key={date} className={`cal-col${date === TODAY ? ' is-today' : ''}`} onClick={(e) => clickSlot(date, e)}>
+              <div key={date} className={`cal-col${date === TODAY ? ' is-today' : ''}`} data-date={date} onClick={(e) => clickSlot(date, e)}>
                 {layout(timed).map(({ o, lane, lanes }) => {
                   const top = ((Math.max(o.start, visStart) - visStart) / 60) * rowH;
                   const height = Math.max(((Math.min(o.end, visEnd) - Math.max(o.start, visStart)) / 60) * rowH - 3, 20);
@@ -420,13 +574,18 @@ function TimeGrid({ days, events, prefs, look, time, onOpenDay, onCreate, onSele
                     <button
                       key={o.ev.id}
                       type="button"
-                      className={`cal-ev t-${look.tone(o.ev)}`}
+                      className={`cal-ev t-${look.tone(o.ev)}${dragClass(o, dnd)}`}
                       style={{ top, height, left: `calc(${(lane / lanes) * 100}% + 3px)`, width: `calc(${100 / lanes}% - 6px)` }}
+                      onPointerDown={(e) => startDrag(e, o, 'timed', 'move')}
                       onClick={(e) => onSelect(o, e)}
-                      title={lines.join(' · ')}
+                      title={o.ev.readOnly ? lines.join(' · ') : `${lines.join(' · ')} — drag to move`}
                     >
                       <span className="cal-ev-title">{lines[0]}</span>
                       {lines.slice(1, fit).map((t, j) => <span key={j} className="cal-ev-line">{t}</span>)}
+                      {dnd.activeId === o.ev.id && <span className="cal-ev-drag">{time(o.start)} – {time(o.end)}</span>}
+                      {!o.ev.readOnly && (
+                        <span className="cal-ev-resize" aria-hidden="true" onPointerDown={(e) => startDrag(e, o, 'timed', 'resize')} />
+                      )}
                     </button>
                   );
                 })}
@@ -439,11 +598,15 @@ function TimeGrid({ days, events, prefs, look, time, onOpenDay, onCreate, onSele
   );
 }
 
-function MonthGrid({ weeks, month, events, look, time, onOpenDay, onCreate, onSelect }: GridProps & { weeks: Date[][]; month: number }) {
+function MonthGrid({ weeks, month, events, look, time, dnd, onOpenDay, onCreate, onSelect }: GridProps & { weeks: Date[][]; month: number }) {
   const MAX = 3;
   const cols = { gridTemplateColumns: `repeat(${weeks[0]?.length ?? 7}, minmax(0, 1fr))` };
+  const rootRef = useRef<HTMLDivElement>(null);
+  const startDrag = (e: ReactPointerEvent<HTMLElement>, o: Occurrence) => {
+    if (rootRef.current) dnd.start(e, o, { kind: 'month', mode: 'move', root: rootRef.current });
+  };
   return (
-    <div className="cal">
+    <div className="cal" ref={rootRef}>
       <div className="cal-month-head" style={cols}>
         {(weeks[0] ?? []).map((d) => <div key={d.getDay()}>{WEEKDAYS[d.getDay()].slice(0, 3)}</div>)}
       </div>
@@ -456,6 +619,7 @@ function MonthGrid({ weeks, month, events, look, time, onOpenDay, onCreate, onSe
               <div
                 key={date}
                 className={`cal-month-cell${d.getMonth() === month ? '' : ' is-other'}`}
+                data-date={date}
                 onClick={(e) => { if (e.target === e.currentTarget) onCreate(date); }}
               >
                 <button type="button" className={`cal-month-num${date === TODAY ? ' is-today' : ''}`} onClick={() => onOpenDay?.(d)}>
@@ -464,7 +628,13 @@ function MonthGrid({ weeks, month, events, look, time, onOpenDay, onCreate, onSe
                 {list.slice(0, MAX).map((o) => {
                   const tone = look.tone(o.ev);
                   return (
-                    <button key={o.ev.id} type="button" className={`cal-month-ev t-${tone}`} onClick={(e) => onSelect(o, e)}>
+                    <button
+                      key={o.ev.id}
+                      type="button"
+                      className={`cal-month-ev t-${tone}${dragClass(o, dnd)}`}
+                      onPointerDown={(e) => startDrag(e, o)}
+                      onClick={(e) => onSelect(o, e)}
+                    >
                       <span className={`cal-dot t-${tone}`} />
                       {!o.allDay && <span className="cal-month-time">{time(o.start)}</span>}
                       <span className="cal-month-title">{look.lines(o)[0]}</span>
