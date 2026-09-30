@@ -338,9 +338,16 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
     if (SECTIONS[i]) go(SECTIONS[i]);
   };
 
+  // Close and tell the page right away rather than waiting for the dialog's
+  // close event (which browsers deliver later, and not at all in hidden tabs).
+  const closeNow = () => {
+    ref.current?.close();
+    onClose();
+  };
+
   const requestClose = () => {
     const message = editing ? 'Discard your changes to this load?' : 'Discard this new load? What you entered will be lost.';
-    if (!dirty || window.confirm(message)) ref.current?.close();
+    if (!dirty || window.confirm(message)) closeNow();
   };
 
   const save = () => {
@@ -353,7 +360,7 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
     const saved = load ? toLoad(d, load.id, load) : toLoad(d, nextId(loads));
     if (load) updateLoad(saved);
     else addLoad(saved);
-    ref.current?.close();
+    closeNow();
     onSaved?.(saved.id);
   };
 
@@ -361,7 +368,7 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
     if (!load) return;
     deleteLoad(load.id);
     setConfirmDelete(false);
-    ref.current?.close();
+    closeNow();
     onDeleted?.();
   };
 
@@ -867,7 +874,7 @@ function ConfirmDelete({ load, onConfirm, onClose }: { load: Load; onConfirm: ()
         </section>
         <footer className="ui-dialog-foot">
           <div style={{ flex: 1 }} />
-          <button type="button" className="ui-btn" onClick={() => ref.current?.close()} autoFocus>Cancel</button>
+          <button type="button" className="ui-btn" onClick={() => { ref.current?.close(); onClose(); }} autoFocus>Cancel</button>
           <button type="button" className="ui-btn ui-btn-danger-solid" onClick={onConfirm}>Yes, delete load</button>
         </footer>
       </div>
