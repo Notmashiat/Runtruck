@@ -144,7 +144,7 @@ export function DashboardPage() {
       <div
         ref={gridRef}
         className={`dash-grid${editing ? ' is-editing' : ''}${o.density === 'Compact' ? ' is-compact' : ''}`}
-        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, columnGap: gap, gridAutoRows: ROW }}
+        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, columnGap: gap, gridAutoRows: ROW, gridAutoFlow: o.packed ? 'row dense' : 'row' }}
       >
         {visible.map((it) => {
           const kpi = kpiFor(it.id, data);

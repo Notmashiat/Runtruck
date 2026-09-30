@@ -53,6 +53,8 @@ export type CustomerPeriod = 'This week' | 'Last 30 days' | 'All time';
 
 export interface DashOptions {
   density: Density;
+  // Let smaller widgets fill gaps left by taller ones (may change the order slightly).
+  packed: boolean;
   greeting: boolean;
   notes: boolean;
   revenueDays: 7 | 14 | 30;
@@ -76,10 +78,11 @@ export const DEFAULT_LAYOUT: DashLayout = {
     item('active-loads', 8, 360), item('drivers', 4, 360),
     item('ar-aging', 6, 260), item('by-customer', 6, 260),
     item('kpi-overdue', 3, 130, true), item('kpi-drivers', 3, 130, true), item('kpi-trucks', 3, 130, true), item('kpi-docs', 3, 130, true),
-    item('lanes', 6, 280, true), item('cash', 4, 230, true), item('fleet', 6, 260, true), item('upcoming', 4, 320, true),
+    item('lanes', 6, 280, true), item('cash', 4, 230, true), item('fleet', 6, 300, true), item('upcoming', 4, 320, true),
   ],
   options: {
     density: 'Comfortable',
+    packed: true,
     greeting: true,
     notes: true,
     revenueDays: 7,

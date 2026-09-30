@@ -95,6 +95,10 @@ export function DashboardCustomize({ layout, onChange, onClose }: { layout: Dash
                 <Choice options={['Comfortable', 'Compact'] as Density[]} value={o.density} onChange={(v) => setOpt('density', v)} />
               </div>
               <div className="dash-opt">
+                <div><strong>Fill gaps automatically</strong><span>Smaller widgets move up into empty space. Turn off to keep the exact order.</span></div>
+                <Switch on={o.packed} onChange={(v) => setOpt('packed', v)} label="Fill gaps automatically" />
+              </div>
+              <div className="dash-opt">
                 <div><strong>Greeting and date</strong><span>The line above the widgets.</span></div>
                 <Switch on={o.greeting} onChange={(v) => setOpt('greeting', v)} label="Greeting and date" />
               </div>
