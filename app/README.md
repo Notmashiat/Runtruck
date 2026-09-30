@@ -19,15 +19,18 @@ handoff bundle in the repo root.
 ```
 src/
   components/       Sidebar (with Settings and Log out), SettingsDialog (Profile + Appearance),
-                     NewLoadDialog (the "+ New Load" form), Header
+                     NewLoadDialog (the "+ New Load" form), RecordDialog + FleetDialogs (the
+                     driver, unit and trailer forms), Header
                      (the top bar: search, Filters, per-screen actions), AppLayout, SectionTabs +
                      TabbedSection (the pill tab bar), and shared pieces: Card, Kpis,
                      Tag (status chip), ComingSoon, Blueprint (marketing site only)
   context/          AppShellContext — shared UI state (search, tab filters, settlement approval)
-                     that persists across navigation within the app shell
+                     plus the loads and fleet records, which persist in this browser's storage
   data/             mock.ts — loads, drivers, trucks, customers, invoices, settlements, plus the
                      sidebar entries (NAV) and each section's tabs (SECTION_TABS);
                      accounting.ts, fleet.ts, hr.ts, safety.ts — data for those sections' tabs
+                     (fleet.ts: the demo fleet's full records, form choices and form → table
+                     conversions)
   lib/               search.ts (the top-bar search filters whichever table is on screen) and
                      theme.ts (light/dark, stored in localStorage, applied as data-theme on <html>)
   pages/app/         One file per screen; tabbed sections keep their tabs in a subfolder
@@ -70,6 +73,30 @@ load is added through `addLoad` in `AppShellContext` and shows on the board and 
 prefilled; **Delete load** in its footer asks for confirmation first. Loads are kept in this
 browser's storage (`runtruck-loads`) until there is a backend, so new, edited and deleted loads
 survive a reload on that browser only.
+
+**Fleet records.** **+ Add Driver**, **+ Add Unit** and **+ Add Trailer** (Fleet › Drivers, Trucks,
+Trailers) each open their own popup in the New Load style (`components/RecordDialog.tsx` is the form
+engine, `components/FleetDialogs.tsx` the three forms):
+
+- Driver — personal and emergency contact, employment (ID, type, status, hire date, terminal,
+  dispatcher), CDL (number, state, class, expiry, endorsements, restrictions, hazmat and TWIC
+  expiry), qualification-file dates (medical card, MVR, annual review, drug test, Clearinghouse,
+  road test), assigned truck and pay, notes.
+- Unit — unit number, status, ownership, driver, terminal; VIN, year, make, model, cab, fuel,
+  engine, GVWR, axles; plate, registration, IRP, IFTA, DOT inspection, insurance; odometer and
+  service schedule, ELD serial, tires; purchase or lease terms; notes.
+- Trailer — number, type, length, status, location, ownership; VIN, year, make, model, axles,
+  suspension, doors, payload; the reefer unit (reefers only); registration, inspection,
+  insurance; service dates; notes.
+
+Required fields, formats (VIN, state, ZIP, phone, email, model year) and duplicates (unit numbers,
+employee IDs, VINs, driver names) are checked on save, with a count per section in the side menu.
+Every row has **Edit**, which reopens the form prefilled; its footer has **Archive** (hide the record
+from lists, pickers and totals but keep it — **Show archived** on each table brings it back, and
+**Restore** undoes it) and **Delete** (permanent, after a confirmation). A driver's truck and a
+truck's driver are one assignment: changing either side updates the other and frees what it
+replaced. The New Load driver/truck/trailer pickers and the Dashboard driver list use these records.
+They are stored as `runtruck-drivers`, `runtruck-trucks` and `runtruck-trailers`.
 
 **Planner** is a calendar with Day, Week and Month views (`pages/app/PlannerPage.tsx`,
 `styles/calendar.css`). Pickups and deliveries come from the loads (`loadEvents` in

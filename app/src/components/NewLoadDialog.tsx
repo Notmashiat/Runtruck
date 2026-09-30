@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import { money } from '../data/accounting';
-import { CARRIERS, CUSTOMERS, DRIVERS, stopsOf, TRAILERS, TRUCKS, USER, type Load } from '../data/mock';
+import { CARRIERS, CUSTOMERS, stopsOf, USER, type Load } from '../data/mock';
 import { shortToIso } from '../lib/dates';
 
 type Section = 'Load info' | 'Stops' | 'Freight' | 'LTL' | 'Carrier' | 'Driver & equipment' | 'Rates' | 'Documents' | 'Notes' | 'Review';
@@ -307,7 +307,11 @@ interface NewLoadDialogProps {
 export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const bodyRef = useRef<HTMLElement>(null);
-  const { loads, addLoad, updateLoad, deleteLoad } = useAppShell();
+  const { loads, addLoad, updateLoad, deleteLoad, drivers, trucks, trailers } = useAppShell();
+  // Archived fleet records are kept on file but are not offered for new work.
+  const activeDrivers = drivers.filter((x) => !x.archived);
+  const activeTrucks = trucks.filter((x) => !x.archived);
+  const activeTrailers = trailers.filter((x) => !x.archived);
   const [initial] = useState<Draft>(() => (load ? draftFromLoad(load) : INITIAL));
   const [d, setD] = useState<Draft>(initial);
   const [section, setSection] = useState<Section>('Load info');
@@ -647,24 +651,28 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
                 className="ui-input"
                 value={d.driver}
                 onChange={(e) => {
-                  const drv = DRIVERS.find((x) => x.name === e.target.value);
-                  setD((prev) => ({ ...prev, driver: e.target.value, truck: prev.truck || drv?.unit || '' }));
+                  const drv = activeDrivers.find((x) => x.name === e.target.value);
+                  const unit = drv && drv.unit !== '—' ? drv.unit : '';
+                  setD((prev) => ({ ...prev, driver: e.target.value, truck: prev.truck || unit }));
                 }}
               >
                 <option value="">Unassigned</option>
-                {DRIVERS.map((x) => <option key={x.name} value={x.name}>{x.name} · {x.status}</option>)}
+                {activeDrivers.map((x) => <option key={x.id} value={x.name}>{x.name} · {x.status}</option>)}
+                {d.driver && !activeDrivers.some((x) => x.name === d.driver) && <option value={d.driver}>{d.driver}</option>}
               </select>
             </Field>
             <Field label="Truck">
               <select className="ui-input" value={d.truck} onChange={(e) => set('truck', e.target.value)}>
                 <option value="">None</option>
-                {TRUCKS.map((x) => <option key={x.unit} value={x.unit}>{x.unit} · {x.status}</option>)}
+                {activeTrucks.map((x) => <option key={x.id} value={x.unit}>{x.unit} · {x.status}</option>)}
+                {d.truck && !activeTrucks.some((x) => x.unit === d.truck) && <option value={d.truck}>{d.truck}</option>}
               </select>
             </Field>
             <Field label="Trailer">
               <select className="ui-input" value={d.trailer} onChange={(e) => set('trailer', e.target.value)}>
                 <option value="">None</option>
-                {TRAILERS.map((x) => <option key={x.unit} value={x.unit}>{x.unit} · {x.kind}</option>)}
+                {activeTrailers.map((x) => <option key={x.id} value={x.unit}>{x.unit} · {x.kind}</option>)}
+                {d.trailer && !activeTrailers.some((x) => x.unit === d.trailer) && <option value={d.trailer}>{d.trailer}</option>}
               </select>
             </Field>
           </div>

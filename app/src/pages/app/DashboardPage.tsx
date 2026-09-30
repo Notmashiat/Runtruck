@@ -4,7 +4,7 @@ import { Kpis } from '../../components/Kpis';
 import { Tag } from '../../components/Tag';
 import { useAppShell } from '../../context/AppShellContext';
 import { dollars, money, UNINVOICED } from '../../data/accounting';
-import { ACTIVE_STATUSES, DRIVERS, REVENUE_BARS, REVENUE_DAYS } from '../../data/mock';
+import { ACTIVE_STATUSES, REVENUE_BARS, REVENUE_DAYS } from '../../data/mock';
 import { matchesQuery } from '../../lib/search';
 
 const MAX_BAR = Math.max(...REVENUE_BARS);
@@ -14,15 +14,15 @@ const CHART = REVENUE_BARS.map((v, i) => ({
   fill: v === MAX_BAR ? 'var(--ui-primary)' : 'var(--ui-primary-soft)',
 }));
 
-const DRIVER_ROWS = DRIVERS.map((d) => ({
-  name: d.name,
-  note: d.status === 'On duty' ? `On duty · ${d.hos} left` : d.status,
-  dot: d.status === 'On duty' ? 'var(--ui-primary)' : d.status === 'Available' ? 'var(--ui-green)' : 'var(--ui-muted)',
-}));
-
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { query, loads } = useAppShell();
+  const { query, loads, drivers } = useAppShell();
+  const driverRows = drivers.filter((d) => !d.archived).map((d) => ({
+    id: d.id,
+    name: d.name,
+    note: d.status === 'On duty' ? `On duty · ${d.hos} left` : d.status,
+    dot: d.status === 'On duty' ? 'var(--ui-primary)' : d.status === 'Available' ? 'var(--ui-green)' : 'var(--ui-muted)',
+  }));
   const searching = query.trim().length > 0;
 
   const active = loads.filter((l) => ACTIVE_STATUSES.includes(l.status));
@@ -78,9 +78,9 @@ export function DashboardPage() {
           </Card>
 
           <Card title="Drivers">
-            {DRIVER_ROWS.map((d, i) => (
+            {driverRows.map((d, i) => (
               <div
-                key={d.name}
+                key={d.id}
                 onClick={() => navigate('/app/fleet/drivers')}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: i ? '1px solid var(--ui-border)' : 0, cursor: 'pointer' }}
               >

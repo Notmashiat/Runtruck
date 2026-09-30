@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppShell } from '../context/AppShellContext';
 import { UNINVOICED } from '../data/accounting';
 import { SECTION_TABS, type ViewKey } from '../data/mock';
+import { DriverDialog, TrailerDialog, TruckDialog } from './FleetDialogs';
 import { NewLoadDialog } from './NewLoadDialog';
 
 interface HeadAction {
@@ -20,6 +21,7 @@ export function Header() {
   const { query, setQuery, approveAll, loads } = useAppShell();
   const [newLoadOpen, setNewLoadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | null>(null);
 
   // Route matching is case-insensitive, so normalise before keying off the section.
   const segments = location.pathname.toLowerCase().split('/');
@@ -38,9 +40,9 @@ export function Header() {
       ...(detailLoad ? [{ label: 'Edit load', onClick: () => setEditOpen(true) }] : []),
       { label: 'Update status', primary: true },
     ],
-    'fleet/drivers': [{ label: '+ Add Driver', primary: true }],
-    'fleet/trucks': [{ label: 'Log service' }, { label: '+ Add Unit', primary: true }],
-    'fleet/trailers': [{ label: '+ Add Trailer', primary: true }],
+    'fleet/drivers': [{ label: '+ Add Driver', primary: true, onClick: () => setAdding('driver') }],
+    'fleet/trucks': [{ label: 'Log service' }, { label: '+ Add Unit', primary: true, onClick: () => setAdding('truck') }],
+    'fleet/trailers': [{ label: '+ Add Trailer', primary: true, onClick: () => setAdding('trailer') }],
     crm: [{ label: '+ Add Customer', primary: true }],
     'accounting/uninvoiced': [{ label: `Invoice ${UNINVOICED.length} loads`, primary: true, onClick: () => navigate('/app/accounting/invoiced') }],
     'accounting/invoiced': [{ label: 'Export batch' }, { label: '+ New Batch', primary: true, onClick: () => navigate('/app/accounting/batches') }],
@@ -91,6 +93,9 @@ export function Header() {
       {editOpen && detailLoad && (
         <NewLoadDialog load={detailLoad} onClose={() => setEditOpen(false)} onDeleted={() => { setEditOpen(false); navigate('/app/loads'); }} />
       )}
+      {adding === 'driver' && <DriverDialog onClose={() => setAdding(null)} />}
+      {adding === 'truck' && <TruckDialog onClose={() => setAdding(null)} />}
+      {adding === 'trailer' && <TrailerDialog onClose={() => setAdding(null)} />}
     </header>
   );
 }
