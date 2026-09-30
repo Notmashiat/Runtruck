@@ -113,8 +113,18 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
       }
     },
     saveTrailer: (t) => setTrailers((list) => upsert(list, t)),
-    archiveDriver: (id, archived) => setDrivers((list) => list.map((d) => (d.id === id ? { ...d, archived } : d))),
-    archiveTruck: (id, archived) => setTrucks((list) => list.map((t) => (t.id === id ? { ...t, archived } : t))),
+    // Archiving frees the other side of an assignment (an archived driver is
+    // not driving anything); restoring does not reassign it.
+    archiveDriver: (id, archived) => {
+      const d = drivers.find((x) => x.id === id);
+      setDrivers((list) => list.map((x) => (x.id === id ? { ...x, archived, ...(archived ? { unit: '—', details: { ...x.details, truck: '' } } : {}) } : x)));
+      if (d && archived) setTrucks((list) => list.map((t) => (t.driver === d.name ? { ...t, driver: 'Unassigned', details: { ...t.details, driver: '' } } : t)));
+    },
+    archiveTruck: (id, archived) => {
+      const t = trucks.find((x) => x.id === id);
+      setTrucks((list) => list.map((x) => (x.id === id ? { ...x, archived, ...(archived ? { driver: 'Unassigned', details: { ...x.details, driver: '' } } : {}) } : x)));
+      if (t && archived) setDrivers((list) => list.map((d) => (d.unit === t.unit ? { ...d, unit: '—', details: { ...d.details, truck: '' } } : d)));
+    },
     archiveTrailer: (id, archived) => setTrailers((list) => list.map((t) => (t.id === id ? { ...t, archived } : t))),
     deleteDriver: (id) => {
       const gone = drivers.find((d) => d.id === id);

@@ -95,7 +95,7 @@ Every row has **Edit**, which reopens the form prefilled; its footer has **Archi
 from lists, pickers and totals but keep it — **Show archived** on each table brings it back, and
 **Restore** undoes it) and **Delete** (permanent, after a confirmation). A driver's truck and a
 truck's driver are one assignment: changing either side updates the other and frees what it
-replaced. The New Load driver/truck/trailer pickers and the Dashboard driver list use these records.
+replaced; archiving a driver or unit frees its assignment. The New Load driver/truck/trailer pickers and the Dashboard driver list use these records.
 They are stored as `runtruck-drivers`, `runtruck-trucks` and `runtruck-trailers`.
 
 **Planner** is a calendar with Day, Week and Month views (`pages/app/PlannerPage.tsx`,
