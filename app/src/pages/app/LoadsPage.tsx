@@ -52,7 +52,7 @@ export function LoadsPage() {
     { label: 'Needs POD', value: countOf('Needs POD'), note: 'Delivered, proof of delivery not in' },
   ];
 
-  const countText = searching ? `${rows.length} matching “${query}”` : `${rows.length} loads`;
+  const countText = searching ? `${rows.length} matching “${query}”` : `${rows.length} load${rows.length === 1 ? '' : 's'}`;
 
   const filter = (
     <div className="ui-filter">
