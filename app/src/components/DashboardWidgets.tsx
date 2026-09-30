@@ -117,9 +117,16 @@ export function kpiFor(id: WidgetId, d: DashData): KpiView | null {
 
 // — cards —
 
+interface AttentionItem {
+  n: number;
+  label: string;
+  to: string;
+  tone: 'red' | 'amber' | 'blue';
+}
+
 function Attention({ d }: { d: DashData }) {
   const n = (status: string) => d.active.filter((l) => l.status === status).length;
-  const items: { n: number; label: string; to: string; tone: 'red' | 'amber' | 'blue' }[] = [
+  const all: AttentionItem[] = [
     { n: n('Needs driver'), label: 'Loads without a driver', to: '/app/loads', tone: 'red' },
     { n: n('Delayed'), label: 'Delayed loads', to: '/app/loads', tone: 'red' },
     { n: d.overdue.length, label: `Past-due invoices · ${usd0(d.overdue.reduce((s, i) => s + invoiceTotal(i), 0))}`, to: '/app/accounting/past-due', tone: 'red' },
@@ -130,7 +137,8 @@ function Attention({ d }: { d: DashData }) {
     { n: d.trucks.filter((t) => t.status !== 'In service').length, label: 'Trucks in the shop or due for service', to: '/app/fleet/trucks', tone: 'amber' },
     { n: d.drivers.filter((x) => x.status === 'On duty' && hoursLeft(x.hos) < 2).length, label: 'Drivers under 2 h of driving time', to: '/app/fleet/drivers', tone: 'amber' },
     { n: d.invoices.filter((i) => i.draft).length, label: 'Draft invoices not issued', to: '/app/accounting/invoiced', tone: 'blue' },
-  ].filter((i) => i.n > 0);
+  ];
+  const items = all.filter((i) => i.n > 0);
   if (items.length === 0) return <div className="dash-empty">All clear — nothing is waiting on anyone.</div>;
   return (
     <div className="dash-list">
