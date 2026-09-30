@@ -59,6 +59,10 @@ Older URLs redirect to their new homes: `/app/drivers` → `/app/fleet/drivers`,
 `/app/fleet/trucks`, `/app/customers` → `/app/crm`, `/app/invoices` → `/app/accounting/invoiced`, and
 `/app/settlements` and `/app/accounting/settlements` → `/app/accounting/payroll`.
 
+The sidebar collapses to an icon rail (the button beside the logo; the choice is kept in
+`runtruck-sidebar-collapsed`). Each section has a line icon (`components/NavIcons.tsx`), and in the
+rail its name shows as a hover tip. On narrow screens it starts collapsed and opens over the page.
+
 The sidebar foot has the signed-in user (`USER` in `data/mock.ts`, with Member ID and Company ID),
 **Settings** — a popup with a Profile page and an Appearance page whose dark-mode switch darkens the
 whole site (app and marketing page; `:root[data-theme="dark"]` tokens in `shell.css` and `app.css`) —

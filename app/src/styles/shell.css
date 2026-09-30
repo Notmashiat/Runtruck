@@ -91,30 +91,72 @@
    cards (overflow: hidden) shrink to the window and clip their content. */
 .ui-main > * { flex-shrink: 0; }
 
-/* — sidebar: the table-header grey with the same bold uppercase labels — */
+/* — sidebar: the table-header grey with bold uppercase labels and line icons.
+   It collapses to an icon rail (.is-collapsed) with the names as hover tips. — */
 .ui-sidebar {
-  width: 232px; flex: none; display: flex; flex-direction: column; overflow-y: auto;
+  position: relative; z-index: 30;
+  width: 232px; flex: none; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden;
   padding: 22px 12px 16px; background: var(--ui-thead); color: var(--ui-text-2);
+  transition: width 180ms ease, padding 180ms ease;
 }
 .ui-brand {
-  display: flex; align-items: center; gap: 10px; padding: 0 12px 26px;
+  display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 0 0 22px 12px;
   font-size: 15px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ui-text);
 }
-.ui-brand-mark { width: 16px; height: 16px; border-radius: 4px; background: var(--ui-primary); }
+.ui-brand-mark { width: 16px; height: 16px; flex: none; border-radius: 4px; background: var(--ui-primary); }
+.ui-brand-name { flex: 1; white-space: nowrap; }
+.ui-collapse {
+  flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0;
+  color: var(--ui-text-2); background: transparent; border: 0; border-radius: 8px; cursor: pointer;
+}
+.ui-collapse:hover { background: var(--ui-nav-pill); color: var(--ui-text); }
 .ui-nav { display: flex; flex-direction: column; gap: 2px; }
 .ui-nav-group { padding: 18px 12px 6px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ui-text-2); }
 .ui-sidebar .ui-nav-item {
-  display: block; width: 100%; padding: 10px 12px; text-align: left; text-decoration: none;
+  position: relative; display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 12px;
+  text-align: left; text-decoration: none; white-space: nowrap;
   font: inherit; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ui-text-2);
   background: transparent; border: 0; border-radius: 10px; cursor: pointer;
 }
+.ui-nav-icon { flex: none; }
 .ui-sidebar .ui-nav-item:hover { background: var(--ui-nav-pill); color: var(--ui-text); }
 .ui-sidebar .ui-nav-item.is-active { background: var(--ui-nav-pill); color: var(--ui-primary-hover); }
 .ui-sidebar-foot { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--ui-dash); display: flex; flex-direction: column; gap: 2px; }
-.ui-user { padding: 0 12px 10px; }
-.ui-user-name { font-size: 13px; font-weight: 600; color: var(--ui-text); }
-.ui-user-meta { margin-top: 2px; font-size: 12px; color: var(--ui-text-2); }
+.ui-user { position: relative; display: flex; align-items: center; gap: 10px; padding: 0 8px 10px; }
+.ui-avatar {
+  flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.02em; color: var(--ui-on-primary); background: var(--ui-primary);
+}
+.ui-user-text { min-width: 0; }
+.ui-user-name { font-size: 13px; font-weight: 600; color: var(--ui-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui-user-meta { margin-top: 2px; font-size: 12px; color: var(--ui-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ui-sidebar::-webkit-scrollbar-thumb { background: var(--ui-dash); border-radius: 999px; }
+.ui-sidebar-scrim { display: none; }
+
+.ui-sidebar.is-collapsed { width: 72px; padding: 18px 12px 16px; overflow: visible; }
+.ui-sidebar.is-collapsed .ui-brand { flex-direction: column; gap: 14px; padding: 6px 0 16px; }
+.ui-sidebar.is-collapsed .ui-brand-name,
+.ui-sidebar.is-collapsed .ui-nav-label,
+.ui-sidebar.is-collapsed .ui-user-text,
+.ui-sidebar.is-collapsed .ui-nav-group { display: none; }
+.ui-sidebar.is-collapsed .ui-nav-item { justify-content: center; padding: 10px 0; }
+.ui-sidebar.is-collapsed .ui-user { justify-content: center; padding: 0 0 10px; }
+.ui-sidebar.is-collapsed [data-tip]:hover::after,
+.ui-sidebar.is-collapsed [data-tip]:focus-visible::after {
+  content: attr(data-tip); position: absolute; left: calc(100% + 14px); top: 50%; transform: translateY(-50%); z-index: 60;
+  padding: 6px 10px; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; white-space: nowrap;
+  color: var(--ui-card); background: var(--ui-text); border-radius: 8px; box-shadow: 0 4px 14px var(--ui-shadow); pointer-events: none;
+}
+.ui-sidebar.is-collapsed .ui-user[data-tip]:hover::after { top: calc(50% - 5px); }
+/* A short window: let the rail scroll (tips are clipped then, but nothing is lost). */
+@media (max-height: 620px) { .ui-sidebar.is-collapsed { overflow-y: auto; } }
+/* Narrow screens: a slimmer rail, and the open sidebar slides over the page. */
+@media (max-width: 760px) {
+  .ui-sidebar.is-collapsed { width: 60px; padding-left: 8px; padding-right: 8px; }
+  .ui-sidebar:not(.is-collapsed) { position: fixed; top: 0; bottom: 0; left: 0; z-index: 50; box-shadow: 0 0 40px var(--ui-shadow); }
+  .ui-sidebar-scrim { display: block; position: fixed; inset: 0; z-index: 45; background: rgba(17, 24, 39, 0.35); }
+}
+@media (prefers-reduced-motion: reduce) { .ui-sidebar { transition: none; } }
 
 /* — top bar — */
 .ui-topbar {
