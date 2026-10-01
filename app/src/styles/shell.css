@@ -680,3 +680,19 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 .rel-checks { display: flex; flex-direction: column; gap: 6px; }
 .rel-dialog .ui-table-wrap { max-height: 300px; }
 .rel-dialog .muted { color: var(--ui-muted); }
+
+/* Developer › Deactivated */
+.ui-table tr.is-off td { color: var(--ui-muted); background: var(--ui-expand); }
+.ui-table tr.is-off td .strong, .ui-table tr.is-off td.strong { color: var(--ui-muted); }
+.deact-list { display: flex; flex-direction: column; }
+.deact-group { border-top: 1px solid var(--ui-border); }
+.deact-group:first-child { border-top: 0; }
+.deact-group.is-off { background: var(--ui-expand); }
+.deact-group.is-off .deact-head, .deact-group.is-off .ui-table-inner { opacity: 0.6; }
+.deact-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 20px; font: inherit; color: inherit; text-align: left; background: transparent; border: 0; cursor: pointer; }
+.deact-head:hover { background: var(--ui-row-hover); }
+.deact-name { display: flex; flex-direction: column; gap: 2px; }
+.deact-count { min-width: 150px; text-align: right; font-size: 13px; color: var(--ui-muted); }
+.deact-body { display: flex; flex-direction: column; gap: 12px; padding: 0 20px 18px 44px; }
+.deact-note { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 10px 14px; font-size: 13px; background: var(--ui-card); border: 1px dashed var(--ui-border); border-radius: 10px; }
+.deact-note span { flex: 1; min-width: 220px; }

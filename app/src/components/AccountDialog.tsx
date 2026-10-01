@@ -6,9 +6,11 @@ import {
 import type { FormValues } from '../data/fleet';
 import { fmtDate } from '../data/invoicing';
 import { OWNER_COMPANY_ID, OWNER_COMPANY_NAME } from '../lib/account';
+import { USER } from '../data/mock';
+import { companyVersionId } from '../lib/deactivate';
 import { deleteAccount, isAccountIdIssued, newAccountId, saveAccount } from '../lib/accountStore';
 import { emailTaken, me } from '../lib/auth';
-import { companyName, useCompanies } from '../lib/companyStore';
+import { companyById, companyName, useCompanies } from '../lib/companyStore';
 import { makePasswordRecord, passwordProblems } from '../lib/password';
 import { PHONE } from '../lib/rules';
 import { RecordDialog, type SectionSpec } from './RecordDialog';
@@ -58,8 +60,13 @@ function accountSections(isNew: boolean, accountId: string, self: boolean, compa
           check: (value, v) => (value === v.password ? null : 'Does not match'),
         },
         {
-          key: 'status', label: 'Status', type: 'select', required: true, options: ['Active', 'Disabled'], help: 'A disabled account cannot log in.',
-          check: (value) => (self && value === 'Disabled' ? 'You can’t turn off your own account' : null),
+          key: 'status', label: 'Status', type: 'select', required: true, options: ['Active', 'Deactivated'],
+          help: 'A deactivated account cannot log in or get updates; it is listed in Developer › Deactivated.',
+          check: (value, v) => {
+            if (self && value === 'Deactivated') return 'You can’t deactivate your own account';
+            const co = companyById(val(v, 'company').split(' · ')[0]);
+            return value === 'Active' && !isSuper(v) && co?.deactivated ? `${co.name} is deactivated: reactivate the company first` : null;
+          },
         },
       ],
     },
@@ -101,7 +108,8 @@ export function AccountDialog({ account, companyId, onClose }: { account?: Accou
   const companies = useCompanies();
   const [id] = useState(() => account?.accountId ?? newAccountId());
   const self = Boolean(account && account.accountId === me()?.accountId);
-  const companyOptions = [RUNTRUCK, ...companies.map((c) => companyLabel(c.companyId))];
+  // Deactivated companies take no new accounts.
+  const companyOptions = [RUNTRUCK, ...companies.filter((c) => !c.deactivated).map((c) => companyLabel(c.companyId))];
   const [initial] = useState<FormValues>(() =>
     account
       ? {
@@ -135,9 +143,17 @@ export function AccountDialog({ account, companyId, onClose }: { account?: Accou
     if (!record) return;
     // Another tab could have issued the same ID meanwhile: draw again if so.
     const accountId = !account && isAccountIdIssued(id) ? newAccountId() : id;
+    const companyId = type === 'Super admin' ? OWNER_COMPANY_ID : val(v, 'company').split(' · ')[0];
+    const status = val(v, 'status') as AccountStatus;
+    // Deactivating keeps the version the company runs now; reactivating clears it.
+    const off = status === 'Deactivated'
+      ? account?.status === 'Deactivated'
+        ? { deactivatedAt: account.deactivatedAt, deactivatedBy: account.deactivatedBy, deactivatedWith: account.deactivatedWith, deactivatedVersion: account.deactivatedVersion }
+        : { deactivatedAt: now, deactivatedBy: USER.name, deactivatedWith: 'account' as const, deactivatedVersion: companyVersionId(companyId) }
+      : {};
     saveAccount({
       accountId,
-      companyId: type === 'Super admin' ? OWNER_COMPANY_ID : val(v, 'company').split(' · ')[0],
+      companyId,
       type,
       name: val(v, 'name'),
       title: val(v, 'title'),
@@ -145,12 +161,13 @@ export function AccountDialog({ account, companyId, onClose }: { account?: Accou
       email: val(v, 'email'),
       password: record,
       perms: type === 'Super admin' ? ALL_PERMS : permsFromForm(v),
-      status: val(v, 'status') as AccountStatus,
+      status,
       notes: val(v, 'notes'),
       created: account?.created ?? now,
       createdBy: account?.createdBy ?? me()?.accountId ?? '',
       updated: account ? now : undefined,
       lastSignIn: account?.lastSignIn,
+      ...off,
     });
   };
 

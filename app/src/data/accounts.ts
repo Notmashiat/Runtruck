@@ -10,7 +10,7 @@ import type { PasswordRecord } from '../lib/password';
 export type AccountType =
   | 'Super admin' | 'Company admin' | 'Dispatcher' | 'Broker / sales agent' | 'Accounting & billing'
   | 'Safety & compliance' | 'Fleet manager' | 'HR & recruiting' | 'Custom';
-export type AccountStatus = 'Active' | 'Disabled';
+export type AccountStatus = 'Active' | 'Deactivated';
 
 export interface Account {
   accountId: string;
@@ -29,6 +29,12 @@ export interface Account {
   createdBy: string;
   updated?: string;
   lastSignIn?: string;
+  // While deactivated: when, by whom, whether on its own or with its company,
+  // and the version it keeps (it gets no updates until reactivated).
+  deactivatedAt?: string;
+  deactivatedBy?: string;
+  deactivatedWith?: 'account' | 'company';
+  deactivatedVersion?: string;
 }
 
 // — what can be granted —
@@ -161,11 +167,16 @@ export function reviveAccount(raw: unknown): Account | null {
     email: r.email,
     password: r.password,
     perms: Array.isArray(r.perms) ? r.perms.filter((p) => ALL_PERMS.includes(p)) : [],
-    status: r.status === 'Disabled' ? 'Disabled' : 'Active',
+    // 'Disabled' is what deactivated accounts were saved as before.
+    status: r.status === 'Active' || r.status === undefined ? 'Active' : 'Deactivated',
     notes: typeof r.notes === 'string' ? r.notes : '',
     created: typeof r.created === 'string' ? r.created : new Date().toISOString(),
     createdBy: typeof r.createdBy === 'string' ? r.createdBy : '',
     updated: r.updated,
     lastSignIn: r.lastSignIn,
+    deactivatedAt: r.deactivatedAt,
+    deactivatedBy: r.deactivatedBy,
+    deactivatedWith: r.deactivatedWith,
+    deactivatedVersion: r.deactivatedVersion,
   };
 }

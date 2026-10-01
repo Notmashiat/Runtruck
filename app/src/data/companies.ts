@@ -78,6 +78,8 @@ export interface ClientCompany {
   customPrice: number | null;
   paymentMethod: string;
   notes: string;
+  // A deactivated company: none of its accounts can log in or get updates.
+  deactivated?: { at: string; by: string; version?: string };
 }
 
 // The plan a fleet size fits.
@@ -92,7 +94,7 @@ export function monthlyPrice(c: ClientCompany): number | null {
 }
 
 // Whether the company is billed now (trials, paused and cancelled are not).
-export const isPaying = (c: ClientCompany) => c.status === 'Active' || c.status === 'Past due';
+export const isPaying = (c: ClientCompany) => !c.deactivated && (c.status === 'Active' || c.status === 'Past due');
 
 // Monthly billing renews on the day of the month the subscription started;
 // annual on its anniversary. A trial's next date is the day it ends.
@@ -193,6 +195,7 @@ export function companyFromForm(v: FormValues, companyId: string, prev?: ClientC
     customPrice: plan === 'Enterprise' && str(v, 'customPrice') ? Number(str(v, 'customPrice')) : null,
     paymentMethod: str(v, 'paymentMethod'),
     notes: str(v, 'notes'),
+    deactivated: prev?.deactivated,
   };
 }
 

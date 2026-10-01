@@ -40,6 +40,7 @@ const AccountManagerTab = page(() => import('./pages/app/developer/AccountManage
 const ClientsTab = page(() => import('./pages/app/developer/ClientsTab'), 'ClientsTab');
 const AccountsTab = page(() => import('./pages/app/developer/AccountsTab'), 'AccountsTab');
 const ReleasesTab = page(() => import('./pages/app/developer/ReleasesTab'), 'ReleasesTab');
+const DeactivatedTab = page(() => import('./pages/app/developer/DeactivatedTab'), 'DeactivatedTab');
 
 // A section or tab the signed-in account may not open sends it to the
 // Dashboard (which every account has). The check runs on every visit, so
@@ -98,7 +99,7 @@ export default function App() {
           ['maintenance', <MaintenanceTab />], ['driver-documents', <DriverDocumentsTab />], ['violations', <ViolationsTab />], ['settlements', <ClaimSettlementsTab />],
         ])}
         {/* Developer is RunTruck's own console: super admins under Company ID 1 only. */}
-        {section('developer', [['account-manager', <AccountManagerTab />], ['clients', <ClientsTab />], ['accounts', <AccountsTab />], ['releases', <ReleasesTab />]])}
+        {section('developer', [['account-manager', <AccountManagerTab />], ['clients', <ClientsTab />], ['accounts', <AccountsTab />], ['deactivated', <DeactivatedTab />], ['releases', <ReleasesTab />]])}
       </Route>
       {/* Section URLs from before the sidebar was reorganised, so old links still land. They
           sit outside the /app layout on purpose: the tab bar and top bar key off the section

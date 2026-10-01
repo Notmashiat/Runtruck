@@ -8,6 +8,7 @@ import { fmtDate } from '../../../data/invoicing';
 import { USER } from '../../../data/mock';
 import { RELEASES, type Change } from '../../../data/releases';
 import { me } from '../../../lib/auth';
+import { useAccounts } from '../../../lib/accountStore';
 import { useCompanies } from '../../../lib/companyStore';
 import {
   companyReleaseIndex, deployVersion, latestDeployedIndex, mergeVersions, newCompaniesIndex, pendingVersions, setVersionCompanies,
@@ -67,7 +68,9 @@ function DeployDialog({ version, onClose }: { version: Version; onClose: () => v
   const [paused, setPaused] = useState(false);
   const [forNew, setForNew] = useState(true);
   const included = pendingVersions(s).filter((v) => v.first <= version.first);
-  const pick = (c: ClientCompany) => isPaying(c) || (trials && c.status === 'Trial') || (paused && c.status === 'Paused');
+  const accounts = useAccounts();
+  // Deactivated companies never get updates.
+  const pick = (c: ClientCompany) => !c.deactivated && (isPaying(c) || (trials && c.status === 'Trial') || (paused && c.status === 'Paused'));
   const chosen = companies.filter((c) => pick(c) && companyReleaseIndex(c, s) < version.last);
   const already = companies.filter((c) => pick(c) && companyReleaseIndex(c, s) >= version.last).length;
   const count = (st: ClientCompany['status']) => companies.filter((c) => c.status === st).length;
@@ -103,6 +106,14 @@ function DeployDialog({ version, onClose }: { version: Version; onClose: () => v
         <p className="ui-stop-meta" style={{ marginTop: 8 }}>
           {chosen.length ? chosen.map((c) => `${c.name} (${c.companyId})`).join(', ') : 'No company needs it right now.'}
           {already ? ` · ${already} already ${already === 1 ? 'has' : 'have'} it.` : ''} You can add or remove companies later with Roll back / redeploy.
+        </p>
+        <p className="ui-stop-meta" style={{ marginTop: 4 }}>
+          Reaches {plural(accounts.filter((a) => a.status === 'Active' && chosen.some((c) => c.companyId === a.companyId)).length, 'active account')}.
+          {(() => {
+            const frozen = accounts.filter((a) => a.status === 'Deactivated' && chosen.some((c) => c.companyId === a.companyId)).length;
+            const skipped = companies.filter((c) => c.deactivated).length;
+            return `${frozen ? ` ${plural(frozen, 'deactivated account')} in these companies ${frozen === 1 ? 'keeps its' : 'keep their'} version.` : ''}${skipped ? ` ${plural(skipped, 'deactivated company', 'deactivated companies')} ${skipped === 1 ? 'is' : 'are'} skipped.` : ''}`;
+          })()}
         </p>
       </div>
     </Shell>
@@ -169,7 +180,8 @@ function ManageDialog({ version, onClose }: { version: Version; onClose: () => v
   const gaining = companies.filter((c) => want[c.companyId] && !has(c));
   const losing = companies.filter((c) => !want[c.companyId] && has(c));
   const flipNew = forNew !== newCompaniesIndex(s) >= version.first;
-  const setAll = (fn: (c: ClientCompany) => boolean) => setWant(Object.fromEntries(companies.map((c) => [c.companyId, fn(c)])));
+  // Deactivated companies stay as they are.
+  const setAll = (fn: (c: ClientCompany) => boolean) => setWant(Object.fromEntries(companies.map((c) => [c.companyId, c.deactivated ? has(c) : fn(c)])));
   const nothing = gaining.length === 0 && losing.length === 0 && !flipNew;
 
   return (
@@ -216,10 +228,13 @@ function ManageDialog({ version, onClose }: { version: Version; onClose: () => v
                 const now = versionAt(companyReleaseIndex(c, s), s);
                 const after = want[c.companyId] === has(c) ? now : want[c.companyId] ? version : before;
                 return (
-                  <tr key={c.companyId} className="is-clickable" onClick={() => setWant({ ...want, [c.companyId]: !want[c.companyId] })}>
-                    <td><input type="checkbox" checked={want[c.companyId] ?? false} onChange={() => undefined} aria-label={`${c.name} has ${version.id}`} /></td>
+                  <tr
+                    key={c.companyId} className={c.deactivated ? 'is-off' : 'is-clickable'} title={c.deactivated ? 'Deactivated: reactivate the company first' : undefined}
+                    onClick={() => { if (!c.deactivated) setWant({ ...want, [c.companyId]: !want[c.companyId] }); }}
+                  >
+                    <td><input type="checkbox" checked={want[c.companyId] ?? false} disabled={Boolean(c.deactivated)} onChange={() => undefined} aria-label={`${c.name} has ${version.id}`} /></td>
                     <td className="strong">{c.name}<div className="ui-stop-meta">{c.companyId}</div></td>
-                    <td>{c.status}</td>
+                    <td>{c.deactivated ? 'Deactivated' : c.status}</td>
                     <td>{now.id}</td>
                     <td>{after.id === now.id ? <span className="muted">No change</span> : <strong>{after.id}</strong>}</td>
                   </tr>

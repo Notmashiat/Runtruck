@@ -328,6 +328,7 @@ export const SECTION_TABS: Partial<Record<ViewKey, SectionTab[]>> = {
     { key: 'account-manager', label: 'Account manager' },
     { key: 'clients', label: 'Clients' },
     { key: 'accounts', label: 'Accounts' },
+    { key: 'deactivated', label: 'Deactivated' },
     { key: 'releases', label: 'Releases' },
   ],
 };

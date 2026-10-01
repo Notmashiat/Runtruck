@@ -53,7 +53,7 @@ export function LoginPage() {
     } else if (result.reason === 'email') {
       setError('No RunTruck account uses that email. Check it, or ask a RunTruck super admin.');
     } else if (result.reason === 'disabled') {
-      setError('This account is turned off. Ask a RunTruck super admin to turn it back on.');
+      setError('This account has been deactivated. Ask a RunTruck super admin to reactivate it.');
     } else if (result.reason === 'company') {
       setError(`${result.company ?? 'This company'} can’t sign in right now. Contact RunTruck.`);
     } else {

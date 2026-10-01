@@ -10,6 +10,8 @@ import { MEMBER_ID, OWNER_COMPANY_ID, OWNER_MEMBER_ID, readRegistry } from '../.
 import { useAccounts } from '../../../lib/accountStore';
 import { currentSession, ownerEmail } from '../../../lib/auth';
 import { companyName } from '../../../lib/companyStore';
+import { deactivateAccount } from '../../../lib/deactivate';
+import { USER } from '../../../data/mock';
 import { matchesQuery } from '../../../lib/search';
 import { getSettings } from '../../../lib/settingsStore';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
@@ -44,7 +46,6 @@ const TYPE_TAG = (type: AccountType) => (type === 'Super admin' ? 'tag-accent' :
 const FILTERS: FilterDef<Row>[] = [
   { key: 'type', label: 'Account type', type: 'select', get: (r) => r.type, options: TYPE_NAMES },
   { key: 'company', label: 'Company', type: 'select', get: (r) => r.company },
-  { key: 'status', label: 'Status', type: 'select', get: (r) => r.status, options: ['Active', 'Disabled'] },
 ];
 
 function Fact({ k, children }: { k: string; children: ReactNode }) {
@@ -71,7 +72,7 @@ export function AccountsTab() {
       company: `${OWNER_COMPANY_ID} · ${companyName(OWNER_COMPANY_ID)}`, access: 'Everything, plus Developer', status: 'Active',
       lastSignIn: session?.memberId === OWNER_MEMBER_ID ? session.started : undefined, owner: true,
     },
-    ...accounts.map((a) => ({
+    ...accounts.filter((a) => a.status === 'Active').map((a) => ({
       accountId: a.accountId, name: a.name, title: a.title, email: a.email, type: a.type, companyId: a.companyId,
       company: `${a.companyId} · ${companyName(a.companyId)}`,
       access: a.type === 'Super admin' ? 'Everything, plus Developer' : describePerms(a.perms),
@@ -80,10 +81,10 @@ export function AccountsTab() {
   ];
 
   const kpis = [
-    { label: 'Accounts', value: String(all.length), note: `${all.filter((r) => r.status === 'Active').length} can log in` },
+    { label: 'Active accounts', value: String(all.length), note: 'Can log in' },
     { label: 'Super admins', value: String(all.filter((r) => r.type === 'Super admin').length), note: 'Company ID 1 · RunTruck' },
     { label: 'Client accounts', value: String(all.filter((r) => r.companyId !== OWNER_COMPANY_ID).length), note: `${new Set(all.filter((r) => r.companyId !== OWNER_COMPANY_ID).map((r) => r.companyId)).size} companies` },
-    { label: 'Disabled', value: String(all.filter((r) => r.status === 'Disabled').length), note: 'Cannot log in' },
+    { label: 'Deactivated', value: String(accounts.filter((a) => a.status === 'Deactivated').length), note: 'In the Deactivated tab' },
   ];
 
   const sort = useSort(usePageFilters(all.filter((r) => matchesQuery({ ...r, account: undefined }, query)), FILTERS), {});
@@ -127,6 +128,14 @@ export function AccountsTab() {
                               {r.owner ? 'RunTruck’s owner account. Its email and password change in its own Settings › Security.' : `Created ${when(r.account?.created)}`}
                             </div>
                             <div style={{ flex: 1 }} />
+                            {r.account && r.accountId !== session?.memberId && (
+                              <button
+                                type="button" className="ui-btn ui-btn-sm ui-btn-danger"
+                                onClick={() => { if (r.account && window.confirm(`Deactivate ${r.name} (${r.accountId})? They can no longer log in and get no updates until reactivated in Developer › Deactivated.`)) deactivateAccount(r.account, USER.name); }}
+                              >
+                                Deactivate
+                              </button>
+                            )}
                             {r.account && <button type="button" className="ui-btn ui-btn-sm" onClick={() => setEditing(r.account ?? null)}>Edit account</button>}
                           </div>
                           <div className="ui-kv-grid dev-facts">

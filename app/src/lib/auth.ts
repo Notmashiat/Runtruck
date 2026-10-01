@@ -104,6 +104,7 @@ function meFor(memberId: string, companyId: string): Me | null {
   }
   const a = accountById(memberId);
   if (!a || a.status !== 'Active' || a.companyId !== companyId) return null;
+  if (a.companyId !== OWNER_COMPANY_ID && companyById(a.companyId)?.deactivated) return null;
   return { accountId: a.accountId, companyId: a.companyId, type: a.type, email: a.email, perms: a.type === 'Super admin' ? ALL_PERMS : a.perms, owner: false };
 }
 
@@ -208,7 +209,7 @@ export async function logIn(email: string, password: string, remember: boolean):
     if (a.status !== 'Active') return { ok: false, reason: 'disabled' };
     if (a.companyId !== OWNER_COMPANY_ID) {
       const c = companyById(a.companyId);
-      if (!c || c.status === 'Paused' || c.status === 'Cancelled') return { ok: false, reason: 'company', company: c ? `${c.name} (${c.status.toLowerCase()})` : 'This company' };
+      if (!c || c.deactivated || c.status === 'Paused' || c.status === 'Cancelled') return { ok: false, reason: 'company', company: c ? `${c.name} (${c.deactivated ? 'deactivated' : c.status.toLowerCase()})` : 'This company' };
     }
     saveAccount({ ...a, lastSignIn: new Date().toISOString() });
     openSession(a.companyId, a.accountId, a.email, remember);

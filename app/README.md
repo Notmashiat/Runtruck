@@ -183,6 +183,15 @@ unique. Accounts are kept in `runtruck-1-accounts`. A super admin can edit any a
 (type, company, details, email, a new password, status, access) or delete it; nobody can disable,
 delete or demote their own account. A company can only be deleted once it has no accounts.
 
+**Deactivated** (Developer › Deactivated; `lib/deactivate.ts`). A super admin deactivates an account
+(Accounts tab, or Status in Edit account) or a whole company (Account manager); deactivating a company
+deactivates all its accounts. A deactivated account cannot log in and gets no updates: it keeps the
+version its company ran when it was deactivated, and deployments, redeploys and the new-companies setting
+skip deactivated companies. The Deactivated tab lists every deactivated account under its company (one
+expandable group per company, with when, by whom, on its own or with the company, and the version kept).
+A deactivated company's group is greyed out and the company must be reactivated (there or in Account
+manager) before any of its accounts can be; a reactivated account joins its company's current version.
+
 **Releases** (Developer › Releases; `data/releases.ts`, `lib/releases.ts`). Every new or changed
 feature is written up as a change in a release (`data/releases.ts`) and switched on in the code only
 where `isLive('<change id>')` is true, with the old behaviour kept otherwise. Super admins (Company ID 1)

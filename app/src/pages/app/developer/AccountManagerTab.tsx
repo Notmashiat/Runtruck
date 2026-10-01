@@ -9,6 +9,8 @@ import { BUSINESS_TYPES, STATUS_TAG, STATUSES, isPaying, monthlyPrice, type Clie
 import { fmtDate, usd0 } from '../../../data/invoicing';
 import { useAccounts } from '../../../lib/accountStore';
 import { useCompanies } from '../../../lib/companyStore';
+import { deactivateCompany, reactivateCompany } from '../../../lib/deactivate';
+import { USER } from '../../../data/mock';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
@@ -78,7 +80,7 @@ export function AccountManagerTab() {
               const price = monthlyPrice(c);
               return (
                 <Fragment key={c.companyId}>
-                  <tr className={`is-clickable${open ? ' is-open' : ''}`} onClick={() => setOpenId(open ? null : c.companyId)} aria-expanded={open}>
+                  <tr className={`is-clickable${open ? ' is-open' : ''}${c.deactivated ? ' is-off' : ''}`} onClick={() => setOpenId(open ? null : c.companyId)} aria-expanded={open}>
                     <td className="strong">{c.companyId}</td>
                     <td className="strong">{c.name}<div className="ui-stop-meta">{c.businessType}</div></td>
                     <td>{[c.city, c.state].filter(Boolean).join(', ')}</td>
@@ -87,7 +89,7 @@ export function AccountManagerTab() {
                     <td className="num">{c.trucks}</td>
                     <td>{c.plan}</td>
                     <td className="num">{price === null ? 'Custom' : usd0(price)}</td>
-                    <td className="num"><Tag label={c.status} tagClass={STATUS_TAG[c.status]} /></td>
+                    <td className="num">{c.deactivated ? <Tag label="Deactivated" tagClass="tag-outline" /> : <Tag label={c.status} tagClass={STATUS_TAG[c.status]} />}</td>
                   </tr>
                   {open && (
                     <tr>
@@ -96,6 +98,18 @@ export function AccountManagerTab() {
                           <div className="ui-batch-head">
                             <div className="ui-stop-meta" style={{ marginTop: 0 }}>Created {when(c.created)}</div>
                             <div style={{ flex: 1 }} />
+                            {c.deactivated ? (
+                              <button type="button" className="ui-btn ui-btn-sm" onClick={() => { if (window.confirm(`Reactivate ${c.name} (${c.companyId})? Its accounts stay deactivated until you reactivate each one in Developer › Deactivated.`)) reactivateCompany(c); }}>
+                                Reactivate company
+                              </button>
+                            ) : (
+                              <button
+                                type="button" className="ui-btn ui-btn-sm ui-btn-danger"
+                                onClick={() => { if (window.confirm(`Deactivate ${c.name} (${c.companyId})? All ${accountsOf(c.companyId).filter((a) => a.status === 'Active').length} of its active accounts are deactivated too: nobody there can log in and the company gets no updates until it is reactivated.`)) deactivateCompany(c, USER.name); }}
+                              >
+                                Deactivate company
+                              </button>
+                            )}
                             <button type="button" className="ui-btn ui-btn-sm" onClick={() => setEditing(c)}>Edit company</button>
                           </div>
                           <div className="ui-kv-grid dev-facts">
@@ -117,7 +131,7 @@ export function AccountManagerTab() {
                           <div className="ui-batch-head" style={{ paddingTop: 16 }}>
                             <div className="ui-label">Login accounts</div>
                             <div style={{ flex: 1 }} />
-                            <button type="button" className="ui-btn ui-btn-sm" onClick={() => setAddingTo(c.companyId)}>+ Create account for {c.name}</button>
+                            <button type="button" className="ui-btn ui-btn-sm" disabled={Boolean(c.deactivated)} title={c.deactivated ? 'Reactivate the company first' : undefined} onClick={() => setAddingTo(c.companyId)}>+ Create account for {c.name}</button>
                           </div>
                           {accountsOf(c.companyId).length === 0 ? (
                             <div className="ui-stop-meta">None yet. Accounts created for Company ID {c.companyId} see this company’s data and nothing else.</div>
