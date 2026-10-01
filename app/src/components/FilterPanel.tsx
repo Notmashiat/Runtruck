@@ -1,3 +1,4 @@
+import { useRef, type MouseEvent } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import { isActive, type DatesValue, type FilterMeta, type FilterValue, type RangeValue } from '../lib/tableTools';
 import { currentYear } from '../lib/clock';
@@ -22,16 +23,29 @@ export function describe(m: FilterMeta, v: FilterValue): string {
   return `${m.label}: ${from && to ? `${short(from)} – ${short(to)}` : from ? `from ${short(from)}` : `until ${short(to ?? '')}`}`;
 }
 
-// The Filters side panel for the page on screen. Choices apply as they are made.
+// The Filters side panel for the page on screen. Choices apply as they are
+// made, so closing it (×, Done, Esc, or a click on the dimmed page beside it)
+// keeps them.
 export function FilterPanel({ page, title, onClose }: { page: string; title: string; onClose: () => void }) {
   const { filterMeta, filterValues, setFilter, clearFilters } = useAppShell();
   const { ref, closeNow, ownEvent } = useModal(onClose);
   const meta = filterMeta[page] ?? [];
   const values = filterValues[page] ?? {};
   const active = meta.filter((m) => isActive(values[m.key])).length;
+  // Only a click that starts and ends on the dimmed page closes the panel, so
+  // dragging out of a field (selecting text) does not.
+  const pressedOutside = useRef(false);
+  const outside = (e: MouseEvent<HTMLDialogElement>) => {
+    if (e.target !== e.currentTarget) return false;
+    const r = e.currentTarget.getBoundingClientRect();
+    return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+  };
 
   return (
-    <dialog ref={ref} className="ui-dialog is-sheet" aria-label={`Filters · ${title}`} onClose={(e) => { if (ownEvent(e)) onClose(); }} onCancel={(e) => ownEvent(e)}>
+    <dialog ref={ref} className="ui-dialog is-sheet" aria-label={`Filters · ${title}`} onClose={(e) => { if (ownEvent(e)) onClose(); }} onCancel={(e) => ownEvent(e)}
+      onMouseDown={(e) => { pressedOutside.current = outside(e); }}
+      onClick={(e) => { if (pressedOutside.current && outside(e)) closeNow(); pressedOutside.current = false; }}
+    >
       <div className="ui-dialog-main">
         <section className="ui-dialog-body">
           <button type="button" className="ui-dialog-close" onClick={closeNow} aria-label="Close">×</button>
