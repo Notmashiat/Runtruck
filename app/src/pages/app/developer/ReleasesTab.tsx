@@ -106,12 +106,13 @@ export function ReleasesTab() {
   const deployedIdx = latestDeployedIndex(deployments);
   const paying = companies.filter(isPaying);
   const onLatest = paying.filter((c) => companyReleaseIndex(c, deployments) === RELEASES.length - 1).length;
+  const waitingChanges = pending.reduce((n, r) => n + r.changes.length, 0);
   const lastDeployment = [...deployments].sort((a, b) => (a.at < b.at ? 1 : -1))[0];
 
   const kpis = [
     { label: 'Newest release', value: LATEST.id, note: LATEST.title },
     { label: 'Deployed to clients', value: RELEASES[deployedIdx].id, note: lastDeployment ? `${when(lastDeployment.at)} by ${lastDeployment.byName}` : 'Nothing deployed since 1.0' },
-    { label: 'Waiting to deploy', value: String(pending.length), note: pending.length ? `${pending.reduce((n, r) => n + r.changes.length, 0)} changes` : 'All caught up' },
+    { label: 'Waiting to deploy', value: String(pending.length), note: pending.length ? `${waitingChanges} change${waitingChanges === 1 ? '' : 's'}` : 'All caught up' },
     { label: 'Paying companies on newest', value: `${onLatest}/${paying.length}`, note: 'Super admins always run the newest' },
   ];
 
