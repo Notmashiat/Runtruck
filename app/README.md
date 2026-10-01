@@ -183,6 +183,18 @@ unique. Accounts are kept in `runtruck-1-accounts`. A super admin can edit any a
 (type, company, details, email, a new password, status, access) or delete it; nobody can disable,
 delete or demote their own account. A company can only be deleted once it has no accounts.
 
+**Releases** (Developer › Releases; `data/releases.ts`, `lib/releases.ts`). Every new or changed
+feature is written up as a change in a release (`data/releases.ts`) and switched on in the code only
+where `isLive('<change id>')` is true, with the old behaviour kept otherwise. Super admins (Company ID 1)
+always run the newest release, so they can try changes first. Client companies stay on the release they
+have until a super admin deploys: the Releases tab lists what is ready (each change marked New, Updated
+or Fixed, by section), and *Deploy to paid accounts* sends it — with every earlier release not yet
+deployed — to all paying companies (Active, Past due), optionally also free trials and paused companies.
+Companies created later start on the newest release deployed. Deployments are recorded with who and when
+(`runtruck-1-deployments`) and can be rolled back; Developer shows a badge while anything is waiting,
+and Clients shows each company's version. 1.0 is everything companies had when releases began; 1.1 adds
+Export on Loads (a CSV of every load).
+
 **Date and time** (`lib/clock.ts`). The app runs on the real clock, in the time zone from Settings ›
 Profile (or this device's): the top bar and dashboard show the live date and time, and every "today"
 (planner, due dates, overdue invoices, document renewals, this week's revenue) is the real today. The

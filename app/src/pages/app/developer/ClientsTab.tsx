@@ -6,7 +6,9 @@ import {
   CYCLES, PLANS, STATUS_TAG, STATUSES, addDaysIso, billingDates, monthlyPrice, todayInZone, type ClientCompany,
 } from '../../../data/companies';
 import { fmtDate, usd0 } from '../../../data/invoicing';
+import { RELEASES } from '../../../data/releases';
 import { useCompanies } from '../../../lib/companyStore';
+import { companyReleaseIndex, useDeployments } from '../../../lib/releases';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
@@ -21,6 +23,8 @@ const FILTERS: FilterDef<ClientCompany>[] = [
 export function ClientsTab() {
   const { query } = useAppShell();
   const companies = useCompanies();
+  const deployments = useDeployments();
+  const versionOf = (c: ClientCompany) => companyReleaseIndex(c, deployments);
   const today = todayInZone();
   const soon = addDaysIso(today, 7);
   const count = (s: ClientCompany['status']) => companies.filter((c) => c.status === s).length;
@@ -35,7 +39,7 @@ export function ClientsTab() {
   ];
 
   const sort = useSort(usePageFilters(companies.filter((c) => matchesQuery(c, query)), FILTERS), {
-    price: (c) => monthlyPrice(c), last: (c) => billingDates(c, today).last, next: (c) => billingDates(c, today).next,
+    version: (c) => versionOf(c), price: (c) => monthlyPrice(c), last: (c) => billingDates(c, today).last, next: (c) => billingDates(c, today).next,
   });
   const rows = sort.rows;
 
@@ -49,7 +53,7 @@ export function ClientsTab() {
             <tr>
               <SortTh sort={sort} k="name">Company</SortTh><SortTh sort={sort} k="companyId">Company ID</SortTh><SortTh sort={sort} k="plan">Plan</SortTh>
               <SortTh sort={sort} k="cycle">Billing</SortTh><SortTh sort={sort} k="started">Started</SortTh><SortTh sort={sort} k="last">Last payment</SortTh>
-              <SortTh sort={sort} k="next">Next billing</SortTh><SortTh sort={sort} k="trucks" num>Trucks</SortTh><SortTh sort={sort} k="price" num>Price</SortTh>
+              <SortTh sort={sort} k="next">Next billing</SortTh><SortTh sort={sort} k="version">Version</SortTh><SortTh sort={sort} k="trucks" num>Trucks</SortTh><SortTh sort={sort} k="price" num>Price</SortTh>
               <SortTh sort={sort} k="status" num>Status</SortTh>
             </tr>
           </thead>
@@ -68,6 +72,10 @@ export function ClientsTab() {
                   <td>{fmtDate(c.started)}</td>
                   <td>{dates.last ? fmtDate(dates.last) : '—'}</td>
                   <td>{stopped ? '—' : c.status === 'Trial' ? <>{fmtDate(dates.next)}<div className="ui-stop-meta">Trial ends</div></> : fmtDate(dates.next)}</td>
+                  <td>
+                    {RELEASES[versionOf(c)].id}
+                    <div className="ui-stop-meta">{versionOf(c) === RELEASES.length - 1 ? 'Newest' : `${RELEASES.length - 1 - versionOf(c)} behind`}</div>
+                  </td>
                   <td className="num">{c.trucks}</td>
                   <td className="num">
                     {price === null ? 'Custom' : `${usd0(price)} / mo`}

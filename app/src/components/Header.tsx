@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppShell } from '../context/AppShellContext';
 import { NAV, SECTION_TABS, type ViewKey } from '../data/mock';
-import { formatNow, useNow } from '../lib/clock';
+import { formatNow, todayIso, useNow } from '../lib/clock';
 import { isActive, pageKeyOf } from '../lib/tableTools';
 import { can } from '../lib/auth';
+import { downloadCsv } from '../lib/csv';
+import { isLive } from '../lib/releases';
 import { describe, FilterPanel } from './FilterPanel';
 import { BatchDialog } from './BatchDialog';
 import { CompanyDialog } from './CompanyDialog';
@@ -41,6 +43,13 @@ export function Header() {
   const onLoadDetail = view === 'loads' && Boolean(segments[3]);
   const detailLoad = onLoadDetail ? loads.find((l) => l.id.toLowerCase() === segments[3]) : undefined;
 
+  // Every load as a spreadsheet.
+  const exportLoads = () =>
+    downloadCsv(`runtruck-loads-${todayIso()}.csv`, [
+      ['Load', 'Status', 'Customer', 'Reference', 'Route', 'Pickup', 'Delivery', 'Driver', 'Truck', 'Carrier', 'Equipment', 'Commodity', 'Weight', 'Miles', 'Rate'],
+      ...loads.map((l) => [l.id, l.status, l.customer, l.ref, l.route, l.pickup, l.delivery, l.driver, l.unit, l.carrier, l.equip, l.commodity, l.weight, l.miles, l.rate]),
+    ]);
+
   // Keyed by section, or section/tab for the tabbed sections. Most are stubs,
   // as in the original prototype; the ones that navigate are the real flows.
   const developer: HeadAction[] = [
@@ -50,7 +59,11 @@ export function Header() {
   const actionsFor: Record<string, HeadAction[]> = {
     // New Load from the Dashboard only for accounts that may open Loads.
     dashboard: can('loads') ? [{ label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) }] : [],
-    loads: [{ label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) }],
+    loads: [
+      // Release 1.1 (data/releases.ts): only companies that have received it.
+      ...(isLive('loads-export') ? [{ label: 'Export', onClick: exportLoads }] : []),
+      { label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) },
+    ],
     loadDetail: [
       { label: 'Message driver' },
       ...(detailLoad ? [{ label: 'Edit load', onClick: () => setEditOpen(true) }] : []),

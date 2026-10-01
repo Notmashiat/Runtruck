@@ -3,6 +3,7 @@ import { NAV, USER, type ViewKey } from '../data/mock';
 import { useAppShell } from '../context/AppShellContext';
 import { can, isSuperAdmin, logOutAndLeave, me } from '../lib/auth';
 import { usePersisted } from '../lib/persist';
+import { pendingReleases, useDeployments } from '../lib/releases';
 import { NavIcon } from './NavIcons';
 
 const NARROW = '(max-width: 760px)';
@@ -19,6 +20,8 @@ export function Sidebar() {
     typeof raw === 'boolean' ? raw : null,
   );
   const superAdmin = isSuperAdmin();
+  // Releases written but not deployed to clients yet, flagged on Developer.
+  const waiting = pendingReleases(useDeployments()).length;
   const activeKey = (location.pathname.toLowerCase().split('/')[2] || 'dashboard') as ViewKey | 'settings';
 
   // Picking a page on a phone closes the overlay again.
@@ -67,6 +70,9 @@ export function Sidebar() {
               >
                 <NavIcon name={n.key} />
                 <span className="ui-nav-label">{n.label}</span>
+                {n.key === 'developer' && superAdmin && waiting > 0 && (
+                  <span className="ui-badge ui-nav-badge" title={`${waiting} release${waiting === 1 ? '' : 's'} ready to deploy`}>{waiting}</span>
+                )}
               </Link>
             ),
           )}
