@@ -215,6 +215,21 @@ export function docx(doc: ExportDoc): Uint8Array {
 
 // — PDF —
 
+// Fit columns to the page: narrow columns keep their full width and only
+// the widest ones are trimmed, to the same cap.
+function capWidths(natural: number[], avail: number): number[] {
+  if (natural.reduce((a, b) => a + b, 0) <= avail) return natural;
+  let remaining = avail;
+  let left = natural.length;
+  for (const w of [...natural].sort((a, b) => a - b)) {
+    const share = remaining / left;
+    if (w > share) return natural.map((n) => Math.min(n, share));
+    remaining -= w;
+    left -= 1;
+  }
+  return natural;
+}
+
 function fit(s: string, width: number, size: number, bold = false): string {
   if (textWidth(s, size, bold) <= width) return s;
   let cut = s;
@@ -252,8 +267,7 @@ export function pdf(doc: ExportDoc): PdfDoc {
     // Column widths follow the content, squeezed to the page if needed.
     const avail = W - 2 * M;
     const natural = t.columns.map((c, i) => Math.min(220, Math.max(textWidth(c, SIZE, true), ...t.rows.slice(0, 300).map((r) => textWidth(r[i] ?? '', SIZE))) + 8));
-    const total = natural.reduce((a, b) => a + b, 0);
-    const widths = total > avail ? natural.map((w) => Math.max(24, (w / total) * avail)) : natural;
+    const widths = capWidths(natural, avail);
     const head = () => {
       p.rect(M, y, widths.reduce((a, b) => a + b, 0), ROW, { fill: '#f3f4f6' });
       let x = M;

@@ -78,6 +78,9 @@ const text = (v: unknown): string => {
 };
 
 // [key, label, value, ticked by default (true unless false)]
+// Placeholders that are not a driver or unit, so they are not offered as filters.
+const NOBODY = ['Unassigned', '—', '-', 'TBD'];
+
 type Main<T> = [key: string, label: string, get: (r: T) => unknown, main?: boolean][];
 
 // A set from records: the main columns, then (unticked) every field of the
@@ -106,7 +109,8 @@ function makeSet<T>(
     const d = details?.(r) ?? {};
     for (const k of extra) values[k] = text(d[k]);
     const a = about(r);
-    return { values, date: a.date ?? '', drivers: (a.drivers ?? []).filter(Boolean), trucks: (a.trucks ?? []).filter(Boolean), customer: a.customer ?? '', archived: a.archived ?? false };
+    const real = (x: string) => Boolean(x) && !NOBODY.includes(x);
+    return { values, date: a.date ?? '', drivers: (a.drivers ?? []).filter(real), trucks: (a.trucks ?? []).filter(real), customer: a.customer ?? '', archived: a.archived ?? false };
   });
   return { ...meta, columns, rows };
 }
