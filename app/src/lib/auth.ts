@@ -2,7 +2,7 @@ import { COMPANY_ID, MEMBER_ID, roleOf, scopedKey } from './account';
 import { DEFAULT_SETTINGS } from '../data/settings';
 import { getSettings } from './settingsStore';
 
-// Logging in to the one account (company 30017).
+// Logging in to the one account: RunTruck's owner (Company ID 1).
 //
 // The password is never stored: only a PBKDF2-SHA-256 fingerprint (salted,
 // 210,000 rounds). Until it is changed in Settings › Security the account
@@ -25,6 +25,7 @@ const STARTING: PasswordRecord = {
 };
 
 const AUTH_KEY = scopedKey('runtruck-auth');
+const LOGIN_EMAIL_KEY = scopedKey('runtruck-login-email');
 const SESSION_KEY = 'runtruck-session';
 const FAILS_KEY = 'runtruck-login-fails';
 const REMEMBER_DAYS = 30;
@@ -64,9 +65,29 @@ export function passwordChangedOn(): string | undefined {
   return passwordRecord().changed;
 }
 
-// The account's login email is the email in Settings › Profile.
+interface LoginEmailRecord {
+  email: string;
+  changed: string;
+}
+
+function loginEmailRecord(): LoginEmailRecord | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LOGIN_EMAIL_KEY) ?? 'null') as LoginEmailRecord | null;
+    if (saved && typeof saved.email === 'string' && saved.email.includes('@')) return saved;
+  } catch {
+    // Fall back to the original email.
+  }
+  return null;
+}
+
+// The login email. It is changed only in Settings › Security (not by the
+// Settings › Profile email); until then it is the account's original email.
 export function accountEmail(): string {
-  return getSettings().profile.email.trim();
+  return loginEmailRecord()?.email ?? DEFAULT_SETTINGS.profile.email;
+}
+
+export function loginEmailChangedOn(): string | undefined {
+  return loginEmailRecord()?.changed;
 }
 
 async function passwordMatches(password: string): Promise<boolean> {
@@ -104,11 +125,12 @@ function noteFail() {
 
 export type LoginResult = { ok: true } | { ok: false; reason: 'locked' | 'email' | 'password'; seconds?: number };
 
-// The emails the account answers to: the one in Settings › Profile, and the
-// account's original email (so changing the profile email never locks you out).
+// The email the account answers to. Until a login email is set in Security,
+// the Settings › Profile email also works (it used to be the login email).
 function emailMatches(email: string): boolean {
   const typed = email.trim().toLowerCase();
-  return [accountEmail(), DEFAULT_SETTINGS.profile.email].some((e) => e.trim().toLowerCase() === typed);
+  const accepted = loginEmailRecord() ? [accountEmail()] : [accountEmail(), getSettings().profile.email];
+  return accepted.some((e) => e.trim().toLowerCase() === typed);
 }
 
 // 'rosa.medina@sunridgefreight.com' → 'r•••@sunridgefreight.com', as a hint.
@@ -190,6 +212,25 @@ export async function changePassword(current: string, next: string): Promise<'ok
   const salt = hex(crypto.getRandomValues(new Uint8Array(16)).buffer);
   const record: PasswordRecord = { salt, hash: await fingerprint(next, salt, STARTING.iterations), iterations: STARTING.iterations, changed: new Date().toISOString() };
   localStorage.setItem(AUTH_KEY, JSON.stringify(record));
+  return 'ok';
+}
+
+// — changing the login email —
+
+export async function changeLoginEmail(current: string, next: string): Promise<'ok' | 'wrong-current' | 'invalid'> {
+  if (!(await passwordMatches(current))) return 'wrong-current';
+  const email = next.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'invalid';
+  localStorage.setItem(LOGIN_EMAIL_KEY, JSON.stringify({ email, changed: new Date().toISOString() } satisfies LoginEmailRecord));
+  // The open session now shows the new email.
+  for (const store of [sessionStorage, localStorage]) {
+    try {
+      const s = JSON.parse(store.getItem(SESSION_KEY) ?? 'null') as Session | null;
+      if (s) store.setItem(SESSION_KEY, JSON.stringify({ ...s, email }));
+    } catch {
+      // Ignore a damaged session.
+    }
+  }
   return 'ok';
 }
 

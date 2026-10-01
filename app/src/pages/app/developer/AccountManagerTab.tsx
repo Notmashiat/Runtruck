@@ -3,7 +3,7 @@ import { Card } from '../../../components/Card';
 import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
-import { STATUS_TAG, monthlyPrice, type ClientCompany } from '../../../data/companies';
+import { STATUS_TAG, monthlyPrice, nextCompanyId, type ClientCompany } from '../../../data/companies';
 import { usd0 } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
@@ -107,7 +107,13 @@ export function AccountManagerTab() {
             })}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">Nothing matches the search or filters.</div>}
+        {rows.length === 0 && (
+          <div className="ui-empty">
+            {companies.length === 0
+              ? `No client companies yet. + Create company adds the first one (Company ID ${nextCompanyId(companies)}).`
+              : 'Nothing matches the search or filters.'}
+          </div>
+        )}
       </Card>
     </>
   );

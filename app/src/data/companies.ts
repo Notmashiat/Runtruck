@@ -1,10 +1,8 @@
 // RunTruck's own client register (Developer › Account manager and Clients):
 // every company that pays for RunTruck, its unique Company ID, its login
-// accounts and its subscription. So far there is one company, the one this
-// account belongs to; Create company will add more.
-import { COMPANY_ID, MEMBER_ID, roleOf, type AccountRole } from '../lib/account';
+// accounts and its subscription.
+import { COMPANY_ID, type AccountRole } from '../lib/account';
 import { isoDateAt } from '../lib/clock';
-import { getSettings } from '../lib/settingsStore';
 
 export type Plan = 'Starter' | 'Growth' | 'Enterprise';
 export type BillingCycle = 'Monthly' | 'Annual';
@@ -81,39 +79,13 @@ export function billingDates(c: ClientCompany, today: string): { last: string; n
     : { last: m === 0 ? at(y - 1, 11) : at(y, m - 1), next: thisMonth };
 }
 
-// The next Company ID Create company will issue.
+// The next Company ID Create company will issue (1 is RunTruck itself).
 export function nextCompanyId(list: ClientCompany[]): string {
-  return String(Math.max(...list.map((c) => Number(c.companyId) || 0)) + 1);
+  return String(Math.max(Number(COMPANY_ID), ...list.map((c) => Number(c.companyId) || 0)) + 1);
 }
 
-// The register, built from live data where it exists: the company and
-// profile from Settings, trucks and team size from the records.
-export function clientCompanies(live: { trucks: number; teamMembers: number; lastSignIn?: string }): ClientCompany[] {
-  const s = getSettings();
-  return [
-    {
-      companyId: COMPANY_ID,
-      name: s.company.name,
-      legal: s.company.legal,
-      dot: s.company.dot,
-      mc: s.company.mc,
-      city: s.company.city,
-      state: s.company.state,
-      contact: s.profile.name,
-      email: s.company.email,
-      phone: s.company.phone,
-      plan: planFor(live.trucks),
-      cycle: 'Monthly',
-      status: 'Active',
-      started: '2025-11-03',
-      paymentMethod: 'ACH autopay',
-      trucks: live.trucks,
-      teamMembers: live.teamMembers,
-      accounts: [
-        { memberId: MEMBER_ID, name: s.profile.name, email: s.profile.email, role: roleOf(MEMBER_ID), lastSignIn: live.lastSignIn },
-      ],
-    },
-  ];
-}
+// Every client company. None yet: this account is RunTruck's owner (Company
+// ID 1), not a client. Create company will add them.
+export const CLIENTS: ClientCompany[] = [];
 
 export const todayInZone = () => isoDateAt(new Date());

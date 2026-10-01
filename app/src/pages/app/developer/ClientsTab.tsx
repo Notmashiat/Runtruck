@@ -2,7 +2,7 @@ import { Card } from '../../../components/Card';
 import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
-import { PLANS, STATUS_TAG, billingDates, monthlyPrice, todayInZone, type ClientCompany } from '../../../data/companies';
+import { PLANS, STATUS_TAG, billingDates, monthlyPrice, nextCompanyId, todayInZone, type ClientCompany } from '../../../data/companies';
 import { fmtDate, usd0 } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
@@ -74,7 +74,13 @@ export function ClientsTab() {
             })}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="ui-empty">Nothing matches the search or filters.</div>}
+        {rows.length === 0 && (
+          <div className="ui-empty">
+            {companies.length === 0
+              ? `No client companies yet. + Create company adds the first one (Company ID ${nextCompanyId(companies)}).`
+              : 'Nothing matches the search or filters.'}
+          </div>
+        )}
       </Card>
     </>
   );

@@ -11,8 +11,11 @@ import {
 import { invoiceDoc } from '../../lib/invoicePdf';
 import { openPdf } from '../../lib/pdf';
 import { todayIso } from '../../lib/clock';
-import { roleOf } from '../../lib/account';
-import { MIN_PASSWORD, changePassword, currentSession, logOut, passwordChangedOn, passwordProblems } from '../../lib/auth';
+import { currentKey, roleOf } from '../../lib/account';
+import {
+  MIN_PASSWORD, accountEmail, changeLoginEmail, changePassword, currentSession, isSuperAdmin, logOut, loginEmailChangedOn,
+  passwordChangedOn, passwordProblems,
+} from '../../lib/auth';
 import { fillTemplate, useSettings } from '../../lib/settingsStore';
 
 type SectionKey = 'profile' | 'company' | 'invoicing' | 'messages' | 'operations' | 'alerts' | 'team' | 'security' | 'appearance' | 'data';
@@ -151,7 +154,7 @@ function Profile() {
           <Field label="Job title" help="Shown under your name and in your email signature.">
             <input className="ui-input" value={d.title} onChange={(e) => sec.set('title', e.target.value)} placeholder="e.g. Dispatch" />
           </Field>
-          <Field label="Email" required help="You log in with this email." error={err(sec.tried, !isEmail(d.email), 'Enter a valid email')}>
+          <Field label="Email" required help="Your contact email, on emails you send. The login email is in Security." error={err(sec.tried, !isEmail(d.email), 'Enter a valid email')}>
             <input className="ui-input" type="email" value={d.email} onChange={(e) => sec.set('email', e.target.value)} />
           </Field>
           <Field label="Phone" error={err(sec.tried, d.phone.trim() !== '' && digits(d.phone).length < 10, 'Ten digits')}>
@@ -619,7 +622,7 @@ function Security() {
 
   return (
     <>
-      <Group title="Signed in" about="The RunTruck account for this company.">
+      <Group title="Signed in" about={isSuperAdmin() ? 'RunTruck’s owner account: every part of RunTruck, plus Developer.' : 'Your RunTruck account.'}>
         <dl className="set-ids">
           <div><dt>Email</dt><dd>{session?.email ?? '—'}</dd></div>
           <div><dt>Company ID</dt><dd>{session?.companyId ?? '—'}</dd></div>
@@ -630,6 +633,7 @@ function Security() {
         </dl>
         <div><button type="button" className="ui-btn" onClick={() => { logOut(); navigate('/login', { replace: true }); }}>Log out</button></div>
       </Group>
+      {isSuperAdmin() && <LoginEmail when={when} />}
       <Group title="Change password" about={`At least ${MIN_PASSWORD} characters, with letters and a number. Last changed: ${changed ? when(changed) : 'never (starting password)'}.`}>
         <div className="ui-form-grid">
           <Field label="Current password" required wide error={(tried && !current && 'Required') || (wrong && 'That is not your current password')}>
@@ -647,6 +651,51 @@ function Security() {
         <p className="ui-stop-meta">RunTruck has no server yet: a changed password is kept on this browser. Other browsers keep using the starting password until accounts move to RunTruck’s servers.</p>
       </Group>
     </>
+  );
+}
+
+// The super admin changes the login email here (and only here), confirming
+// with the current password.
+function LoginEmail({ when }: { when: (iso?: string) => string }) {
+  const [email, setEmail] = useState('');
+  const [current, setCurrent] = useState('');
+  const [tried, setTried] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [wrong, setWrong] = useState(false);
+  const [done, setDone] = useState('');
+  const login = accountEmail();
+  const changed = loginEmailChangedOn();
+  const same = email.trim().toLowerCase() === login.toLowerCase();
+
+  const submit = async () => {
+    setTried(true);
+    setDone('');
+    setWrong(false);
+    if (!isEmail(email) || same || !current) return;
+    setBusy(true);
+    const result = await changeLoginEmail(current, email);
+    setBusy(false);
+    if (result === 'wrong-current') { setWrong(true); return; }
+    if (result === 'ok') {
+      setDone(`Login email changed. Log in with ${email.trim()} from now on.`);
+      setEmail(''); setCurrent(''); setTried(false);
+    }
+  };
+
+  return (
+    <Group title="Login email" about={`You log in with ${login}. Last changed: ${changed ? when(changed) : 'never (original email)'}.`}>
+      <div className="ui-form-grid">
+        <Field label="New login email" required wide error={tried && ((!isEmail(email) && 'Enter a valid email') || (same && 'That is already your login email'))}>
+          <input className="ui-input" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </Field>
+        <Field label="Current password" required wide help="To confirm it’s you." error={(tried && !current && 'Required') || (wrong && 'That is not your current password')}>
+          <input className="ui-input" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
+        </Field>
+      </div>
+      <div><button type="button" className="ui-btn ui-btn-primary" disabled={busy} onClick={submit}>{busy ? 'Saving…' : 'Change login email'}</button></div>
+      {done && <div className="ui-note">{done}</div>}
+      <p className="ui-stop-meta">Your contact email in Profile stays as it is. Like the password, the login email is kept on this browser until accounts move to RunTruck’s servers.</p>
+    </Group>
   );
 }
 
@@ -696,7 +745,7 @@ function DataSection() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState('');
   // The login (session and password fingerprint) is never backed up, restored or reset here.
-  const isLogin = (k: string) => k === 'runtruck-session' || k.endsWith('-auth');
+  const isLogin = (k: string) => k === 'runtruck-session' || k.endsWith('-auth') || k.endsWith('-login-email');
   const keys = () => Object.keys(localStorage).filter((k) => k.startsWith('runtruck-') && !isLogin(k));
 
   const exportAll = () => {
@@ -726,7 +775,7 @@ function DataSection() {
       }
       if (!window.confirm(`Replace what is stored in this browser with the backup (${entries.length} parts)? The page will reload.`)) return;
       for (const k of keys()) localStorage.removeItem(k);
-      for (const [k, v] of entries) localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v));
+      for (const [k, v] of entries) localStorage.setItem(currentKey(k), typeof v === 'string' ? v : JSON.stringify(v));
       window.location.reload();
     } catch {
       setMessage('Could not read that file.');

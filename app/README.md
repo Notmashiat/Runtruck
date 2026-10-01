@@ -131,27 +131,30 @@ and the active-loads columns. The layout is kept in `runtruck-dashboard`; narrow
 columns.
 
 **Login** (`/login`, `pages/LoginPage.tsx`, `lib/auth.ts`, `lib/account.ts`). The app needs a signed-in
-session; without one every `/app` page sends you to the login (and back afterwards). There is one
-account — the Settings › Profile email, Company ID 30017 — and every record and setting is stored
-under that company ID (`runtruck-30017-loads`, …; older unscoped keys move over on first read). The
+session; without one every `/app` page sends you to the login (and back afterwards). The login page
+asks only for email and password (no company ID). There is one account — RunTruck's owner, a super
+admin with every part of the app, Company ID 1 — and every record and setting is stored under that
+company ID (`runtruck-1-loads`, …; anything saved under the old ID 30017 or unscoped moves over on
+load, including an open session). The login email is the account's own: it changes only in Settings ›
+Security (with the current password), not with the Profile email; until it is changed there, the
+original email and the Profile email both work. The
 password is checked against a salted PBKDF2-SHA-256 fingerprint (210,000 rounds); the starting
-password is not in the code. Settings › Security changes it (kept on that browser) and shows the
-session. "Keep me signed in" lasts 30 days, otherwise until the browser closes (at most 12 hours).
+password is not in the code. Settings › Security changes it and the login email (kept on that
+browser) and shows the session. "Keep me signed in" lasts 30 days, otherwise until the browser closes (at most 12 hours).
 Five wrong tries lock the form for a minute. Log out ends the session. With no server yet this is a
 browser-side gate, not server-side security.
 
 **Developer** (`/app/developer/<tab>`, super admins only; `pages/app/developer/`, `data/companies.ts`).
-This account (Member ID 100482731) is RunTruck's **Super admin** (`roleOf` in `lib/account.ts`,
+This account (Member ID 100482731, Company ID 1) is RunTruck's owner and **Super admin** (`roleOf` in `lib/account.ts`,
 `isSuperAdmin` in `lib/auth.ts`); only a super admin sees Developer in the sidebar or can open its URLs.
 *Account manager* lists every paying client company with its unique Company ID, contact, login
 accounts, trucks, plan and monthly price; a row opens to the company details and its accounts (Member
 ID, role, last sign-in). *Clients* shows each company's subscription: plan (Starter $39/truck up to 15
 trucks, Growth $32/truck up to 100, Enterprise custom), billing cycle, start, last payment, next
-renewal, price and status (Active, Trial, Past due, Paused, Cancelled). So far the register holds one
-company, Sunridge Freight (30017), built from Settings and the live truck count; its start date
-(Nov 3, 2025) and ACH autopay are placeholders until real billing exists. **Create company** (next
-Company ID 30018) and **Create account** in the top bar show what those forms will ask for; the forms
-come next.
+renewal, price and status (Active, Trial, Past due, Paused, Cancelled). There are no client companies
+yet (the owner account is not one), so both tabs start empty. **Create company** (first client gets
+Company ID 2) and **Create account** in the top bar show what those forms will ask for; the forms come
+next.
 
 **Date and time** (`lib/clock.ts`). The app runs on the real clock, in the time zone from Settings ›
 Profile (or this device's): the top bar and dashboard show the live date and time, and every "today"

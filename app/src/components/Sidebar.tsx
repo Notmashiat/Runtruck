@@ -78,7 +78,7 @@ export function Sidebar() {
             <span className="ui-avatar" aria-hidden="true">{initials(USER.name)}</span>
             <div className="ui-user-text">
               <div className="ui-user-name">{USER.name}</div>
-              <div className="ui-user-meta">{superAdmin ? 'Super admin' : USER.role} · {USER.company}</div>
+              <div className="ui-user-meta">{superAdmin ? 'Super admin · RunTruck' : `${USER.role} · ${USER.company}`}</div>
             </div>
           </div>
           <Link

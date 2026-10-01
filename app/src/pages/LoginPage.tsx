@@ -1,10 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { COMPANY_ID } from '../lib/account';
 import { currentSession, emailHint, lockedFor, logIn } from '../lib/auth';
-import { getSettings } from '../lib/settingsStore';
 
-// /login: email and password for the RunTruck account (company 30017).
+// /login: email and password for the RunTruck account.
 // Signed-in people go straight to the app.
 export function LoginPage() {
   const navigate = useNavigate();
@@ -54,8 +52,6 @@ export function LoginPage() {
     }
   };
 
-  const company = getSettings().company.name;
-
   return (
     <div className="login-page">
       <div className="login-card">
@@ -64,7 +60,7 @@ export function LoginPage() {
           <span>RunTruck</span>
         </Link>
         <h1 className="login-title">Log in</h1>
-        <p className="login-sub">to {company} · Company ID {COMPANY_ID}</p>
+        <p className="login-sub">to your RunTruck account</p>
 
         <form onSubmit={submit} noValidate className="login-form">
           <label className="ui-field">
@@ -95,7 +91,7 @@ export function LoginPage() {
           </div>
           {forgot && (
             <div className="ui-note">
-              Ask your company administrator to reset it, or contact RunTruck support with your Company ID ({COMPANY_ID}). Password reset by email arrives with RunTruck accounts.
+              Ask your RunTruck administrator to reset it. Password reset by email arrives with RunTruck’s servers.
             </div>
           )}
           {error && <div className="ui-errors" role="alert">{error}{wait > 0 ? ` (${wait}s)` : ''}</div>}
