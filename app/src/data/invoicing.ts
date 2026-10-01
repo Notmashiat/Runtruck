@@ -4,6 +4,7 @@
 // Dates are ISO strings ('2026-09-03'); "today" is the planner's.
 import { CUSTOMERS, INVOICES, LOADS, USER, type Load } from './mock';
 import { TODAY } from './planner';
+import { isoFromText, shiftDemo } from '../lib/clock';
 import { fillTemplate, getSettings, numSetting } from '../lib/settingsStore';
 
 export { TODAY };
@@ -12,11 +13,9 @@ export { TODAY };
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-// 'Sep 3' → '2026-09-03'.
+// 'Oct 1' (this year) or 'Mar 14, 2027' → ISO.
 export function isoFromShort(s: string): string {
-  const [mon, day] = s.split(' ');
-  const m = MONTHS.indexOf(mon);
-  return m < 0 ? '' : `2026-${String(m + 1).padStart(2, '0')}-${String(Number(day)).padStart(2, '0')}`;
+  return isoFromText(s);
 }
 
 const utc = (iso: string) => {
@@ -231,6 +230,9 @@ const QUEUE: BillableLoad[] = [
 
 const money = (s: string) => Number(s.replace(/[$,]/g, '')) || 0;
 
+// The billing queue, moved to today's date.
+const DEMO_QUEUE = (): BillableLoad[] => shiftDemo(QUEUE);
+
 function fromBoard(l: Load): BillableLoad {
   return {
     id: l.id, customer: l.customer, route: l.route, pickup: isoFromShort(l.pickup), delivered: isoFromShort(l.delivery),
@@ -245,7 +247,7 @@ export function billableLoads(loads: Load[], invoices: InvoiceRecord[]): Billabl
   const invoiced = new Set(invoices.flatMap((i) => i.loads));
   const board = loads.filter((l) => l.status === 'Delivered' || l.status === 'Needs POD').map(fromBoard);
   const seen = new Set<string>();
-  return [...board, ...QUEUE]
+  return [...board, ...DEMO_QUEUE()]
     .filter((l) => !invoiced.has(l.id) && !seen.has(l.id) && seen.add(l.id))
     .sort((a, b) => (a.delivered < b.delivered ? 1 : a.delivered > b.delivered ? -1 : 0));
 }
@@ -344,7 +346,7 @@ function seedInvoice(s: (typeof SEED_INVOICES)[number]): InvoiceRecord {
   const miles = board?.miles ?? extra?.miles ?? '';
   const sent = s.status !== 'Draft';
   const email = billToFor(s.customer).email;
-  const paid = PAID[s.id];
+  const paid = shiftDemo(PAID[s.id]);
   return {
     id: s.id, draft: !sent, customer: s.customer, billTo: billToFor(s.customer), loads: [s.load],
     ref: board?.ref ?? extra?.ref ?? '', bol: sent ? `BOL ${s.load.replace('L-', '')}-1` : '',
@@ -359,13 +361,13 @@ function seedInvoice(s: (typeof SEED_INVOICES)[number]): InvoiceRecord {
     history: [
       { date: issued, text: sent ? 'Invoice created' : 'Draft started' },
       ...(sent ? [{ date: issued, text: `Emailed to ${email}` }] : []),
-      ...(REMINDERS[s.id] ?? []),
+      ...shiftDemo(REMINDERS[s.id] ?? []),
       ...(paid ? [{ date: paid.date, text: `Payment received · ${paid.via} · ${paid.reference}` }] : []),
     ],
   };
 }
 
-export const INVOICE_SEED: InvoiceRecord[] = SEED_INVOICES.map(seedInvoice);
+export const INVOICE_SEED: InvoiceRecord[] = shiftDemo(SEED_INVOICES).map(seedInvoice);
 
 // — batches —
 
@@ -398,7 +400,7 @@ export function nextBatchId(batches: Batch[]): string {
   return `B-${n}`;
 }
 
-export const BATCH_SEED: Batch[] = [
+const BATCHES_2026: Batch[] = [
   { id: 'B-2035', created: '2026-09-03', recipient: 'Cascade Building Supply', method: 'Customer AP portal', invoiceIds: ['INV-8842', 'INV-8829'], notes: 'Upload to the Cascade AP portal with PODs.' },
   { id: 'B-2034', created: '2026-09-02', recipient: 'TriPoint Capital (factoring)', method: 'Factoring portal upload', invoiceIds: ['INV-8844', 'INV-8841'], sentOn: '2026-09-02', notes: 'Advance expected within 24 hours.' },
   { id: 'B-2033', created: '2026-09-01', recipient: 'Bayline Distribution', method: 'Email to customer', invoiceIds: ['INV-8840'], sentOn: '2026-09-01', notes: '' },
@@ -433,3 +435,6 @@ export function invoiceEmail(inv: InvoiceRecord): { subject: string; body: strin
   };
   return { subject: fillTemplate(m.invoiceSubject, vars), body: fillTemplate(m.invoiceBody, vars) };
 }
+
+// The demo batches, moved to today's date.
+export const BATCH_SEED: Batch[] = shiftDemo(BATCHES_2026);

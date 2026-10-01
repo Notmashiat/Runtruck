@@ -4,15 +4,15 @@ import { DashboardCustomize } from '../../components/DashboardCustomize';
 import { cardFor, kpiFor, useDashboardData } from '../../components/DashboardWidgets';
 import { NavIcon } from '../../components/NavIcons';
 import { DEFAULT_LAYOUT, reviveLayout, widgetDef, type DashLayout, type LayoutItem, type WidgetId } from '../../data/dashboard';
-import { TODAY } from '../../data/invoicing';
 import { USER } from '../../data/mock';
+import { formatNow, hourNow, useNow } from '../../lib/clock';
 import { usePersisted } from '../../lib/persist';
 
 const ROW = 10; // grid row unit (px); widget heights snap to it
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
 function greeting() {
-  const h = new Date().getHours();
+  const h = hourNow();
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
 }
 
@@ -111,7 +111,9 @@ export function DashboardPage() {
   };
 
   const visible = layout.items.filter((i) => !i.hidden);
-  const today = new Date(`${TODAY}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  // The real date and time, in the time zone from Settings › Profile; ticks every 30 s.
+  const now = useNow();
+  const today = `${formatNow(now, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} · ${formatNow(now, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}`;
 
   return (
     <>

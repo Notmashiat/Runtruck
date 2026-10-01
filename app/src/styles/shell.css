@@ -588,3 +588,8 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
   .set-nav-title { display: none; }
   .set-nav-item { flex: none; white-space: nowrap; }
 }
+
+/* — top-bar clock (the real date and time, Settings › Profile time zone) — */
+.ui-clock { display: inline-flex; align-items: baseline; gap: 8px; margin-right: 4px; font-size: 13px; font-weight: 600; color: var(--ui-text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ui-clock-date { color: var(--ui-muted); font-weight: 500; }
+@media (max-width: 760px) { .ui-clock-date { display: none; } }

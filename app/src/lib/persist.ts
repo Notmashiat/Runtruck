@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // useState that survives reloads via localStorage. `revive` gets the parsed
 // value and returns what to use (or the fallback when it does not fit).
+// Nothing is written until the value first changes, so built-in demo data
+// that was never edited is not frozen in storage (it moves with the date).
 export function usePersisted<T>(key: string, fallback: T, revive: (raw: unknown) => T | null = (raw) => raw as T) {
   const [value, setValue] = useState<T>(() => {
     try {
@@ -11,8 +13,10 @@ export function usePersisted<T>(key: string, fallback: T, revive: (raw: unknown)
       return fallback;
     }
   });
+  const first = useRef(value);
 
   useEffect(() => {
+    if (value === first.current) return;
     try {
       localStorage.setItem(key, JSON.stringify(value));
     } catch {

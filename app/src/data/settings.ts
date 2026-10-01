@@ -67,7 +67,7 @@ export interface Settings {
 }
 
 export const TIME_ZONES = [
-  'Pacific Time (Los Angeles)', 'Mountain Time (Denver)', 'Arizona (Phoenix)', 'Central Time (Chicago)', 'Eastern Time (New York)',
+  'This device’s time zone', 'Pacific Time (Los Angeles)', 'Mountain Time (Denver)', 'Arizona (Phoenix)', 'Central Time (Chicago)', 'Eastern Time (New York)',
   'Alaska Time (Anchorage)', 'Hawaii Time (Honolulu)',
 ];
 export const START_PAGES: { key: StartPage; label: string }[] = [

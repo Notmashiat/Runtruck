@@ -3,7 +3,7 @@ import { useAppShell } from '../context/AppShellContext';
 import { money } from '../data/accounting';
 import { facilityFor, isRoad, stopHint, type Facility } from '../data/facilities';
 import { CARRIERS, CUSTOMERS, stopsOf, USER, type Load } from '../data/mock';
-import { shortToIso } from '../lib/dates';
+import { formatNow, isoFromText } from '../lib/clock';
 
 type Section = 'Load info' | 'Stops' | 'Freight' | 'LTL' | 'Carrier' | 'Driver & equipment' | 'Rates' | 'Documents' | 'Notes' | 'Review';
 const SECTIONS: Section[] = ['Load info', 'Stops', 'Freight', 'LTL', 'Carrier', 'Driver & equipment', 'Rates', 'Documents', 'Notes', 'Review'];
@@ -155,8 +155,7 @@ function toLoad(d: Draft, id: string, prev?: Load): Load {
   const covered = d.brokered || Boolean(d.driver);
   const kept = prev && !PLANNED.includes(prev.status) ? prev : undefined;
   const reefer = d.equipment.startsWith('Reefer');
-  const now = new Date();
-  const stamp = `Today ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const stamp = `Today ${formatNow(new Date(), { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`;
 
   return {
     id,
@@ -222,7 +221,7 @@ function draftFromLoad(l: Load): Draft {
     const [from = '', to = ''] = window.includes('–') ? window.split('–') : [];
     return {
       ...emptyStop(s.kind), facility: s.name, address: parts.join(', '), city, state, zip,
-      date: shortToIso(day, 2026) ?? '', from, to,
+      date: isoFromText(day), from, to,
     };
   });
   const [truck = '', trailer = ''] = l.unit === '—' ? [] : l.unit.split(' / ');

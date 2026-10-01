@@ -130,6 +130,14 @@ sets spacing, greeting, notes, the revenue chart's period and style, the custome
 and the active-loads columns. The layout is kept in `runtruck-dashboard`; narrow screens use 6 or 1
 columns.
 
+**Date and time** (`lib/clock.ts`). The app runs on the real clock, in the time zone from Settings ›
+Profile (or this device's): the top bar and dashboard show the live date and time, and every "today"
+(planner, due dates, overdue invoices, document renewals, this week's revenue) is the real today. The
+built-in demo records were written around Thursday, September 3, 2026 and are moved by the days
+between then and today (`shiftDemo`), so they stay current. Untouched demo data is not saved to
+storage (`usePersisted` writes only after a change), so it keeps moving; once records are edited they
+keep real dates. After midnight the app reloads (when no popup is open) to roll the day over.
+
 **Summary numbers.** Every stat box is worked out from the records when the page renders — nothing
 is typed in. Revenue counts on delivery (`data/metrics.ts`: invoices by delivery date, less late
 fees, plus delivered loads not yet invoiced); CRM AR is the unpaid issued invoices per customer;

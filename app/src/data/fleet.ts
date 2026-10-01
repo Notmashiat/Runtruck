@@ -3,6 +3,7 @@
 // Edit form, as strings (lists for multi-choice fields). The demo fleet below is
 // complete and consistent with Safety, HR and the load board.
 import { DRIVERS, TRAILERS, TRUCKS, type Driver, type Trailer, type Truck } from './mock';
+import { shiftDemo } from '../lib/clock';
 
 export type FormValues = Record<string, string | string[]>;
 
@@ -351,6 +352,9 @@ const TRAILER_DETAILS: Record<string, FormValues> = {
   },
 };
 
-export const DRIVER_SEED: FleetDriver[] = DRIVERS.map((d, i) => ({ ...d, id: `DRV-${101 + i}`, details: DRIVER_DETAILS[d.name] ?? {} }));
-export const TRUCK_SEED: FleetTruck[] = TRUCKS.map((t, i) => ({ ...t, id: `TRK-${101 + i}`, details: TRUCK_DETAILS[t.unit] ?? {} }));
-export const TRAILER_SEED: FleetTrailer[] = TRAILERS.map((t, i) => ({ ...t, id: `TRL-${101 + i}`, details: TRAILER_DETAILS[t.unit] ?? {} }));
+export const DRIVER_SEED: FleetDriver[] = DRIVERS.map((d, i) => {
+  const details = shiftDemo(DRIVER_DETAILS[d.name] ?? {});
+  return { ...d, id: `DRV-${101 + i}`, cdl: monthYear(str(details, 'cdlExpiry')), details };
+});
+export const TRUCK_SEED: FleetTruck[] = TRUCKS.map((t, i) => ({ ...t, id: `TRK-${101 + i}`, details: shiftDemo(TRUCK_DETAILS[t.unit] ?? {}) }));
+export const TRAILER_SEED: FleetTrailer[] = TRAILERS.map((t, i) => ({ ...t, id: `TRL-${101 + i}`, details: shiftDemo(TRAILER_DETAILS[t.unit] ?? {}) }));

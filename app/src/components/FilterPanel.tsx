@@ -1,9 +1,10 @@
 import { useAppShell } from '../context/AppShellContext';
 import { isActive, type DatesValue, type FilterMeta, type FilterValue, type RangeValue } from '../lib/tableTools';
+import { currentYear } from '../lib/clock';
 import { useModal } from './FormBits';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const short = (iso: string) => (iso ? `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${Number(iso.slice(8, 10))}${iso.slice(0, 4) !== '2026' ? `, ${iso.slice(0, 4)}` : ''}` : '');
+const short = (iso: string) => (iso ? `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${Number(iso.slice(8, 10))}${Number(iso.slice(0, 4)) !== currentYear() ? `, ${iso.slice(0, 4)}` : ''}` : '');
 
 // One line describing a chosen filter, for the chips under the top bar.
 export function describe(m: FilterMeta, v: FilterValue): string {

@@ -3,6 +3,9 @@ import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
 import { dollars, money } from '../../../data/accounting';
+import { TODAY } from '../../../data/invoicing';
+import { mondayOf } from '../../../data/metrics';
+import { shortDate } from '../../../lib/clock';
 import { SETTLE_TAG, SETTLEMENTS } from '../../../data/mock';
 import { matchesQuery } from '../../../lib/search';
 import { numberOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
@@ -15,6 +18,9 @@ const FILTERS: FilterDef<SettlementRow>[] = [
   { key: 'net', label: 'Net pay', type: 'range', get: (s) => numberOf(s.net), prefix: '$' },
   { key: 'miles', label: 'Miles', type: 'range', get: (s) => numberOf(s.miles) },
 ];
+
+// This week's settlements run Monday to Sunday.
+const WEEK = shortDate(mondayOf(TODAY));
 
 export function PayrollTab() {
   const { query, approved, approveAll } = useAppShell();
@@ -33,7 +39,7 @@ export function PayrollTab() {
 
   const kpis = [
     { label: 'Drivers', value: String(settlementRows.length), note: approved ? 'Approved for payment' : `${ready} ready to approve` },
-    { label: 'Gross', value: money(gross), note: 'Week of Sep 1' },
+    { label: 'Gross', value: money(gross), note: `Week of ${WEEK}` },
     { label: 'Deductions', value: money(Math.abs(deductions)), note: 'Fuel advances and escrow' },
     { label: 'Net payable', value: money(net), note: approved ? 'Approved' : 'Awaiting approval' },
   ];
@@ -43,7 +49,7 @@ export function PayrollTab() {
       <Kpis items={kpis} />
 
       <Card
-        title="Driver settlements · week of Sep 1"
+        title={`Driver settlements · week of ${WEEK}`}
         flush
         action={<button type="button" className="ui-link" onClick={approveAll}>{approved ? 'Approved' : 'Approve all'}</button>}
       >

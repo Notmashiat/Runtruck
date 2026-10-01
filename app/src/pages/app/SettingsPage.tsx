@@ -10,6 +10,7 @@ import {
 } from '../../data/settings';
 import { invoiceDoc } from '../../lib/invoicePdf';
 import { openPdf } from '../../lib/pdf';
+import { todayIso } from '../../lib/clock';
 import { fillTemplate, useSettings } from '../../lib/settingsStore';
 
 type SectionKey = 'profile' | 'company' | 'invoicing' | 'messages' | 'operations' | 'alerts' | 'team' | 'appearance' | 'data';
@@ -639,7 +640,7 @@ function DataSection() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `runtruck-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = `runtruck-backup-${todayIso()}.json`;
     document.body.appendChild(link);
     link.click();
     link.remove();

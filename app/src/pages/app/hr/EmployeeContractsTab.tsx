@@ -4,6 +4,7 @@ import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
 import { CONTRACTS, type Contract } from '../../../data/hr';
 import { TODAY, daysFrom } from '../../../data/invoicing';
+import { currentYear } from '../../../lib/clock';
 import { matchesQuery } from '../../../lib/search';
 import { isoOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
@@ -11,7 +12,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 // 'Oct 1' (this year) or 'Mar 14, 2027' → ISO date.
 const iso = (s: string) => {
   const m = /^([A-Z][a-z]{2}) (\d{1,2})(?:, (\d{4}))?$/.exec(s.trim());
-  return m ? `${m[3] ?? '2026'}-${String(MONTHS.indexOf(m[1]) + 1).padStart(2, '0')}-${m[2].padStart(2, '0')}` : '';
+  return m ? `${m[3] ?? String(currentYear())}-${String(MONTHS.indexOf(m[1]) + 1).padStart(2, '0')}-${m[2].padStart(2, '0')}` : '';
 };
 const last = (name: string) => name.split(' ').at(-1);
 

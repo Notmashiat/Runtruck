@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppShell } from '../context/AppShellContext';
 import { NAV, SECTION_TABS, type ViewKey } from '../data/mock';
+import { formatNow, useNow } from '../lib/clock';
 import { isActive, pageKeyOf } from '../lib/tableTools';
 import { describe, FilterPanel } from './FilterPanel';
 import { BatchDialog } from './BatchDialog';
@@ -25,6 +26,7 @@ export function Header() {
   const navigate = useNavigate();
   const { query, setQuery, approveAll, loads, filterMeta, filterValues, setFilter, clearFilters } = useAppShell();
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const now = useNow(15_000);
   const [newLoadOpen, setNewLoadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | null>(null);
@@ -91,6 +93,10 @@ export function Header() {
         />
       )}
       <div style={{ flex: 1 }} />
+      <time className="ui-clock" dateTime={now.toISOString()} title={formatNow(now, { dateStyle: 'full', timeStyle: 'long' })}>
+        <span className="ui-clock-date">{formatNow(now, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+        <span>{formatNow(now, { hour: 'numeric', minute: '2-digit' })}</span>
+      </time>
       {showFilters && (
         <button className={`ui-btn ui-filters-btn${activeFilters.length ? ' is-on' : ''}`} type="button" onClick={() => setFiltersOpen(true)} aria-haspopup="dialog">
           Filters{activeFilters.length > 0 && <span className="ui-filters-count">{activeFilters.length}</span>}

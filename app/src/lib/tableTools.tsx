@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAppShell } from '../context/AppShellContext';
+import { currentYear } from './clock';
 
 // Sorting and filtering for the app's tables.
 //
@@ -17,7 +18,7 @@ import { useAppShell } from '../context/AppShellContext';
 // — values —
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const YEAR = 2026; // the demo's current year, for dates written without one
+
 
 // Any displayed date → 'YYYY-MM-DD' ('' if it is not a date).
 export function isoOf(value: unknown): string {
@@ -25,7 +26,7 @@ export function isoOf(value: unknown): string {
   let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
   if (m) return `${m[1]}-${m[2]}-${m[3]}`;
   m = /^([A-Z][a-z]{2}) (\d{1,2})(?:, (\d{4}))?$/.exec(s);
-  if (m && MONTHS.includes(m[1])) return `${m[3] ?? YEAR}-${String(MONTHS.indexOf(m[1]) + 1).padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+  if (m && MONTHS.includes(m[1])) return `${m[3] ?? currentYear()}-${String(MONTHS.indexOf(m[1]) + 1).padStart(2, '0')}-${m[2].padStart(2, '0')}`;
   m = /^([A-Z][a-z]{2}) (\d{4})$/.exec(s);
   if (m && MONTHS.includes(m[1])) return `${m[2]}-${String(MONTHS.indexOf(m[1]) + 1).padStart(2, '0')}-01`;
   m = /^(\d{2})\/(\d{4})$/.exec(s);

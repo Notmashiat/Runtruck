@@ -1,3 +1,5 @@
+import { shiftDemo } from '../lib/clock';
+
 // Mock data for the RunTruck app. Static in-memory data, matching the
 // dataset defined in the original Claude Design prototype.
 
@@ -94,7 +96,7 @@ export interface Load {
   form?: unknown;
 }
 
-export const LOADS: Load[] = [
+const LOADS_2026: Load[] = [
   { id: 'L-40218', customer: 'Northgate Foods', route: 'Fresno, CA → Reno, NV', pickup: 'Sep 3', delivery: 'Sep 4', driver: 'Marcus Hale', unit: 'T-114 / RF-88', rate: '$2,450', status: 'In transit', tagClass: 'tag-accent',
     miles: '478', rpm: '$5.13', pay: '$612', margin: '$1,214', commodity: 'Frozen produce', weight: '41,200 lb', equip: 'Reefer, 53 ft', temp: '-10 °F', ref: 'PO 88-41207',
     from: 'Northgate Cold Storage', fromAddr: '4120 S Golden State Blvd, Fresno, CA', to: 'Reno Grocers DC', toAddr: '1855 E Greg St, Sparks, NV', carrier: 'Sunridge Freight (own fleet)', carrierMc: 'MC 812044', carrierDot: 'DOT 2291176' },
@@ -158,7 +160,7 @@ export interface Driver {
   miles: number;
 }
 
-export const DRIVERS: Driver[] = [
+const DRIVERS_2026: Driver[] = [
   { name: 'Marcus Hale', status: 'On duty', tagClass: 'tag-accent', unit: 'T-114', load: 'L-40218 · Fresno → Reno', hos: '6h 20m', cdl: '04/2028', pay: '$61,400', miles: 2140 },
   { name: 'Dara Whitfield', status: 'On duty', tagClass: 'tag-accent', unit: 'T-107', load: 'L-40219 · Stockton → SLC', hos: '9h 05m', cdl: '11/2027', pay: '$58,900', miles: 1980 },
   { name: 'Ellis Nakamura', status: 'On duty', tagClass: 'tag-accent', unit: 'T-121', load: 'L-40220 · Sacramento → Boise', hos: '1h 45m', cdl: '02/2027', pay: '$55,120', miles: 1760 },
@@ -333,3 +335,7 @@ export const AR = [
 
 export const REVENUE_BARS = [42, 58, 51, 66, 74, 38, 29];
 export const REVENUE_DAYS = ['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'];
+
+// The demo loads and drivers, moved to today's date (lib/clock.ts).
+export const LOADS: Load[] = shiftDemo(LOADS_2026);
+export const DRIVERS: Driver[] = shiftDemo(DRIVERS_2026);

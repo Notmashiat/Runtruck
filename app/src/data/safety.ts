@@ -1,6 +1,7 @@
 // Safety & compliance mock data: maintenance work orders, driver qualification
 // files, roadside violations and cargo/liability claims. Units, drivers and
-// customers match data/mock.ts; "today" is Wed Sep 3, 2026.
+// customers match data/mock.ts; dates move with the real clock (lib/clock.ts).
+import { shiftDemo } from '../lib/clock';
 
 // Amounts are stored as numbers so the KPIs can sum them; format at render time.
 export function money(n: number): string {
@@ -17,7 +18,7 @@ export interface WorkOrder {
   tagClass: string;
 }
 
-export const MAINTENANCE: WorkOrder[] = [
+const MAINTENANCE_2026: WorkOrder[] = [
   { unit: 'T-118', item: 'Turbocharger replacement', due: 'Sep 5', shop: 'Sunridge shop · Modesto', estimate: 4850, status: 'In shop', tagClass: 'tag-outline' },
   { unit: 'FB-12', item: 'DOT annual inspection', due: 'Sep 3', shop: 'Sunridge shop · Modesto', estimate: 150, status: 'In shop', tagClass: 'tag-outline' },
   { unit: 'T-121', item: 'Brake adjustment', due: 'Aug 28', shop: 'Sunridge shop · Modesto', estimate: 420, status: 'Overdue', tagClass: 'tag-outline' },
@@ -40,7 +41,7 @@ export interface Violation {
 }
 
 // All within the trailing 12 months, newest first.
-export const VIOLATIONS: Violation[] = [
+const VIOLATIONS_2026: Violation[] = [
   { date: 'Aug 31', driver: 'Tobias Frey', unit: 'T-118', type: 'Log form & manner', severityPoints: 1, location: 'I-70 POE · Loma, CO', status: 'Open', tagClass: 'tag-outline' },
   { date: 'Aug 28', driver: 'Ellis Nakamura', unit: 'T-121', type: 'Brake adjustment', severityPoints: 4, location: 'I-5 scale · Cottonwood, CA', status: 'Open', tagClass: 'tag-outline' },
   { date: 'Aug 19', driver: 'Marcus Hale', unit: 'T-114', type: 'Hours-of-service', severityPoints: 7, location: 'US-95 POE · Winnemucca, NV', status: 'Contested', tagClass: 'tag-accent' },
@@ -64,7 +65,7 @@ export interface Claim {
 }
 
 // Cargo and liability claims (not driver pay), newest first.
-export const CLAIMS: Claim[] = [
+const CLAIMS_2026: Claim[] = [
   { id: 'CLM-1112', date: 'Aug 26', driver: 'Ellis Nakamura', unit: 'T-121 / FB-12', type: 'Cargo damage', claimant: 'Cascade Building Supply', reserved: 6800, paid: 0, status: 'Open', tagClass: 'tag-outline' },
   { id: 'CLM-1111', date: 'Aug 14', driver: 'Marcus Hale', unit: 'T-114 / RF-88', type: 'Cargo damage', claimant: 'Northgate Foods', reserved: 4200, paid: 0, status: 'Under review', tagClass: 'tag-accent' },
   { id: 'CLM-1110', date: 'Jul 22', driver: 'Dara Whitfield', unit: 'T-107 / DV-51', type: 'Property damage', claimant: 'Wasatch Crossdock', reserved: 2900, paid: 2650, status: 'Settled', tagClass: 'tag-green' },
@@ -72,3 +73,8 @@ export const CLAIMS: Claim[] = [
   { id: 'CLM-1108', date: 'May 9', driver: 'Ana Cortez', unit: 'T-109 / FB-04', type: 'Bodily injury', claimant: 'Third party · R. Delgado', reserved: 25000, paid: 18500, status: 'Settled', tagClass: 'tag-green' },
   { id: 'CLM-1107', date: 'Mar 3', driver: 'Priya Raman', unit: 'T-103 / RF-27', type: 'Cargo damage', claimant: 'Northgate Foods', reserved: 3100, paid: 2875, status: 'Settled', tagClass: 'tag-green' },
 ];
+
+// The demo records, moved to today's date.
+export const MAINTENANCE: WorkOrder[] = shiftDemo(MAINTENANCE_2026);
+export const VIOLATIONS: Violation[] = shiftDemo(VIOLATIONS_2026);
+export const CLAIMS: Claim[] = shiftDemo(CLAIMS_2026);

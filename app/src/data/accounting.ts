@@ -1,15 +1,15 @@
 // Accounting mock data for Sunridge Freight: bills and shared money helpers.
-// Invoices and batches live in invoicing.ts. "Today" is September 3, 2026.
+// Invoices and batches live in invoicing.ts. Dates follow the real clock.
+import { isoFromText, shiftDemo, shortDate, todayIso } from '../lib/clock';
 
-export const TODAY = 'Sep 3';
+// Today as the bills write dates ('Oct 1').
+export const TODAY = shortDate(todayIso());
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-// Days from one short date ('Aug 28') to another ('Sep 3'), within 2026.
+// Days from one short date ('Aug 28') to another ('Sep 3').
 export function daysBetween(from: string, to: string): number {
   const at = (d: string) => {
-    const [mon, day] = d.split(' ');
-    return Date.UTC(2026, MONTHS.indexOf(mon), Number(day));
+    const iso = isoFromText(d);
+    return Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)));
   };
   return Math.round((at(to) - at(from)) / 86_400_000);
 }
@@ -37,7 +37,7 @@ export interface Bill {
   tagClass: string;
 }
 
-export const BILLS: Bill[] = [
+const BILLS_2026: Bill[] = [
   { vendor: 'Verizon Connect ELD', category: 'Telematics', due: 'Aug 28', amount: '$486', status: 'Overdue', tagClass: 'tag-outline' },
   { vendor: 'Modesto Yard — Lease', category: 'Facilities', due: 'Sep 1', amount: '$3,900', status: 'Paid', tagClass: 'tag-green' },
   { vendor: 'Comdata', category: 'Fuel card fees', due: 'Sep 2', amount: '$215', status: 'Paid', tagClass: 'tag-green' },
@@ -47,3 +47,6 @@ export const BILLS: Bill[] = [
   { vendor: 'Great West Casualty', category: 'Insurance', due: 'Sep 10', amount: '$6,210', status: 'Scheduled', tagClass: 'tag-accent' },
   { vendor: 'Ryder Trailer Lease', category: 'Equipment lease', due: 'Sep 15', amount: '$4,150', status: 'Scheduled', tagClass: 'tag-accent' },
 ];
+
+// The demo bills, moved to today's date.
+export const BILLS: Bill[] = shiftDemo(BILLS_2026);

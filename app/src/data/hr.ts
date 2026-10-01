@@ -1,5 +1,6 @@
 // Mock data for the HR section (employee contracts and onboarding). Static
-// in-memory data in the same style as mock.ts; "today" is Wed Sep 3, 2026.
+// in-memory data in the same style as mock.ts; dates move with the real clock.
+import { shiftDemo } from '../lib/clock';
 
 export type ContractRole = 'Company driver' | 'Owner-operator' | 'Dispatcher' | 'Mechanic';
 export type ContractType = 'W-2' | '1099' | 'Lease-purchase';
@@ -18,7 +19,7 @@ export interface Contract {
 
 // Pay bases match SETTLEMENTS in mock.ts. 'Renewal due' rows renew within
 // 30 days of today; 'Expiring' is a term that ends with no renewal on file.
-export const CONTRACTS: Contract[] = [
+const CONTRACTS_2026: Contract[] = [
   { employee: 'Marcus Hale', role: 'Company driver', type: 'W-2', start: 'Mar 14, 2022', renews: 'Mar 14, 2027', payBasis: '$0.62 / mi', status: 'Active', tagClass: 'tag-green' },
   { employee: 'Dara Whitfield', role: 'Company driver', type: 'W-2', start: 'Aug 2, 2021', renews: 'Aug 2, 2027', payBasis: '$0.60 / mi', status: 'Active', tagClass: 'tag-green' },
   { employee: 'Ellis Nakamura', role: 'Company driver', type: 'W-2', start: 'Oct 1, 2023', renews: 'Oct 1', payBasis: '25% of line haul', status: 'Renewal due', tagClass: 'tag-outline' },
@@ -47,7 +48,7 @@ export interface Onboarding {
 
 // Jamal Reed is the '1 in orientation' on the Drivers tab; Evan Brooks
 // finished this quarter and already has his contract above.
-export const ONBOARDING: Onboarding[] = [
+const ONBOARDING_2026: Onboarding[] = [
   { candidate: 'Jamal Reed', role: 'Company driver', stage: 'Orientation', started: 'Aug 17', owner: 'Rosa Medina', progress: 85, nextStep: 'Ride-along with Ana Cortez · Sep 5', docsPending: false, tagClass: 'tag-accent' },
   { candidate: 'Sofia Nguyen', role: 'Company driver', stage: 'Road test', started: 'Aug 24', owner: 'Luis Ortega', progress: 60, nextStep: 'Road test in T-103 · Sep 4', docsPending: false, tagClass: 'tag-accent' },
   { candidate: 'Derek Holt', role: 'Owner-operator', stage: 'Background check', started: 'Aug 28', owner: 'Rosa Medina', progress: 35, nextStep: 'Waiting on MVR consent and insurance certificate', docsPending: true, tagClass: 'tag-outline' },
@@ -55,3 +56,7 @@ export const ONBOARDING: Onboarding[] = [
   { candidate: 'Maya Patel', role: 'Company driver', stage: 'Application', started: 'Sep 2', owner: 'Rosa Medina', progress: 10, nextStep: 'Phone screen · Sep 4', docsPending: false, tagClass: 'tag-neutral' },
   { candidate: 'Evan Brooks', role: 'Dispatcher', stage: 'Complete', started: 'Jul 13', owner: 'Rosa Medina', progress: 100, nextStep: '90-day review · Oct 25', docsPending: false, tagClass: 'tag-green' },
 ];
+
+// The demo records, moved to today's date.
+export const CONTRACTS: Contract[] = shiftDemo(CONTRACTS_2026);
+export const ONBOARDING: Onboarding[] = shiftDemo(ONBOARDING_2026);

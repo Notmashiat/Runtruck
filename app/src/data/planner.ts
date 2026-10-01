@@ -1,11 +1,12 @@
 // Planner calendar data: the office's own events, plus pickups and deliveries
 // derived from the loads so the calendar always matches the board.
-import { addDays, fromIso, iso, shortToIso } from '../lib/dates';
+import { addDays, fromIso, iso } from '../lib/dates';
+import { isoFromText, shiftDemo, shiftIso, todayIso } from '../lib/clock';
 import type { Load } from './mock';
 
-// The mock data's "today" (the dashboard, loads and HR tabs all agree on it).
-export const TODAY = '2026-09-03';
-const YEAR = 2026;
+// Today, in the time zone chosen in Settings (lib/clock.ts). Everything that
+// asks "what day is it" — planner, dashboard, accounting, safety — uses this.
+export const TODAY = todayIso();
 
 // The colors a color code can use (classes t-<tone> in calendar.css).
 export const TONES = ['amber', 'green', 'red', 'purple', 'blue', 'teal', 'pink', 'orange', 'indigo', 'slate'];
@@ -113,7 +114,8 @@ function weekdaysBetween(from: string, to: string, skip: string[]): string[] {
   return out;
 }
 
-const STANDUPS: PlannerEvent[] = weekdaysBetween('2026-08-24', '2026-09-30', ['2026-09-07']).map((date) => ({
+// Weekday standups across the demo weeks (moved with the demo, still on weekdays).
+const STANDUPS: PlannerEvent[] = weekdaysBetween(shiftIso('2026-08-24'), shiftIso('2026-09-30'), [shiftIso('2026-09-07')]).map((date) => ({
   id: `standup-${date}`,
   title: 'Dispatch standup',
   category: 'meeting',
@@ -124,8 +126,7 @@ const STANDUPS: PlannerEvent[] = weekdaysBetween('2026-08-24', '2026-09-30', ['2
   people: ['Rosa Medina', 'Luis Ortega', 'Evan Brooks'],
 }));
 
-export const PLANNER_EVENTS: PlannerEvent[] = [
-  ...STANDUPS,
+const EVENTS_2026: PlannerEvent[] = [
   { id: 'ev-1', title: 'Tobias Frey — home time', category: 'driver', date: '2026-09-01', endDate: '2026-09-06', notes: 'Back on duty Mon Sep 7.', people: ['Tobias Frey'] },
   { id: 'ev-2', title: 'T-118 in shop — turbo', category: 'maintenance', date: '2026-09-02', endDate: '2026-09-05', notes: 'Sunridge shop · Modesto. Parts from Valley Diesel & Turbo.' },
   { id: 'ev-3', title: 'Payroll review — week of Sep 1', category: 'admin', date: '2026-09-01', start: '10:00', end: '11:00', notes: 'Approve driver settlements before Friday.', people: ['Rosa Medina'] },
@@ -133,7 +134,7 @@ export const PLANNER_EVENTS: PlannerEvent[] = [
   { id: 'ev-5', title: 'FB-12 DOT annual inspection', category: 'maintenance', date: '2026-09-03', start: '13:00', end: '15:00', notes: 'Sunridge shop · Modesto.', people: ['Luis Ortega'] },
   { id: 'ev-6', title: 'Road test — Sofia Nguyen', category: 'driver', date: '2026-09-04', start: '10:00', end: '11:30', notes: 'In T-103. Luis Ortega evaluates.', people: ['Sofia Nguyen', 'Luis Ortega'] },
   { id: 'ev-7', title: 'T-114 PM service A', category: 'maintenance', date: '2026-09-05', start: '07:00', end: '09:00', notes: 'Due at 529,800 mi.', people: ['Luis Ortega'] },
-  { id: 'ev-8', title: 'Labor Day — office closed', category: 'admin', date: '2026-09-07' },
+  { id: 'ev-8', title: 'Office closed — company day off', category: 'admin', date: '2026-09-07' },
   { id: 'ev-9', title: 'Orientation — Jamal Reed', category: 'driver', date: '2026-09-08', start: '09:00', end: '12:00', notes: 'Paperwork, ELD training, yard walk.', people: ['Jamal Reed', 'Rosa Medina'] },
   { id: 'ev-10', title: 'Safety meeting — HOS refresher', category: 'meeting', date: '2026-09-08', start: '13:00', end: '14:00', people: ['Rosa Medina', 'Marcus Hale', 'Dara Whitfield', 'Ellis Nakamura', 'Priya Raman', 'Ana Cortez'] },
   { id: 'ev-11', title: 'Northgate Foods quarterly review', category: 'meeting', date: '2026-09-09', start: '11:00', end: '12:00', notes: 'With Dana Ruiz. On-time 96%, lane pricing for Q4.', people: ['Rosa Medina', 'Dana Ruiz'] },
@@ -153,7 +154,7 @@ export function loadEvents(loads: Load[]): PlannerEvent[] {
     if (l.stops) {
       return l.stops.flatMap((s, i): PlannerEvent[] => {
         const [day, window = ''] = s.when.split(' · ');
-        const date = shortToIso(day, YEAR);
+        const date = isoFromText(day);
         if (!date) return [];
         const [start, end] = window.includes('–') ? window.split('–') : ['08:00', '09:00'];
         const place = cityState(s.address);
@@ -170,11 +171,13 @@ export function loadEvents(loads: Load[]): PlannerEvent[] {
     const dHour = 7 + ((n * 3) % 8) * 1.5;
     const hhmm = (h: number) => `${String(Math.floor(h)).padStart(2, '0')}:${h % 1 ? '30' : '00'}`;
     const out: PlannerEvent[] = [];
-    const p = shortToIso(l.pickup, YEAR);
-    const d = shortToIso(l.delivery, YEAR);
+    const p = isoFromText(l.pickup);
+    const d = isoFromText(l.delivery);
     const [fromPlace = '', toPlace = ''] = l.route.split(' → ');
     if (p) out.push({ ...shared, id: `load:${l.id}:p`, title: `${l.id} · ${fromPlace}`, category: 'pickup', date: p, start: hhmm(pHour), end: hhmm(pHour + 2), place: fromPlace, facility: l.from, notes: `${l.from} · ${l.customer}` });
     if (d) out.push({ ...shared, id: `load:${l.id}:d`, title: `${l.id} · ${toPlace}`, category: 'delivery', date: d, start: hhmm(dHour), end: hhmm(dHour + 2), place: toPlace, facility: l.to, notes: `${l.to} · ${l.customer}` });
     return out;
   });
 }
+
+export const PLANNER_EVENTS: PlannerEvent[] = [...STANDUPS, ...shiftDemo(EVENTS_2026)];

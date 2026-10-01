@@ -3,11 +3,15 @@ import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
 import { ONBOARDING, type Onboarding } from '../../../data/hr';
+import { TODAY, addDays } from '../../../data/invoicing';
+import { mondayOf } from '../../../data/metrics';
+import { shortDate } from '../../../lib/clock';
 import { matchesQuery } from '../../../lib/search';
 import { isoOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
-// Mon Aug 31 – Sun Sep 6, the week of "today" (Wed Sep 3).
-const THIS_WEEK = ['Aug 31', 'Sep 1', 'Sep 2', 'Sep 3', 'Sep 4', 'Sep 5', 'Sep 6'];
+// Monday to Sunday of this week, as the started dates are written.
+const MONDAY = mondayOf(TODAY);
+const THIS_WEEK = Array.from({ length: 7 }, (_, i) => shortDate(addDays(MONDAY, i)));
 
 const inProgress = ONBOARDING.filter((o) => o.stage !== 'Complete');
 const startingThisWeek = ONBOARDING.filter((o) => THIS_WEEK.includes(o.started));
@@ -19,7 +23,7 @@ const KPIS = [
   { label: 'In progress', value: String(inProgress.length), note: `${inOrientation.length} in orientation` },
   { label: 'Started this week', value: String(startingThisWeek.length), note: startingThisWeek.map((o) => `${o.candidate.split(' ').at(-1)} ${o.started}`).join(' · ') || 'None since Mon' },
   { label: 'Awaiting documents', value: String(awaitingDocs.length), note: awaitingDocs.map((o) => o.candidate.split(' ').at(-1)).join(' · ') || 'None' },
-  { label: 'Completed this quarter', value: String(completed.length), note: 'Since Jul 1' },
+  { label: 'Completed this quarter', value: String(completed.length), note: `Since ${shortDate(`${TODAY.slice(0, 4)}-${String(Math.floor((Number(TODAY.slice(5, 7)) - 1) / 3) * 3 + 1).padStart(2, '0')}-01`)}` },
 ];
 
 const STAGES = ['Application', 'Background check', 'Road test', 'Orientation', 'Complete'];
