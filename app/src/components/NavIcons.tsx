@@ -73,6 +73,13 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="m8.8 12.2 2.2 2.2 4.3-4.4" />
     </>
   ),
+  developer: (
+    <>
+      <path d="m8 7-5 5 5 5" />
+      <path d="m16 7 5 5-5 5" />
+      <path d="m13.5 4-3 16" />
+    </>
+  ),
   settings: (
     <>
       <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />

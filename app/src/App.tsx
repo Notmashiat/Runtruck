@@ -11,6 +11,9 @@ import { CustomersPage } from './pages/app/CustomersPage';
 import { FacilitiesPage } from './pages/app/FacilitiesPage';
 import { SettingsPage } from './pages/app/SettingsPage';
 import { getSettings } from './lib/settingsStore';
+import { isSuperAdmin } from './lib/auth';
+import { AccountManagerTab } from './pages/app/developer/AccountManagerTab';
+import { ClientsTab } from './pages/app/developer/ClientsTab';
 import { DriversTab } from './pages/app/fleet/DriversTab';
 import { TrucksTab } from './pages/app/fleet/TrucksTab';
 import { TrailersTab } from './pages/app/fleet/TrailersTab';
@@ -31,6 +34,11 @@ import { ClaimSettlementsTab } from './pages/app/safety/ClaimSettlementsTab';
 // /app opens the start page chosen in Settings › Appearance (read when it is visited).
 function StartPage() {
   return <Navigate to={getSettings().appearance.startPage} replace />;
+}
+
+// Developer is RunTruck's own console: super admins only.
+function DeveloperSection() {
+  return isSuperAdmin() ? <TabbedSection /> : <Navigate to="/app" replace />;
 }
 
 export default function App() {
@@ -75,6 +83,11 @@ export default function App() {
           <Route path="driver-documents" element={<DriverDocumentsTab />} />
           <Route path="violations" element={<ViolationsTab />} />
           <Route path="settlements" element={<ClaimSettlementsTab />} />
+        </Route>
+        <Route path="developer" element={<DeveloperSection />}>
+          <Route index element={<Navigate to="account-manager" replace />} />
+          <Route path="account-manager" element={<AccountManagerTab />} />
+          <Route path="clients" element={<ClientsTab />} />
         </Route>
       </Route>
       {/* Section URLs from before the sidebar was reorganised, so old links still land. They

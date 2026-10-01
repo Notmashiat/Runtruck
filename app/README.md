@@ -140,6 +140,19 @@ session. "Keep me signed in" lasts 30 days, otherwise until the browser closes (
 Five wrong tries lock the form for a minute. Log out ends the session. With no server yet this is a
 browser-side gate, not server-side security.
 
+**Developer** (`/app/developer/<tab>`, super admins only; `pages/app/developer/`, `data/companies.ts`).
+This account (Member ID 100482731) is RunTruck's **Super admin** (`roleOf` in `lib/account.ts`,
+`isSuperAdmin` in `lib/auth.ts`); only a super admin sees Developer in the sidebar or can open its URLs.
+*Account manager* lists every paying client company with its unique Company ID, contact, login
+accounts, trucks, plan and monthly price; a row opens to the company details and its accounts (Member
+ID, role, last sign-in). *Clients* shows each company's subscription: plan (Starter $39/truck up to 15
+trucks, Growth $32/truck up to 100, Enterprise custom), billing cycle, start, last payment, next
+renewal, price and status (Active, Trial, Past due, Paused, Cancelled). So far the register holds one
+company, Sunridge Freight (30017), built from Settings and the live truck count; its start date
+(Nov 3, 2025) and ACH autopay are placeholders until real billing exists. **Create company** (next
+Company ID 30018) and **Create account** in the top bar show what those forms will ask for; the forms
+come next.
+
 **Date and time** (`lib/clock.ts`). The app runs on the real clock, in the time zone from Settings ›
 Profile (or this device's): the top bar and dashboard show the live date and time, and every "today"
 (planner, due dates, overdue invoices, document renewals, this week's revenue) is the real today. The

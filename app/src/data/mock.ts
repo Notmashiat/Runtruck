@@ -26,7 +26,8 @@ export type ViewKey =
   | 'facilities'
   | 'accounting'
   | 'hr'
-  | 'safety';
+  | 'safety'
+  | 'developer';
 
 export const NAV: NavEntry[] = [
   { key: 'dashboard', label: 'Dashboard' },
@@ -38,6 +39,8 @@ export const NAV: NavEntry[] = [
   { key: 'accounting', label: 'Accounting' },
   { key: 'hr', label: 'HR' },
   { key: 'safety', label: 'Safety' },
+  // Super admins only (the Sidebar and the route check the role).
+  { key: 'developer', label: 'Developer' },
 ];
 
 // The signed-in user: shown at the foot of the sidebar and on Settings › Profile.
@@ -318,6 +321,10 @@ export const SECTION_TABS: Partial<Record<ViewKey, SectionTab[]>> = {
     { key: 'driver-documents', label: 'Driver Documents' },
     { key: 'violations', label: 'Violations' },
     { key: 'settlements', label: 'Settlements' },
+  ],
+  developer: [
+    { key: 'account-manager', label: 'Account manager' },
+    { key: 'clients', label: 'Clients' },
   ],
 };
 

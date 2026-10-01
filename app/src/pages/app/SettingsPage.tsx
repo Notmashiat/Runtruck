@@ -11,6 +11,7 @@ import {
 import { invoiceDoc } from '../../lib/invoicePdf';
 import { openPdf } from '../../lib/pdf';
 import { todayIso } from '../../lib/clock';
+import { roleOf } from '../../lib/account';
 import { MIN_PASSWORD, changePassword, currentSession, logOut, passwordChangedOn, passwordProblems } from '../../lib/auth';
 import { fillTemplate, useSettings } from '../../lib/settingsStore';
 
@@ -623,6 +624,7 @@ function Security() {
           <div><dt>Email</dt><dd>{session?.email ?? '—'}</dd></div>
           <div><dt>Company ID</dt><dd>{session?.companyId ?? '—'}</dd></div>
           <div><dt>Member ID</dt><dd>{session?.memberId ?? '—'}</dd></div>
+          <div><dt>Role</dt><dd>{session ? roleOf(session.memberId) : '—'}</dd></div>
           <div><dt>Signed in</dt><dd>{when(session?.started)}</dd></div>
           <div><dt>{session?.remember ? 'Stays signed in until' : 'Signs out'}</dt><dd>{session?.remember ? when(session.expires) : 'When the browser closes'}</dd></div>
         </dl>

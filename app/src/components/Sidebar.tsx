@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { NAV, USER, type ViewKey } from '../data/mock';
 import { useAppShell } from '../context/AppShellContext';
-import { logOut } from '../lib/auth';
+import { isSuperAdmin, logOut } from '../lib/auth';
 import { usePersisted } from '../lib/persist';
 import { NavIcon } from './NavIcons';
 
@@ -19,6 +19,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = usePersisted<boolean>('runtruck-sidebar-collapsed', Boolean(isNarrow()), (raw) =>
     typeof raw === 'boolean' ? raw : null,
   );
+  const superAdmin = isSuperAdmin();
   const activeKey = (location.pathname.toLowerCase().split('/')[2] || 'dashboard') as ViewKey | 'settings';
 
   // Picking a page on a phone closes the overlay again.
@@ -50,7 +51,7 @@ export function Sidebar() {
         </div>
 
         <nav className="ui-nav" aria-label="Sections">
-          {NAV.map((n, i) =>
+          {NAV.filter((n) => superAdmin || !('key' in n) || n.key !== 'developer').map((n, i) =>
             'group' in n ? (
               <div key={`group-${i}`} className="ui-nav-group">
                 {n.group}
@@ -77,7 +78,7 @@ export function Sidebar() {
             <span className="ui-avatar" aria-hidden="true">{initials(USER.name)}</span>
             <div className="ui-user-text">
               <div className="ui-user-name">{USER.name}</div>
-              <div className="ui-user-meta">{USER.role} · {USER.company}</div>
+              <div className="ui-user-meta">{superAdmin ? 'Super admin' : USER.role} · {USER.company}</div>
             </div>
           </div>
           <Link

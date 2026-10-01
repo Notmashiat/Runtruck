@@ -6,6 +6,7 @@ import { formatNow, useNow } from '../lib/clock';
 import { isActive, pageKeyOf } from '../lib/tableTools';
 import { describe, FilterPanel } from './FilterPanel';
 import { BatchDialog } from './BatchDialog';
+import { CreateSoonDialog } from './DeveloperDialogs';
 import { FacilityDialog } from './FacilityDialog';
 import { InvoiceDialog } from './InvoiceDialog';
 import { ReminderDialog } from './ReminderDialog';
@@ -29,7 +30,7 @@ export function Header() {
   const now = useNow(15_000);
   const [newLoadOpen, setNewLoadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | null>(null);
+  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | null>(null);
 
   // Route matching is case-insensitive, so normalise before keying off the section.
   const segments = location.pathname.toLowerCase().split('/');
@@ -40,6 +41,10 @@ export function Header() {
 
   // Keyed by section, or section/tab for the tabbed sections. Most are stubs,
   // as in the original prototype; the ones that navigate are the real flows.
+  const developer: HeadAction[] = [
+    { label: '+ Create account', onClick: () => setAdding('account') },
+    { label: '+ Create company', primary: true, onClick: () => setAdding('company') },
+  ];
   const actionsFor: Record<string, HeadAction[]> = {
     dashboard: [{ label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) }],
     loads: [{ label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) }],
@@ -66,6 +71,8 @@ export function Header() {
     'safety/driver-documents': [{ label: 'Request document', primary: true }],
     'safety/violations': [{ label: '+ Log Violation', primary: true }],
     'safety/settlements': [{ label: '+ New Claim', primary: true }],
+    'developer/account-manager': developer,
+    'developer/clients': developer,
   };
   const headActions = actionsFor[onLoadDetail ? 'loadDetail' : tab ? `${view}/${tab}` : view] ?? [];
   const page = pageKeyOf(location.pathname);
@@ -120,6 +127,7 @@ export function Header() {
       {adding === 'invoice' && <InvoiceDialog onClose={() => setAdding(null)} />}
       {adding === 'batch' && <BatchDialog onClose={() => setAdding(null)} />}
       {adding === 'reminders' && <ReminderDialog onClose={() => setAdding(null)} />}
+      {(adding === 'company' || adding === 'account') && <CreateSoonDialog kind={adding} onClose={() => setAdding(null)} />}
       {filtersOpen && <FilterPanel page={page} title={pageTitle} onClose={() => setFiltersOpen(false)} />}
     </header>
     {showFilters && activeFilters.length > 0 && (

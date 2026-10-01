@@ -1,4 +1,4 @@
-import { COMPANY_ID, MEMBER_ID, scopedKey } from './account';
+import { COMPANY_ID, MEMBER_ID, roleOf, scopedKey } from './account';
 import { DEFAULT_SETTINGS } from '../data/settings';
 import { getSettings } from './settingsStore';
 
@@ -191,4 +191,9 @@ export async function changePassword(current: string, next: string): Promise<'ok
   const record: PasswordRecord = { salt, hash: await fingerprint(next, salt, STARTING.iterations), iterations: STARTING.iterations, changed: new Date().toISOString() };
   localStorage.setItem(AUTH_KEY, JSON.stringify(record));
   return 'ok';
+}
+
+// Whether the signed-in member is a RunTruck super admin (sees Developer).
+export function isSuperAdmin(): boolean {
+  return roleOf(currentSession()?.memberId) === 'Super admin';
 }
