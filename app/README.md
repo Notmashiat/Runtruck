@@ -151,10 +151,18 @@ This account (Member ID 100482731, Company ID 1) is RunTruck's owner and **Super
 accounts, trucks, plan and monthly price; a row opens to the company details and its accounts (Member
 ID, role, last sign-in). *Clients* shows each company's subscription: plan (Starter $39/truck up to 15
 trucks, Growth $32/truck up to 100, Enterprise custom), billing cycle, start, last payment, next
-renewal, price and status (Active, Trial, Past due, Paused, Cancelled). There are no client companies
-yet (the owner account is not one), so both tabs start empty. **Create company** (first client gets
-Company ID 2) and **Create account** in the top bar show what those forms will ask for; the forms come
-next.
+renewal, price and status (Active, Trial, Past due, Paused, Cancelled). **Create company** (top bar;
+`components/CompanyDialog.tsx`, `lib/companyStore.ts`) adds a client company in five sections —
+Company (name, legal name, business type, USDOT, MC, EIN, SCAC, website), Address (with time zone and
+main phone), Contacts (main contact and billing contact), Fleet (trucks, trailers, drivers, equipment)
+and Subscription (plan, Enterprise price, billing cycle, trial or active, start date, trial end,
+payment method, notes). USDOT is required for businesses that run trucks, MC for brokers, and neither
+may already belong to another client; a plan must fit the truck count. Each company gets a random
+seven-digit Company ID that has never been issued (every issued ID is kept in
+`runtruck-1-company-ids`, so a deleted company's ID is never reused). Creating a company creates no
+login accounts. Companies are stored in `runtruck-1-companies`; a row in Account manager opens to all
+the details, with Edit company (and Delete, while it has no accounts). Settings › Data reset leaves
+companies alone. **Create account** still shows what that form will ask for; it comes next.
 
 **Date and time** (`lib/clock.ts`). The app runs on the real clock, in the time zone from Settings ›
 Profile (or this device's): the top bar and dashboard show the live date and time, and every "today"

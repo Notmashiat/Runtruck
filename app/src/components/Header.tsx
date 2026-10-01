@@ -6,7 +6,8 @@ import { formatNow, useNow } from '../lib/clock';
 import { isActive, pageKeyOf } from '../lib/tableTools';
 import { describe, FilterPanel } from './FilterPanel';
 import { BatchDialog } from './BatchDialog';
-import { CreateSoonDialog } from './DeveloperDialogs';
+import { CompanyDialog } from './CompanyDialog';
+import { CreateAccountSoonDialog } from './DeveloperDialogs';
 import { FacilityDialog } from './FacilityDialog';
 import { InvoiceDialog } from './InvoiceDialog';
 import { ReminderDialog } from './ReminderDialog';
@@ -127,7 +128,8 @@ export function Header() {
       {adding === 'invoice' && <InvoiceDialog onClose={() => setAdding(null)} />}
       {adding === 'batch' && <BatchDialog onClose={() => setAdding(null)} />}
       {adding === 'reminders' && <ReminderDialog onClose={() => setAdding(null)} />}
-      {(adding === 'company' || adding === 'account') && <CreateSoonDialog kind={adding} onClose={() => setAdding(null)} />}
+      {adding === 'company' && <CompanyDialog onClose={() => setAdding(null)} />}
+      {adding === 'account' && <CreateAccountSoonDialog onClose={() => setAdding(null)} />}
       {filtersOpen && <FilterPanel page={page} title={pageTitle} onClose={() => setFiltersOpen(false)} />}
     </header>
     {showFilters && activeFilters.length > 0 && (

@@ -1,36 +1,49 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { Card } from '../../../components/Card';
+import { CompanyDialog } from '../../../components/CompanyDialog';
 import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
-import { STATUS_TAG, monthlyPrice, nextCompanyId, type ClientCompany } from '../../../data/companies';
-import { usd0 } from '../../../data/invoicing';
+import { BUSINESS_TYPES, STATUS_TAG, STATUSES, isPaying, monthlyPrice, type ClientCompany } from '../../../data/companies';
+import { fmtDate, usd0 } from '../../../data/invoicing';
+import { useCompanies } from '../../../lib/companyStore';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
-import { useClients } from './useClients';
 
 const when = (iso?: string) => (iso ? new Date(iso).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'Never');
 
 const FILTERS: FilterDef<ClientCompany>[] = [
-  { key: 'status', label: 'Subscription', type: 'select', get: (c) => c.status, options: ['Active', 'Trial', 'Past due', 'Paused', 'Cancelled'] },
+  { key: 'status', label: 'Subscription', type: 'select', get: (c) => c.status, options: STATUSES },
   { key: 'plan', label: 'Plan', type: 'select', get: (c) => c.plan, options: ['Starter', 'Growth', 'Enterprise'] },
+  { key: 'type', label: 'Business type', type: 'select', get: (c) => c.businessType, options: BUSINESS_TYPES },
   { key: 'state', label: 'State', type: 'select', get: (c) => c.state },
   { key: 'trucks', label: 'Trucks', type: 'range', get: (c) => c.trucks },
+  { key: 'created', label: 'Created', type: 'dates', get: (c) => c.created.slice(0, 10) },
 ];
 
-// Developer › Account manager: every paying company with its Company ID,
-// main contact and login accounts.
+function Fact({ k, children }: { k: string; children: ReactNode }) {
+  return (
+    <div>
+      <div className="ui-label">{k}</div>
+      <div className="ui-kv-value">{children || '—'}</div>
+    </div>
+  );
+}
+
+// Developer › Account manager: every client company with its Company ID,
+// details, contacts and the login accounts assigned to it.
 export function AccountManagerTab() {
   const { query } = useAppShell();
-  const companies = useClients();
-  const [openId, setOpenId] = useState<string | null>(companies[0]?.companyId ?? null);
-  const paying = companies.filter((c) => c.status === 'Active' || c.status === 'Past due');
+  const companies = useCompanies();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<ClientCompany | null>(null);
+  const paying = companies.filter(isPaying);
   const accounts = companies.reduce((n, c) => n + c.accounts.length, 0);
   const mrr = paying.reduce((s, c) => s + (monthlyPrice(c) ?? 0), 0);
 
   const kpis = [
-    { label: 'Paying companies', value: String(paying.length), note: `${companies.length} in the register` },
-    { label: 'Login accounts', value: String(accounts), note: `${companies.reduce((n, c) => n + c.accounts.filter((a) => a.role !== 'User').length, 0)} admin` },
+    { label: 'Client companies', value: String(companies.length), note: `${paying.length} paying · ${companies.filter((c) => c.status === 'Trial').length} in trial` },
+    { label: 'Login accounts', value: String(accounts), note: 'Assigned to companies' },
     { label: 'Trucks on RunTruck', value: String(companies.reduce((n, c) => n + c.trucks, 0)), note: 'Across all companies' },
     { label: 'Monthly recurring revenue', value: usd0(mrr), note: 'Paying companies' },
   ];
@@ -62,7 +75,7 @@ export function AccountManagerTab() {
                 <Fragment key={c.companyId}>
                   <tr className={`is-clickable${open ? ' is-open' : ''}`} onClick={() => setOpenId(open ? null : c.companyId)} aria-expanded={open}>
                     <td className="strong">{c.companyId}</td>
-                    <td className="strong">{c.name}</td>
+                    <td className="strong">{c.name}<div className="ui-stop-meta">{c.businessType}</div></td>
                     <td>{[c.city, c.state].filter(Boolean).join(', ')}</td>
                     <td>{c.contact}</td>
                     <td className="num">{c.accounts.length}</td>
@@ -75,29 +88,48 @@ export function AccountManagerTab() {
                     <tr>
                       <td colSpan={9} className="ui-expand-cell">
                         <div className="ui-batch">
+                          <div className="ui-batch-head">
+                            <div className="ui-stop-meta" style={{ marginTop: 0 }}>Created {when(c.created)}</div>
+                            <div style={{ flex: 1 }} />
+                            <button type="button" className="ui-btn ui-btn-sm" onClick={() => setEditing(c)}>Edit company</button>
+                          </div>
                           <div className="ui-kv-grid dev-facts">
-                            {[
-                              ['Legal name', c.legal], ['USDOT', c.dot || '—'], ['MC', c.mc || '—'],
-                              ['Billing email', c.email], ['Phone', c.phone], ['Team members', String(c.teamMembers)],
-                            ].map(([k, v]) => <div key={k}><div className="ui-label">{k}</div><div className="ui-kv-value">{v}</div></div>)}
+                            <Fact k="Legal name">{c.legal}</Fact>
+                            <Fact k="USDOT">{c.dot}</Fact>
+                            <Fact k="MC">{c.mc}</Fact>
+                            <Fact k="EIN">{c.ein}</Fact>
+                            <Fact k="SCAC">{c.scac}</Fact>
+                            <Fact k="Website">{c.website}</Fact>
+                            <Fact k="Address">{`${c.street}, ${c.city}, ${c.state} ${c.zip}`}</Fact>
+                            <Fact k="Time zone">{c.timeZone}</Fact>
+                            <Fact k="Main phone">{c.phone}</Fact>
+                            <Fact k="Main contact">{[c.contact, c.contactTitle].filter(Boolean).join(', ')}<div className="ui-stop-meta">{c.contactEmail} · {c.contactPhone}</div></Fact>
+                            <Fact k="Billing">{c.billingName || c.contact}<div className="ui-stop-meta">{c.billingEmail}</div></Fact>
+                            <Fact k="Fleet">{`${c.trucks} trucks · ${c.trailers} trailers · ${c.drivers} drivers`}<div className="ui-stop-meta">{c.equipment.join(', ')}</div></Fact>
+                            <Fact k="Subscription">{`${c.plan}, ${c.cycle.toLowerCase()}`}<div className="ui-stop-meta">{c.status === 'Trial' ? `Trial ends ${fmtDate(c.trialEnds)}` : `Since ${fmtDate(c.started)}`}{c.paymentMethod ? ` · ${c.paymentMethod}` : ''}</div></Fact>
+                            {c.notes && <Fact k="Notes">{c.notes}</Fact>}
                           </div>
                           <div className="ui-label" style={{ margin: '16px 0 8px' }}>Login accounts</div>
-                          <table className="ui-table ui-table-inner">
-                            <thead>
-                              <tr><th>Member ID</th><th>Name</th><th>Email</th><th>Role</th><th className="num">Last sign-in</th></tr>
-                            </thead>
-                            <tbody>
-                              {c.accounts.map((a) => (
-                                <tr key={a.memberId}>
-                                  <td className="strong">{a.memberId}</td>
-                                  <td>{a.name}</td>
-                                  <td className="muted">{a.email}</td>
-                                  <td><Tag label={a.role} tagClass={a.role === 'Super admin' ? 'tag-accent' : 'tag-neutral'} /></td>
-                                  <td className="num">{when(a.lastSignIn)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                          {c.accounts.length === 0 ? (
+                            <div className="ui-stop-meta">None yet. Create account will assign accounts to Company ID {c.companyId}.</div>
+                          ) : (
+                            <table className="ui-table ui-table-inner">
+                              <thead>
+                                <tr><th>Member ID</th><th>Name</th><th>Email</th><th>Role</th><th className="num">Last sign-in</th></tr>
+                              </thead>
+                              <tbody>
+                                {c.accounts.map((a) => (
+                                  <tr key={a.memberId}>
+                                    <td className="strong">{a.memberId}</td>
+                                    <td>{a.name}</td>
+                                    <td className="muted">{a.email}</td>
+                                    <td><Tag label={a.role} tagClass={a.role === 'Super admin' ? 'tag-accent' : 'tag-neutral'} /></td>
+                                    <td className="num">{when(a.lastSignIn)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -109,12 +141,11 @@ export function AccountManagerTab() {
         </table>
         {rows.length === 0 && (
           <div className="ui-empty">
-            {companies.length === 0
-              ? `No client companies yet. + Create company adds the first one (Company ID ${nextCompanyId(companies)}).`
-              : 'Nothing matches the search or filters.'}
+            {companies.length === 0 ? 'No client companies yet. + Create company adds the first one.' : 'Nothing matches the search or filters.'}
           </div>
         )}
       </Card>
+      {editing && <CompanyDialog company={editing} onClose={() => setEditing(null)} />}
     </>
   );
 }

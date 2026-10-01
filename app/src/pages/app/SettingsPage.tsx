@@ -774,8 +774,15 @@ function DataSection() {
         return;
       }
       if (!window.confirm(`Replace what is stored in this browser with the backup (${entries.length} parts)? The page will reload.`)) return;
+      // Company IDs issued since the backup stay issued, so none is given out twice.
+      const idsKey = keys().find((k) => k.endsWith('-company-ids'));
+      const issued: unknown[] = idsKey ? JSON.parse(localStorage.getItem(idsKey) ?? '[]') : [];
       for (const k of keys()) localStorage.removeItem(k);
-      for (const [k, v] of entries) localStorage.setItem(currentKey(k), typeof v === 'string' ? v : JSON.stringify(v));
+      for (const [k, v] of entries) {
+        const value = k.endsWith('-company-ids') && Array.isArray(v) ? [...new Set([...issued, ...v])] : v;
+        localStorage.setItem(currentKey(k), typeof value === 'string' ? value : JSON.stringify(value));
+      }
+      if (idsKey && !entries.some(([k]) => k.endsWith('-company-ids'))) localStorage.setItem(idsKey, JSON.stringify(issued));
       window.location.reload();
     } catch {
       setMessage('Could not read that file.');
@@ -784,7 +791,9 @@ function DataSection() {
 
   const resetRecords = () => {
     if (!window.confirm('Put loads, fleet, facilities, invoices, batches and dashboard layout back to the demo data? Your settings are kept. The page will reload.')) return;
-    for (const k of keys()) if (!k.endsWith('-settings') && k !== 'runtruck-theme') localStorage.removeItem(k);
+    // Settings and RunTruck's client companies are not demo data: they stay.
+    const keep = (k: string) => k.endsWith('-settings') || k === 'runtruck-theme' || k.endsWith('-companies') || k.endsWith('-company-ids');
+    for (const k of keys()) if (!keep(k)) localStorage.removeItem(k);
     window.location.reload();
   };
 

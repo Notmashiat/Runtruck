@@ -620,3 +620,6 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 /* Developer */
 .dev-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 760px) { .dev-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.co-banner { display: flex; flex-direction: column; gap: 4px; }
+.co-banner .ui-label { margin-right: 8px; }
+.co-id { font-size: 18px; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }

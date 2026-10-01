@@ -39,6 +39,8 @@ interface RecordDialogProps {
   recordLabel: string;
   noun: string;
   deleteNote: string;
+  // Shown under every section's title (e.g. the record's ID).
+  banner?: ReactNode;
   onSave: (v: FormValues) => void;
   onArchive?: (archived: boolean) => void;
   onDelete?: () => void;
@@ -232,6 +234,7 @@ export function RecordDialog(p: RecordDialogProps) {
             <h2 className="ui-h2" style={{ margin: 0 }}>{current.title}</h2>
             <p className="ui-p" style={{ marginTop: 4 }}>{current.help}</p>
           </div>
+          {p.banner}
           {p.archived && (
             <div className="ui-note">This {p.noun} is archived: hidden from lists and pickers but kept on file. Restore it to use it again.</div>
           )}
