@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { COMPANY_ID } from '../lib/account';
-import { currentSession, lockedFor, logIn } from '../lib/auth';
+import { currentSession, emailHint, lockedFor, logIn } from '../lib/auth';
 import { getSettings } from '../lib/settingsStore';
 
 // /login: email and password for the RunTruck account (company 30017).
@@ -47,8 +47,10 @@ export function LoginPage() {
     if (result.reason === 'locked') {
       setWait(result.seconds ?? 60);
       setError('Too many tries. Wait a minute, then try again.');
+    } else if (result.reason === 'email') {
+      setError(`That isn’t this account’s email. Use the account email (${emailHint()}).`);
     } else {
-      setError('That email and password don’t match our records.');
+      setError('Wrong password. Paste it exactly as given, or use Show to check what you typed.');
     }
   };
 

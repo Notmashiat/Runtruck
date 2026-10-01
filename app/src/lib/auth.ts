@@ -1,4 +1,5 @@
 import { COMPANY_ID, MEMBER_ID, scopedKey } from './account';
+import { DEFAULT_SETTINGS } from '../data/settings';
 import { getSettings } from './settingsStore';
 
 // Logging in to the one account (company 30017).
@@ -101,15 +102,30 @@ function noteFail() {
 
 // — logging in and out —
 
-export type LoginResult = { ok: true } | { ok: false; reason: 'locked' | 'wrong'; seconds?: number };
+export type LoginResult = { ok: true } | { ok: false; reason: 'locked' | 'email' | 'password'; seconds?: number };
+
+// The emails the account answers to: the one in Settings › Profile, and the
+// account's original email (so changing the profile email never locks you out).
+function emailMatches(email: string): boolean {
+  const typed = email.trim().toLowerCase();
+  return [accountEmail(), DEFAULT_SETTINGS.profile.email].some((e) => e.trim().toLowerCase() === typed);
+}
+
+// 'rosa.medina@sunridgefreight.com' → 'r•••@sunridgefreight.com', as a hint.
+export function emailHint(): string {
+  const [name, domain] = accountEmail().split('@');
+  return `${name.slice(0, 1)}•••@${domain ?? ''}`;
+}
 
 export async function logIn(email: string, password: string, remember: boolean): Promise<LoginResult> {
   if (lockedFor() > 0) return { ok: false, reason: 'locked', seconds: lockedFor() };
-  const emailOk = email.trim().toLowerCase() === accountEmail().toLowerCase();
-  const passwordOk = await passwordMatches(password);
+  // Spaces copied around a password are not part of it.
+  const emailOk = emailMatches(email);
+  const passwordOk = await passwordMatches(password.trim());
   if (!emailOk || !passwordOk) {
     noteFail();
-    return lockedFor() > 0 ? { ok: false, reason: 'locked', seconds: lockedFor() } : { ok: false, reason: 'wrong' };
+    if (lockedFor() > 0) return { ok: false, reason: 'locked', seconds: lockedFor() };
+    return { ok: false, reason: emailOk ? 'password' : 'email' };
   }
   try {
     sessionStorage.removeItem(FAILS_KEY);
@@ -162,6 +178,7 @@ export const MIN_PASSWORD = 10;
 export function passwordProblems(next: string): string[] {
   const out: string[] = [];
   if (next.length < MIN_PASSWORD) out.push(`At least ${MIN_PASSWORD} characters`);
+  if (next !== next.trim()) out.push('No spaces at the start or end');
   if (!/[A-Za-z]/.test(next) || !/\d/.test(next)) out.push('Letters and at least one number');
   if (next.toLowerCase().includes(accountEmail().split('@')[0].toLowerCase())) out.push('Not based on your email');
   return out;
