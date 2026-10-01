@@ -190,9 +190,14 @@ always run the newest release, so they can try changes first. Client companies s
 have until a super admin deploys: the Releases tab lists what is ready (each change marked New, Updated
 or Fixed, by section), and *Deploy to paid accounts* sends it — with every earlier release not yet
 deployed — to all paying companies (Active, Past due), optionally also free trials and paused companies.
-Companies created later start on the newest release deployed. Deployments are recorded with who and when
-(`runtruck-1-deployments`) and can be rolled back; Developer shows a badge while anything is waiting,
-and Clients shows each company's version. 1.0 is everything companies had when releases began; 1.1 adds
+Releases that have not gone out can be **merged** into one version (tick two or more, give it a number and
+name; anything between them comes along, since versions go out in order) and split again until deployed.
+Deploying can also set what companies created from then on start on. **Roll back / redeploy** (on any
+deployed version, and in the history) lists every client company with what it runs now and after:
+tick a company to send it that version (one left out the first time), untick to put it back on the
+version before. Every deploy, redeploy and roll back is kept in the history with who and when
+(`runtruck-1-release-state`; older `runtruck-1-deployments` records carry over). Developer shows a badge
+while anything is waiting, and Clients shows each company's version. 1.0 is everything companies had when releases began; 1.1 adds
 Export on Loads (a CSV of every load); 1.2 replaces it with Settings › Export data.
 
 **Export data** (Settings › Export data; `components/ExportPanel.tsx`, `lib/exportData.ts`,

@@ -6,9 +6,8 @@ import {
   CYCLES, PLANS, STATUS_TAG, STATUSES, addDaysIso, billingDates, monthlyPrice, todayInZone, type ClientCompany,
 } from '../../../data/companies';
 import { fmtDate, usd0 } from '../../../data/invoicing';
-import { RELEASES } from '../../../data/releases';
 import { useCompanies } from '../../../lib/companyStore';
-import { companyReleaseIndex, useDeployments } from '../../../lib/releases';
+import { companyReleaseIndex, useReleaseState, versionAt, versions } from '../../../lib/releases';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
@@ -23,8 +22,11 @@ const FILTERS: FilterDef<ClientCompany>[] = [
 export function ClientsTab() {
   const { query } = useAppShell();
   const companies = useCompanies();
-  const deployments = useDeployments();
-  const versionOf = (c: ClientCompany) => companyReleaseIndex(c, deployments);
+  const releaseState = useReleaseState();
+  const versionOf = (c: ClientCompany) => companyReleaseIndex(c, releaseState);
+  const allVersions = versions(releaseState);
+  // How many versions a company is behind the newest.
+  const behind = (c: ClientCompany) => allVersions.length - 1 - allVersions.findIndex((v) => v.id === versionAt(versionOf(c), releaseState).id);
   const today = todayInZone();
   const soon = addDaysIso(today, 7);
   const count = (s: ClientCompany['status']) => companies.filter((c) => c.status === s).length;
@@ -73,8 +75,8 @@ export function ClientsTab() {
                   <td>{dates.last ? fmtDate(dates.last) : '—'}</td>
                   <td>{stopped ? '—' : c.status === 'Trial' ? <>{fmtDate(dates.next)}<div className="ui-stop-meta">Trial ends</div></> : fmtDate(dates.next)}</td>
                   <td>
-                    {RELEASES[versionOf(c)].id}
-                    <div className="ui-stop-meta">{versionOf(c) === RELEASES.length - 1 ? 'Newest' : `${RELEASES.length - 1 - versionOf(c)} behind`}</div>
+                    {versionAt(versionOf(c), releaseState).id}
+                    <div className="ui-stop-meta">{behind(c) === 0 ? 'Newest' : `${behind(c)} behind`}</div>
                   </td>
                   <td className="num">{c.trucks}</td>
                   <td className="num">
