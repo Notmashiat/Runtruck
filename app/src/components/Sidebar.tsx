@@ -1,6 +1,7 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { NAV, USER, type ViewKey } from '../data/mock';
 import { useAppShell } from '../context/AppShellContext';
+import { logOut } from '../lib/auth';
 import { usePersisted } from '../lib/persist';
 import { NavIcon } from './NavIcons';
 
@@ -13,6 +14,7 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2)
 // screens it starts collapsed and opens over the page.
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { setQuery } = useAppShell();
   const [collapsed, setCollapsed] = usePersisted<boolean>('runtruck-sidebar-collapsed', Boolean(isNarrow()), (raw) =>
     typeof raw === 'boolean' ? raw : null,
@@ -89,10 +91,10 @@ export function Sidebar() {
             <NavIcon name="settings" />
             <span className="ui-nav-label">Settings</span>
           </Link>
-          <Link to="/" className="ui-nav-item" data-tip={tip('Log out')} aria-label={tip('Log out')}>
+          <button type="button" className="ui-nav-item" data-tip={tip('Log out')} aria-label={tip('Log out')} onClick={() => { logOut(); navigate('/login', { replace: true }); }}>
             <NavIcon name="logout" />
             <span className="ui-nav-label">Log out</span>
-          </Link>
+          </button>
         </div>
 
       </aside>

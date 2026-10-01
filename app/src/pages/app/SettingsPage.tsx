@@ -11,9 +11,10 @@ import {
 import { invoiceDoc } from '../../lib/invoicePdf';
 import { openPdf } from '../../lib/pdf';
 import { todayIso } from '../../lib/clock';
+import { MIN_PASSWORD, changePassword, currentSession, logOut, passwordChangedOn, passwordProblems } from '../../lib/auth';
 import { fillTemplate, useSettings } from '../../lib/settingsStore';
 
-type SectionKey = 'profile' | 'company' | 'invoicing' | 'messages' | 'operations' | 'alerts' | 'team' | 'appearance' | 'data';
+type SectionKey = 'profile' | 'company' | 'invoicing' | 'messages' | 'operations' | 'alerts' | 'team' | 'security' | 'appearance' | 'data';
 const SECTIONS: { key: SectionKey; title: string; about: string }[] = [
   { key: 'profile', title: 'Profile', about: 'Your name and contact details, used in the app and on emails you send.' },
   { key: 'company', title: 'Company', about: 'Your carrier details, printed on invoices and in emails.' },
@@ -22,6 +23,7 @@ const SECTIONS: { key: SectionKey; title: string; about: string }[] = [
   { key: 'operations', title: 'Operations', about: 'Terminals, warning thresholds and detention defaults.' },
   { key: 'alerts', title: 'Alerts', about: 'What the dashboard’s Needs attention list shows.' },
   { key: 'team', title: 'Team', about: 'Who works in RunTruck and what they do.' },
+  { key: 'security', title: 'Security', about: 'Your password and this browser’s sign-in.' },
   { key: 'appearance', title: 'Appearance', about: 'Theme, colour, text size, spacing and where the app opens.' },
   { key: 'data', title: 'Data', about: 'Back up, restore or reset what is stored in this browser.' },
 ];
@@ -148,7 +150,7 @@ function Profile() {
           <Field label="Job title" help="Shown under your name and in your email signature.">
             <input className="ui-input" value={d.title} onChange={(e) => sec.set('title', e.target.value)} placeholder="e.g. Dispatch" />
           </Field>
-          <Field label="Email" required error={err(sec.tried, !isEmail(d.email), 'Enter a valid email')}>
+          <Field label="Email" required help="You log in with this email." error={err(sec.tried, !isEmail(d.email), 'Enter a valid email')}>
             <input className="ui-input" type="email" value={d.email} onChange={(e) => sec.set('email', e.target.value)} />
           </Field>
           <Field label="Phone" error={err(sec.tried, d.phone.trim() !== '' && digits(d.phone).length < 10, 'Ten digits')}>
@@ -584,6 +586,68 @@ function Team() {
   );
 }
 
+function Security() {
+  const navigate = useNavigate();
+  const session = currentSession();
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [again, setAgain] = useState('');
+  const [tried, setTried] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState('');
+  const [wrong, setWrong] = useState(false);
+  const weak = passwordProblems(next);
+  const mismatch = again !== next;
+  const changed = passwordChangedOn();
+  const when = (iso?: string) => (iso ? new Date(iso).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '—');
+
+  const submit = async () => {
+    setTried(true);
+    setDone('');
+    setWrong(false);
+    if (!current || weak.length || mismatch) return;
+    setBusy(true);
+    const result = await changePassword(current, next);
+    setBusy(false);
+    if (result === 'wrong-current') { setWrong(true); return; }
+    if (result === 'ok') {
+      setCurrent(''); setNext(''); setAgain(''); setTried(false);
+      setDone('Password changed. Use it the next time you log in on this browser.');
+    }
+  };
+
+  return (
+    <>
+      <Group title="Signed in" about="The RunTruck account for this company.">
+        <dl className="set-ids">
+          <div><dt>Email</dt><dd>{session?.email ?? '—'}</dd></div>
+          <div><dt>Company ID</dt><dd>{session?.companyId ?? '—'}</dd></div>
+          <div><dt>Member ID</dt><dd>{session?.memberId ?? '—'}</dd></div>
+          <div><dt>Signed in</dt><dd>{when(session?.started)}</dd></div>
+          <div><dt>{session?.remember ? 'Stays signed in until' : 'Signs out'}</dt><dd>{session?.remember ? when(session.expires) : 'When the browser closes'}</dd></div>
+        </dl>
+        <div><button type="button" className="ui-btn" onClick={() => { logOut(); navigate('/login', { replace: true }); }}>Log out</button></div>
+      </Group>
+      <Group title="Change password" about={`At least ${MIN_PASSWORD} characters, with letters and a number. Last changed: ${changed ? when(changed) : 'never (starting password)'}.`}>
+        <div className="ui-form-grid">
+          <Field label="Current password" required wide error={(tried && !current && 'Required') || (wrong && 'That is not your current password')}>
+            <input className="ui-input" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
+          </Field>
+          <Field label="New password" required error={tried && weak.length > 0 && weak.join(' · ')}>
+            <input className="ui-input" type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
+          </Field>
+          <Field label="Repeat new password" required error={tried && mismatch && 'Does not match'}>
+            <input className="ui-input" type="password" autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} />
+          </Field>
+        </div>
+        <div><button type="button" className="ui-btn ui-btn-primary" disabled={busy} onClick={submit}>{busy ? 'Saving…' : 'Change password'}</button></div>
+        {done && <div className="ui-note">{done}</div>}
+        <p className="ui-stop-meta">RunTruck has no server yet: a changed password is kept on this browser. Other browsers keep using the starting password until accounts move to RunTruck’s servers.</p>
+      </Group>
+    </>
+  );
+}
+
 function Appearance() {
   const [s, update] = useSettings();
   const a = s.appearance;
@@ -629,7 +693,9 @@ function DataSection() {
   const [, update] = useSettings();
   const fileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState('');
-  const keys = () => Object.keys(localStorage).filter((k) => k.startsWith('runtruck-'));
+  // The login (session and password fingerprint) is never backed up, restored or reset here.
+  const isLogin = (k: string) => k === 'runtruck-session' || k.endsWith('-auth');
+  const keys = () => Object.keys(localStorage).filter((k) => k.startsWith('runtruck-') && !isLogin(k));
 
   const exportAll = () => {
     const data: Record<string, unknown> = {};
@@ -651,7 +717,7 @@ function DataSection() {
   const importFile = async (file: File) => {
     try {
       const parsed = JSON.parse(await file.text()) as { app?: string; data?: Record<string, unknown> };
-      const entries = Object.entries(parsed.data ?? {}).filter(([k]) => k.startsWith('runtruck-'));
+      const entries = Object.entries(parsed.data ?? {}).filter(([k]) => k.startsWith('runtruck-') && !isLogin(k));
       if (parsed.app !== 'RunTruck' || entries.length === 0) {
         setMessage('That file is not a RunTruck backup.');
         return;
@@ -667,7 +733,7 @@ function DataSection() {
 
   const resetRecords = () => {
     if (!window.confirm('Put loads, fleet, facilities, invoices, batches and dashboard layout back to the demo data? Your settings are kept. The page will reload.')) return;
-    for (const k of keys()) if (k !== 'runtruck-settings' && k !== 'runtruck-theme') localStorage.removeItem(k);
+    for (const k of keys()) if (!k.endsWith('-settings') && k !== 'runtruck-theme') localStorage.removeItem(k);
     window.location.reload();
   };
 
@@ -715,7 +781,7 @@ export function SettingsPage() {
   const current = SECTIONS.find((s) => s.key === section) ?? SECTIONS[0];
   const body: Record<SectionKey, ReactNode> = {
     profile: <Profile />, company: <Company />, invoicing: <Invoicing />, messages: <Messages />, operations: <Operations />,
-    alerts: <Alerts />, team: <Team />, appearance: <Appearance />, data: <DataSection />,
+    alerts: <Alerts />, team: <Team />, security: <Security />, appearance: <Appearance />, data: <DataSection />,
   };
   return (
     <div className="set-page">

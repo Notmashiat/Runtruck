@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
 import { TabbedSection } from './components/TabbedSection';
 import { LandingPage } from './pages/marketing/LandingPage';
+import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/app/DashboardPage';
 import { LoadsPage } from './pages/app/LoadsPage';
 import { LoadDetailPage } from './pages/app/LoadDetailPage';
@@ -36,6 +37,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<LoginPage />} />
       <Route path="/app" element={<AppLayout />}>
         <Route index element={<StartPage />} />
         <Route path="dashboard" element={<DashboardPage />} />

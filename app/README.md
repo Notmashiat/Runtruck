@@ -130,6 +130,16 @@ sets spacing, greeting, notes, the revenue chart's period and style, the custome
 and the active-loads columns. The layout is kept in `runtruck-dashboard`; narrow screens use 6 or 1
 columns.
 
+**Login** (`/login`, `pages/LoginPage.tsx`, `lib/auth.ts`, `lib/account.ts`). The app needs a signed-in
+session; without one every `/app` page sends you to the login (and back afterwards). There is one
+account — the Settings › Profile email, Company ID 30017 — and every record and setting is stored
+under that company ID (`runtruck-30017-loads`, …; older unscoped keys move over on first read). The
+password is checked against a salted PBKDF2-SHA-256 fingerprint (210,000 rounds); the starting
+password is not in the code. Settings › Security changes it (kept on that browser) and shows the
+session. "Keep me signed in" lasts 30 days, otherwise until the browser closes (at most 12 hours).
+Five wrong tries lock the form for a minute. Log out ends the session. With no server yet this is a
+browser-side gate, not server-side security.
+
 **Date and time** (`lib/clock.ts`). The app runs on the real clock, in the time zone from Settings ›
 Profile (or this device's): the top bar and dashboard show the live date and time, and every "today"
 (planner, due dates, overdue invoices, document renewals, this week's revenue) is the real today. The

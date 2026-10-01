@@ -593,3 +593,26 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 .ui-clock { display: inline-flex; align-items: baseline; gap: 8px; margin-right: 4px; font-size: 13px; font-weight: 600; color: var(--ui-text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ui-clock-date { color: var(--ui-muted); font-weight: 500; }
 @media (max-width: 760px) { .ui-clock-date { display: none; } }
+
+/* — login page (/login) — */
+.login-page {
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px 16px;
+  font-family: "Inter", system-ui, sans-serif; color: var(--ui-text); background: var(--ui-bg);
+}
+.login-card { width: min(400px, 100%); display: flex; flex-direction: column; padding: 32px 32px 28px; background: var(--ui-card); border-radius: 20px; box-shadow: 0 12px 40px var(--ui-shadow); }
+.login-brand { display: inline-flex; align-items: center; gap: 10px; align-self: flex-start; font-size: 15px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ui-text); text-decoration: none; }
+.login-title { margin: 26px 0 0; font-family: inherit; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.login-sub { margin: 4px 0 22px; font-size: 14px; color: var(--ui-muted); }
+.login-form { display: flex; flex-direction: column; gap: 16px; }
+.login-password { position: relative; display: block; }
+.login-password .ui-input { width: 100%; padding-right: 64px; }
+.login-show {
+  position: absolute; top: 50%; right: 8px; transform: translateY(-50%); padding: 4px 8px; font: inherit; font-size: 12px; font-weight: 600;
+  color: var(--ui-primary); background: none; border: 0; border-radius: 6px; cursor: pointer;
+}
+.login-show:hover { background: var(--ui-primary-soft); }
+.login-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; }
+.login-row .ui-check { font-size: 13px; }
+.login-submit { height: 44px; font-size: 15px; justify-content: center; }
+.login-foot { margin: 0; font-size: 13px; color: var(--ui-muted); }
+.login-page a.ui-link, .login-page .ui-link { color: var(--ui-primary); }

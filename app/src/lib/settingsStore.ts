@@ -1,15 +1,16 @@
 import { useSyncExternalStore } from 'react';
 import { mergeSettings, type Settings } from '../data/settings';
+import { readScoped, scopedKey } from './account';
 
 // The saved settings (runtruck-settings), readable anywhere with
 // getSettings() and in components with useSettings(). lib/applySettings.ts
 // carries changes into the rest of the app.
 
-const KEY = 'runtruck-settings';
+const KEY = 'runtruck-settings'; // stored as runtruck-<company ID>-settings
 
 function load(): Settings {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = readScoped(KEY);
     const s = mergeSettings(JSON.parse(raw ?? 'null'));
     // Before Settings existed, dark mode was saved on its own.
     if (raw === null && localStorage.getItem('runtruck-theme') === 'dark') s.appearance.theme = 'Dark';
@@ -29,7 +30,7 @@ export function getSettings(): Settings {
 export function setSettings(next: Settings) {
   current = next;
   try {
-    localStorage.setItem(KEY, JSON.stringify(next));
+    localStorage.setItem(scopedKey(KEY), JSON.stringify(next));
   } catch {
     // Storage blocked: the settings last for this visit.
   }

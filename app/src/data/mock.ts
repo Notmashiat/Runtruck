@@ -1,3 +1,4 @@
+import { COMPANY_ID, MEMBER_ID } from '../lib/account';
 import { shiftDemo } from '../lib/clock';
 
 // Mock data for the RunTruck app. Static in-memory data, matching the
@@ -45,8 +46,8 @@ export const USER = {
   role: 'Dispatch',
   company: 'Sunridge Freight',
   email: 'rosa.medina@sunridgefreight.com',
-  memberId: '100482731',
-  companyId: '30017',
+  memberId: MEMBER_ID,
+  companyId: COMPANY_ID,
 };
 
 export interface LoadStop {
