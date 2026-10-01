@@ -18,8 +18,10 @@ import {
   me, passwordChangedOn, passwordProblems,
 } from '../../lib/auth';
 import { defaultSettings, fillTemplate, useSettings } from '../../lib/settingsStore';
+import { isLive } from '../../lib/releases';
+import { ExportPanel } from '../../components/ExportPanel';
 
-type SectionKey = 'profile' | 'company' | 'invoicing' | 'messages' | 'operations' | 'alerts' | 'team' | 'security' | 'appearance' | 'data';
+type SectionKey = 'profile' | 'company' | 'invoicing' | 'messages' | 'operations' | 'alerts' | 'team' | 'security' | 'appearance' | 'export' | 'data';
 const SECTIONS: { key: SectionKey; title: string; about: string }[] = [
   { key: 'profile', title: 'Profile', about: 'Your name and contact details, used in the app and on emails you send.' },
   { key: 'company', title: 'Company', about: 'Your carrier details, printed on invoices and in emails.' },
@@ -30,6 +32,7 @@ const SECTIONS: { key: SectionKey; title: string; about: string }[] = [
   { key: 'team', title: 'Team', about: 'Who works in RunTruck and what they do.' },
   { key: 'security', title: 'Security', about: 'Your password and this browser’s sign-in.' },
   { key: 'appearance', title: 'Appearance', about: 'Theme, colour, text size, spacing and where the app opens.' },
+  { key: 'export', title: 'Export data', about: 'Download the records you have access to as a PDF, Word, Excel or CSV file.' },
   { key: 'data', title: 'Data', about: 'Back up, restore or reset what is stored in this browser.' },
 ];
 
@@ -839,11 +842,12 @@ export function SettingsPage() {
   const { section = 'profile' } = useParams();
   const navigate = useNavigate();
   // Profile, Security and Appearance are everyone's; company settings need permission.
-  const allowed = SECTIONS.filter((s) => can(PERSONAL_SETTINGS.includes(s.key) ? 'settings' : `settings/${s.key}`));
+  // Export data arrived in release 1.2.
+  const allowed = SECTIONS.filter((s) => can(PERSONAL_SETTINGS.includes(s.key) ? 'settings' : `settings/${s.key}`) && (s.key !== 'export' || isLive('settings-export')));
   const current = allowed.find((s) => s.key === section) ?? allowed[0];
   const body: Record<SectionKey, ReactNode> = {
     profile: <Profile />, company: <Company />, invoicing: <Invoicing />, messages: <Messages />, operations: <Operations />,
-    alerts: <Alerts />, team: <Team />, security: <Security />, appearance: <Appearance />, data: <DataSection />,
+    alerts: <Alerts />, team: <Team />, security: <Security />, appearance: <Appearance />, export: <ExportPanel />, data: <DataSection />,
   };
   return (
     <div className="set-page">

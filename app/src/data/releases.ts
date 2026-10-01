@@ -59,6 +59,21 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.2',
+    date: '2026-10-01',
+    title: 'Export data from Settings',
+    changes: [
+      {
+        id: 'settings-export', kind: 'New', section: 'Settings', title: 'Export data',
+        details: 'Settings › Export data downloads any records the account can open (loads, fleet, customers, facilities, accounting, HR, safety, planner), filtered by dates, drivers, units, customers or text, with a choice of columns, as PDF, Word, Excel or CSV, after a review step.',
+      },
+      {
+        id: 'loads-export-moved', kind: 'Updated', section: 'Loads', title: 'Export moves to Settings',
+        details: 'The Export button on Loads is replaced by Settings › Export data.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

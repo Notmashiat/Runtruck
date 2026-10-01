@@ -193,7 +193,20 @@ deployed — to all paying companies (Active, Past due), optionally also free tr
 Companies created later start on the newest release deployed. Deployments are recorded with who and when
 (`runtruck-1-deployments`) and can be rolled back; Developer shows a badge while anything is waiting,
 and Clients shows each company's version. 1.0 is everything companies had when releases began; 1.1 adds
-Export on Loads (a CSV of every load).
+Export on Loads (a CSV of every load); 1.2 replaces it with Settings › Export data.
+
+**Export data** (Settings › Export data; `components/ExportPanel.tsx`, `lib/exportData.ts`,
+`lib/exportFiles.ts`). Exports any of 18 record sets — loads, drivers, trucks, trailers, customers,
+facilities, loads to invoice, invoices, batches, settlements, bills, contracts, onboarding, maintenance,
+driver documents, violations, claims and planner events — but only those the account has access to.
+Each set's columns can be chosen (the app's usual columns are ticked; every other field of the record
+can be added). Filters: a date range (each set says which date it uses; sets without dates come in
+full), drivers, trucks and trailers, customers, text the row contains, and whether to include archived
+records. File types: PDF (formatted tables, landscape or portrait), Word (.docx with a table per set),
+Excel (.xlsx, a sheet per set plus a summary sheet) or CSV (one file, or a .zip of one per set). They
+are real files built in the browser (the .docx/.xlsx/.zip packaging is in `lib/exportFiles.ts`). Nothing
+downloads until *Review export* shows the file name, format, filters, row counts and the first rows of
+each set.
 
 **Date and time** (`lib/clock.ts`). The app runs on the real clock, in the time zone from Settings ›
 Profile (or this device's): the top bar and dashboard show the live date and time, and every "today"

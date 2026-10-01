@@ -83,10 +83,17 @@ export interface TextOpts {
 export class PdfDoc {
   pages: Op[][] = [[]];
   title: string;
+  // Page size in points: US Letter, portrait unless asked for landscape.
+  w = PAGE_W;
+  h = PAGE_H;
   private cur = 0;
 
-  constructor(title: string) {
+  constructor(title: string, landscape = false) {
     this.title = title;
+    if (landscape) {
+      this.w = PAGE_H;
+      this.h = PAGE_W;
+    }
   }
 
   private get ops() {
@@ -128,7 +135,7 @@ export class PdfDoc {
       return [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => (v / 255).toFixed(3)).join(' ');
     };
     const f = (n: number) => (Math.round(n * 100) / 100).toString();
-    const Y = (y: number) => f(PAGE_H - y);
+    const Y = (y: number) => f(this.h - y);
     // Windows-1252 bytes as a string of char codes 0–255; escape PDF string syntax.
     const bytes = (s: string) =>
       [...s].map((c) => (EXTRA[c] ? String.fromCharCode(EXTRA[c][0]) : c)).join('').replace(/[\\()]/g, (m) => `\\${m}`);
@@ -154,7 +161,7 @@ export class PdfDoc {
     objects[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
     objects[5] = `<< /Title (${bytes(sanitize(this.title))}) /Producer (RunTruck) /Creator (RunTruck TMS) >>`;
     streams.forEach((s, i) => {
-      objects[6 + i * 2] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_W} ${PAGE_H}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${7 + i * 2} 0 R >>`;
+      objects[6 + i * 2] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${this.w} ${this.h}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${7 + i * 2} 0 R >>`;
       objects[7 + i * 2] = `<< /Length ${s.length} >>\nstream\n${s}\nendstream`;
     });
 

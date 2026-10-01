@@ -50,7 +50,8 @@ export const COMPANY_SETTINGS: { key: string; label: string }[] = [
   { key: 'company', label: 'Company' }, { key: 'invoicing', label: 'Invoicing' }, { key: 'messages', label: 'Messages' },
   { key: 'operations', label: 'Operations' }, { key: 'alerts', label: 'Alerts' }, { key: 'team', label: 'Team' }, { key: 'data', label: 'Data' },
 ];
-export const PERSONAL_SETTINGS = ['profile', 'security', 'appearance'];
+// Export data is everyone's too: it only offers what the account may open.
+export const PERSONAL_SETTINGS = ['profile', 'security', 'appearance', 'export'];
 
 // The checklist, in sidebar order: each section, and its tabs where it has them.
 const SECTIONS: ViewKey[] = ['loads', 'planner', 'fleet', 'crm', 'facilities', 'accounting', 'hr', 'safety'];

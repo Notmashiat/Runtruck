@@ -60,8 +60,8 @@ export function Header() {
     // New Load from the Dashboard only for accounts that may open Loads.
     dashboard: can('loads') ? [{ label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) }] : [],
     loads: [
-      // Release 1.1 (data/releases.ts): only companies that have received it.
-      ...(isLive('loads-export') ? [{ label: 'Export', onClick: exportLoads }] : []),
+      // Release 1.1 added Export here; 1.2 moved it to Settings › Export data.
+      ...(isLive('loads-export') && !isLive('loads-export-moved') ? [{ label: 'Export', onClick: exportLoads }] : []),
       { label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) },
     ],
     loadDetail: [
