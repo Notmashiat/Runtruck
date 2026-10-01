@@ -178,7 +178,7 @@ function ManageDialog({ version, onClose }: { version: Version; onClose: () => v
       foot={(close) => (
         <>
           <div className="ui-stop-meta" style={{ marginTop: 0 }}>
-            {nothing ? 'No changes yet.' : [gaining.length && `${plural(gaining.length, 'company', 'companies')} get ${version.id}`, losing.length && `${plural(losing.length, 'company', 'companies')} go back to ${before.id}`, flipNew && (forNew ? 'new companies start on it' : 'new companies no longer start on it')].filter(Boolean).join(' · ')}
+            {nothing ? 'No changes yet.' : [gaining.length && `${plural(gaining.length, 'company', 'companies')} ${gaining.length === 1 ? 'gets' : 'get'} ${version.id}`, losing.length && `${plural(losing.length, 'company', 'companies')} ${losing.length === 1 ? 'goes' : 'go'} back to ${before.id}`, flipNew && (forNew ? 'new companies start on it' : 'new companies no longer start on it')].filter(Boolean).join(' · ')}
           </div>
           <div style={{ flex: 1 }} />
           <button type="button" className="ui-btn" onClick={close}>Cancel</button>
