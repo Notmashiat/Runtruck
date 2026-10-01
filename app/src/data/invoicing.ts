@@ -233,7 +233,7 @@ const QUEUE: BillableLoad[] = [
 const money = (s: string) => Number(s.replace(/[$,]/g, '')) || 0;
 
 // The billing queue, moved to today's date.
-const DEMO_QUEUE = (): BillableLoad[] => shiftDemo(QUEUE);
+const DEMO_QUEUE = (): BillableLoad[] => (IS_DEMO ? shiftDemo(QUEUE) : []);
 
 function fromBoard(l: Load): BillableLoad {
   return {
