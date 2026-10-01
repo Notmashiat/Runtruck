@@ -25,7 +25,7 @@ export function TrailersTab() {
   const kpis = [
     { label: 'Trailers', value: String(active.length), note: `${countKind('Reefer')} reefer · ${countKind('Dry van')} dry van · ${countKind('Flatbed')} flatbed` },
     { label: 'Loaded', value: String(loaded.length), note: `${rolling} rolling · ${loaded.length - rolling} at shippers` },
-    { label: 'Empty', value: String(empty.length), note: `${atYard} at the Modesto yard` },
+    { label: 'Empty', value: String(empty.length), note: `${atYard} at a yard` },
     { label: 'Inspection / shop', value: String(inspection.length), note: inspection.map((t) => t.unit).join(', ') || 'None pending' },
   ];
 

@@ -1,6 +1,7 @@
 // Accounting mock data for Sunridge Freight: bills and shared money helpers.
 // Invoices and batches live in invoicing.ts. Dates follow the real clock.
 import { isoFromText, shiftDemo, shortDate, todayIso } from '../lib/clock';
+import { IS_DEMO } from '../lib/account';
 
 // Today as the bills write dates ('Oct 1').
 export const TODAY = shortDate(todayIso());
@@ -49,4 +50,5 @@ const BILLS_2026: Bill[] = [
 ];
 
 // The demo bills, moved to today's date.
-export const BILLS: Bill[] = shiftDemo(BILLS_2026);
+// Demo records exist only in RunTruck's own workspace (Company ID 1); a client company starts empty.
+export const BILLS: Bill[] = !IS_DEMO ? [] : shiftDemo(BILLS_2026);

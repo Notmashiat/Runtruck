@@ -1,3 +1,5 @@
+import { can } from '../../lib/auth';
+import { WIDGET_NEEDS } from '../../data/dashboard';
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardCustomize } from '../../components/DashboardCustomize';
@@ -110,7 +112,7 @@ export function DashboardPage() {
     setSizing(null);
   };
 
-  const visible = layout.items.filter((i) => !i.hidden);
+  const visible = layout.items.filter((i) => !i.hidden && can(WIDGET_NEEDS[i.id]));
   // The real date and time, in the time zone from Settings › Profile; ticks every 30 s.
   const now = useNow();
   const today = `${formatNow(now, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} · ${formatNow(now, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}`;

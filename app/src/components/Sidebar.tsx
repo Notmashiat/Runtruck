@@ -1,7 +1,7 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { NAV, USER, type ViewKey } from '../data/mock';
 import { useAppShell } from '../context/AppShellContext';
-import { isSuperAdmin, logOut } from '../lib/auth';
+import { can, isSuperAdmin, logOutAndLeave, me } from '../lib/auth';
 import { usePersisted } from '../lib/persist';
 import { NavIcon } from './NavIcons';
 
@@ -14,7 +14,6 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2)
 // screens it starts collapsed and opens over the page.
 export function Sidebar() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { setQuery } = useAppShell();
   const [collapsed, setCollapsed] = usePersisted<boolean>('runtruck-sidebar-collapsed', Boolean(isNarrow()), (raw) =>
     typeof raw === 'boolean' ? raw : null,
@@ -51,7 +50,7 @@ export function Sidebar() {
         </div>
 
         <nav className="ui-nav" aria-label="Sections">
-          {NAV.filter((n) => superAdmin || !('key' in n) || n.key !== 'developer').map((n, i) =>
+          {NAV.filter((n) => !('key' in n) || can(n.key)).map((n, i) =>
             'group' in n ? (
               <div key={`group-${i}`} className="ui-nav-group">
                 {n.group}
@@ -78,7 +77,7 @@ export function Sidebar() {
             <span className="ui-avatar" aria-hidden="true">{initials(USER.name)}</span>
             <div className="ui-user-text">
               <div className="ui-user-name">{USER.name}</div>
-              <div className="ui-user-meta">{superAdmin ? 'Super admin · RunTruck' : `${USER.role} · ${USER.company}`}</div>
+              <div className="ui-user-meta">{superAdmin ? 'Super admin · RunTruck' : `${me()?.type ?? USER.role} · ${USER.company}`}</div>
             </div>
           </div>
           <Link
@@ -92,7 +91,7 @@ export function Sidebar() {
             <NavIcon name="settings" />
             <span className="ui-nav-label">Settings</span>
           </Link>
-          <button type="button" className="ui-nav-item" data-tip={tip('Log out')} aria-label={tip('Log out')} onClick={() => { logOut(); navigate('/login', { replace: true }); }}>
+          <button type="button" className="ui-nav-item" data-tip={tip('Log out')} aria-label={tip('Log out')} onClick={logOutAndLeave}>
             <NavIcon name="logout" />
             <span className="ui-nav-label">Log out</span>
           </button>

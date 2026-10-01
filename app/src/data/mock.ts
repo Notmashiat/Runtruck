@@ -1,4 +1,4 @@
-import { COMPANY_ID, MEMBER_ID } from '../lib/account';
+import { COMPANY_ID, IS_DEMO, MEMBER_ID } from '../lib/account';
 import { shiftDemo } from '../lib/clock';
 
 // Mock data for the RunTruck app. Static in-memory data, matching the
@@ -144,7 +144,9 @@ export interface Carrier {
   dot: string;
 }
 
-export const CARRIERS: Carrier[] = [
+// Demo records exist only in RunTruck's own workspace (Company ID 1); a client company starts empty.
+// A client company's own fleet is filled in from Settings › Company.
+export const CARRIERS: Carrier[] = !IS_DEMO ? [{ name: 'Own fleet', mc: '', dot: '' }] : [
   { name: 'Sunridge Freight (own fleet)', mc: 'MC 812044', dot: 'DOT 2291176' },
   { name: 'Valley Line Transport', mc: 'MC 604117', dot: 'DOT 1780342' },
   { name: 'Cascade Reefer Express', mc: 'MC 733905', dot: 'DOT 2014588' },
@@ -184,7 +186,7 @@ export interface Truck {
   tagClass: string;
 }
 
-export const TRUCKS: Truck[] = [
+export const TRUCKS: Truck[] = !IS_DEMO ? [] : [
   { unit: 'T-103', make: 'Freightliner Cascadia · 2022', plate: 'CA 8HJ2019', driver: 'Priya Raman', odo: '318,440', service: '342,000', status: 'In service', tagClass: 'tag-accent' },
   { unit: 'T-107', make: 'Volvo VNL 760 · 2021', plate: 'CA 7RD8842', driver: 'Dara Whitfield', odo: '402,190', service: '425,000', status: 'In service', tagClass: 'tag-accent' },
   { unit: 'T-109', make: 'Kenworth T680 · 2023', plate: 'CA 9KM1174', driver: 'Ana Cortez', odo: '141,220', service: '165,000', status: 'In service', tagClass: 'tag-accent' },
@@ -201,7 +203,7 @@ export interface Trailer {
   where: string;
 }
 
-export const TRAILERS: Trailer[] = [
+export const TRAILERS: Trailer[] = !IS_DEMO ? [] : [
   { unit: 'RF-27', kind: 'Reefer · 53 ft', status: 'Loaded', tagClass: 'tag-accent', where: 'Bakersfield, CA' },
   { unit: 'RF-09', kind: 'Reefer · 53 ft', status: 'Empty', tagClass: 'tag-neutral', where: 'Yard · Modesto' },
   { unit: 'RF-88', kind: 'Reefer · 53 ft', status: 'Loaded', tagClass: 'tag-accent', where: 'En route · I-80' },
@@ -224,7 +226,7 @@ export interface Customer {
   tagClass: string;
 }
 
-export const CUSTOMERS: Customer[] = [
+export const CUSTOMERS: Customer[] = !IS_DEMO ? [] : [
   { name: 'Northgate Foods', contact: 'Dana Ruiz', loads: '184', revenue: '$412K', onTime: '96%', terms: 'Net 30', ar: '$18,400', tier: 'Key account', tagClass: 'tag-accent' },
   { name: 'Bayline Distribution', contact: 'Owen Petrakis', loads: '151', revenue: '$338K', onTime: '94%', terms: 'Net 30', ar: '$12,900', tier: 'Key account', tagClass: 'tag-accent' },
   { name: 'Cascade Building Supply', contact: 'Marta Lind', loads: '77', revenue: '$196K', onTime: '91%', terms: 'Net 45', ar: '$21,300', tier: 'Growing', tagClass: 'tag-neutral' },
@@ -242,7 +244,7 @@ export interface TopAccount {
   onTime: string;
 }
 
-export const TOP_ACCOUNTS: TopAccount[] = [
+export const TOP_ACCOUNTS: TopAccount[] = !IS_DEMO ? [] : [
   { tier: 'Key account', name: 'Northgate Foods', contact: 'Dana Ruiz · dana@northgate.com', loads: '184', revenue: '$412K', onTime: '96%' },
   { tier: 'Key account', name: 'Bayline Distribution', contact: 'Owen Petrakis · ops@bayline.co', loads: '151', revenue: '$338K', onTime: '94%' },
   { tier: 'At risk', name: 'Sierra Ag Partners', contact: 'Ben Okafor · ben@sierraag.com', loads: '62', revenue: '$154K', onTime: '82%' },
@@ -259,7 +261,7 @@ export interface Invoice {
   tagClass: string;
 }
 
-export const INVOICES: Invoice[] = [
+export const INVOICES: Invoice[] = !IS_DEMO ? [] : [
   { id: 'INV-8845', customer: 'Northgate Foods', load: 'L-40218', issued: '—', amount: '$2,450', age: '—', status: 'Draft', tagClass: 'tag-outline' },
   { id: 'INV-8841', customer: 'Northgate Foods', load: 'L-40214', issued: 'Sep 1', amount: '$1,980', age: '2 d', status: 'Sent', tagClass: 'tag-accent' },
   { id: 'INV-8840', customer: 'Bayline Distribution', load: 'L-40212', issued: 'Aug 31', amount: '$1,640', age: '3 d', status: 'Sent', tagClass: 'tag-accent' },
@@ -279,7 +281,7 @@ export interface Settlement {
   status: string;
 }
 
-export const SETTLEMENTS: Settlement[] = [
+export const SETTLEMENTS: Settlement[] = !IS_DEMO ? [] : [
   { name: 'Marcus Hale', basis: '$0.62 / mi', loads: '4', miles: '2,140', gross: '$1,326', ded: '-$142', net: '$1,184', status: 'Ready' },
   { name: 'Dara Whitfield', basis: '$0.60 / mi', loads: '3', miles: '1,980', gross: '$1,188', ded: '-$96', net: '$1,092', status: 'Ready' },
   { name: 'Ellis Nakamura', basis: '25% of line haul', loads: '3', miles: '1,760', gross: '$1,455', ded: '-$210', net: '$1,245', status: 'Hold · fuel' },
@@ -325,6 +327,7 @@ export const SECTION_TABS: Partial<Record<ViewKey, SectionTab[]>> = {
   developer: [
     { key: 'account-manager', label: 'Account manager' },
     { key: 'clients', label: 'Clients' },
+    { key: 'accounts', label: 'Accounts' },
   ],
 };
 
@@ -345,5 +348,5 @@ export const REVENUE_BARS = [42, 58, 51, 66, 74, 38, 29];
 export const REVENUE_DAYS = ['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'];
 
 // The demo loads and drivers, moved to today's date (lib/clock.ts).
-export const LOADS: Load[] = shiftDemo(LOADS_2026);
-export const DRIVERS: Driver[] = shiftDemo(DRIVERS_2026);
+export const LOADS: Load[] = !IS_DEMO ? [] : shiftDemo(LOADS_2026);
+export const DRIVERS: Driver[] = !IS_DEMO ? [] : shiftDemo(DRIVERS_2026);

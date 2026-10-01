@@ -1,6 +1,7 @@
 // Mock data for the HR section (employee contracts and onboarding). Static
 // in-memory data in the same style as mock.ts; dates move with the real clock.
 import { shiftDemo } from '../lib/clock';
+import { IS_DEMO } from '../lib/account';
 
 export type ContractRole = 'Company driver' | 'Owner-operator' | 'Dispatcher' | 'Mechanic';
 export type ContractType = 'W-2' | '1099' | 'Lease-purchase';
@@ -58,5 +59,6 @@ const ONBOARDING_2026: Onboarding[] = [
 ];
 
 // The demo records, moved to today's date.
-export const CONTRACTS: Contract[] = shiftDemo(CONTRACTS_2026);
-export const ONBOARDING: Onboarding[] = shiftDemo(ONBOARDING_2026);
+// Demo records exist only in RunTruck's own workspace (Company ID 1); a client company starts empty.
+export const CONTRACTS: Contract[] = !IS_DEMO ? [] : shiftDemo(CONTRACTS_2026);
+export const ONBOARDING: Onboarding[] = !IS_DEMO ? [] : shiftDemo(ONBOARDING_2026);

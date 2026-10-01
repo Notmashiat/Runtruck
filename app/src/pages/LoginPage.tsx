@@ -1,11 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { currentSession, emailHint, lockedFor, logIn } from '../lib/auth';
+import { Link, Navigate, useLocation } from 'react-router-dom';
+import { currentSession, lockedFor, logIn, sessionChanged } from '../lib/auth';
 
 // /login: email and password for the RunTruck account.
 // Signed-in people go straight to the app.
 export function LoginPage() {
-  const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from;
   const target = from && from.startsWith('/app') && from !== '/app/' ? from : '/app';
@@ -25,6 +24,11 @@ export function LoginPage() {
     return () => window.clearTimeout(t);
   }, [wait]);
 
+  // Signed in already (here, or in another tab as a different account).
+  if (sessionChanged()) {
+    window.location.replace(target);
+    return null;
+  }
   if (currentSession()) return <Navigate to={target} replace />;
 
   const submit = async (e: FormEvent) => {
@@ -38,7 +42,8 @@ export function LoginPage() {
     const result = await logIn(email, password, remember);
     setBusy(false);
     if (result.ok) {
-      navigate(target, { replace: true });
+      // A full reload opens the app with this account's company and nothing else.
+      window.location.replace(target);
       return;
     }
     setPassword('');
@@ -46,7 +51,11 @@ export function LoginPage() {
       setWait(result.seconds ?? 60);
       setError('Too many tries. Wait a minute, then try again.');
     } else if (result.reason === 'email') {
-      setError(`That isn’t this account’s email. Use the account email (${emailHint()}).`);
+      setError('No RunTruck account uses that email. Check it, or ask a RunTruck super admin.');
+    } else if (result.reason === 'disabled') {
+      setError('This account is turned off. Ask a RunTruck super admin to turn it back on.');
+    } else if (result.reason === 'company') {
+      setError(`${result.company ?? 'This company'} can’t sign in right now. Contact RunTruck.`);
     } else {
       setError('Wrong password. Paste it exactly as given, or use Show to check what you typed.');
     }

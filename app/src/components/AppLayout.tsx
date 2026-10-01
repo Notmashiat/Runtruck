@@ -2,9 +2,9 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { AppShellProvider } from '../context/AppShellContext';
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { TODAY } from '../data/planner';
-import { currentSession } from '../lib/auth';
+import { currentSession, sessionChanged } from '../lib/auth';
 import { todayIso } from '../lib/clock';
 import { useSettings } from '../lib/settingsStore';
 
@@ -21,6 +21,20 @@ export function AppLayout() {
     }, 60_000);
     return () => window.clearInterval(t);
   }, []);
+  // Logging in or out in another tab changes whose data this tab may show:
+  // reload so it opens the right company (or the login), never a mix.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if ((e.key === 'runtruck-session' || e.key === null) && (sessionChanged() || !currentSession())) window.location.reload();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  if (sessionChanged()) {
+    window.location.reload();
+    return null;
+  }
 
   // Not signed in: log in first, then come back here.
   if (!currentSession()) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
@@ -31,7 +45,9 @@ export function AppLayout() {
         <div className="ui-column">
           <Header />
           <main className="ui-main">
-            <Outlet />
+            <Suspense fallback={<div className="ui-empty">Loading…</div>}>
+              <Outlet />
+            </Suspense>
           </main>
         </div>
       </div>

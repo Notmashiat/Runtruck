@@ -1,3 +1,5 @@
+import { can } from '../lib/auth';
+import { WIDGET_NEEDS } from '../data/dashboard';
 import { useState } from 'react';
 import {
   DEFAULT_LAYOUT, WIDGETS, type ChartStyle, type CustomerPeriod, type DashLayout, type DashOptions, type Density, type WidgetGroup,
@@ -43,7 +45,8 @@ export function DashboardCustomize({ layout, onChange, onClose }: { layout: Dash
     [items[a], items[b]] = [items[b], items[a]];
     onChange({ ...layout, items });
   };
-  const shown = layout.items.filter((i) => !i.hidden).length;
+  const allowed = layout.items.filter((i) => can(WIDGET_NEEDS[i.id]));
+  const shown = allowed.filter((i) => !i.hidden).length;
 
   return (
     <dialog ref={ref} className="ui-dialog is-medium" aria-label="Customize dashboard" onClose={(e) => { if (ownEvent(e)) onClose(); }} onCancel={(e) => ownEvent(e)}>
@@ -60,7 +63,7 @@ export function DashboardCustomize({ layout, onChange, onClose }: { layout: Dash
             <div key={g}>
               <div className="ui-label" style={{ marginBottom: 8 }}>{g}</div>
               <div className="dash-lib">
-                {WIDGETS.filter((w) => w.group === g).map((w) => {
+                {WIDGETS.filter((w) => w.group === g && can(WIDGET_NEEDS[w.id])).map((w) => {
                   const it = layout.items.find((i) => i.id === w.id);
                   if (!it) return null;
                   return (
@@ -144,7 +147,7 @@ export function DashboardCustomize({ layout, onChange, onClose }: { layout: Dash
             Reset to default
           </button>
           <div style={{ flex: 1 }} />
-          <span className="muted" style={{ fontSize: 13 }}>{shown} of {layout.items.length} widgets shown</span>
+          <span className="muted" style={{ fontSize: 13 }}>{shown} of {allowed.length} widgets shown</span>
           <button type="button" className="ui-btn ui-btn-primary" onClick={closeNow}>Done</button>
         </footer>
       </div>

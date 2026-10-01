@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import { SectionTabs } from './SectionTabs';
 
@@ -7,7 +8,9 @@ export function TabbedSection() {
   return (
     <>
       <SectionTabs />
-      <Outlet />
+      <Suspense fallback={<div className="ui-empty">Loading…</div>}>
+        <Outlet />
+      </Suspense>
     </>
   );
 }

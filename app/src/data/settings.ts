@@ -140,9 +140,44 @@ export const DEFAULT_SETTINGS: Settings = {
   appearance: { theme: 'Light', accent: 'Blue', textSize: 'Default', density: 'Comfortable', startPage: 'dashboard' },
 };
 
+// What a client company's settings start from: its entry in the client
+// register (data/companies.ts) and the signed-in account (data/accounts.ts).
+export interface StartingCompany {
+  companyId: string; name: string; legal: string; dot: string; mc: string; ein: string; street: string; city: string;
+  state: string; zip: string; phone: string; contactEmail: string; website: string; timeZone: string;
+}
+export interface StartingPerson {
+  accountId: string; name: string; title: string; phone: string; email: string; type: string;
+}
+
+// How settings start. RunTruck's workspace keeps the demo company; any other
+// company starts from its own details and nobody else's (no demo team,
+// terminals, bank or factoring company).
+export function startingSettings(company: Partial<StartingCompany> | null, person: Partial<StartingPerson> | null, demo: boolean): Settings {
+  const d = structuredCopy(DEFAULT_SETTINGS);
+  const str = (v: unknown) => (typeof v === 'string' ? v : '');
+  if (!demo) {
+    const c = company ?? {};
+    d.company = {
+      name: str(c.name), legal: str(c.legal), dot: str(c.dot), mc: str(c.mc), ein: str(c.ein), street: str(c.street), city: str(c.city),
+      state: str(c.state), zip: str(c.zip), phone: str(c.phone), email: str(c.contactEmail), website: str(c.website),
+    };
+    d.invoicing = { ...d.invoicing, bank: '', accountLast4: '', remit: '', factoringName: '', factoringEmail: '' };
+    d.operations = { ...d.operations, terminals: [] };
+    d.team = [];
+  }
+  if (person) {
+    const zone = str(company?.timeZone);
+    d.profile = {
+      name: str(person.name), title: str(person.title) || str(person.type), email: str(person.email), phone: str(person.phone),
+      timeZone: TIME_ZONES.includes(zone) ? zone : TIME_ZONES[0],
+    };
+  }
+  return d;
+}
+
 // A stored copy, completed with anything added since it was saved.
-export function mergeSettings(raw: unknown): Settings {
-  const d = DEFAULT_SETTINGS;
+export function mergeSettings(raw: unknown, d: Settings = DEFAULT_SETTINGS): Settings {
   if (!raw || typeof raw !== 'object') return structuredCopy(d);
   const r = raw as Partial<Settings>;
   const obj = <T extends object>(def: T, v: unknown): T => ({ ...def, ...(v && typeof v === 'object' ? (v as Partial<T>) : {}) });

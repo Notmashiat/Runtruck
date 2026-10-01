@@ -130,39 +130,58 @@ sets spacing, greeting, notes, the revenue chart's period and style, the custome
 and the active-loads columns. The layout is kept in `runtruck-dashboard`; narrow screens use 6 or 1
 columns.
 
-**Login** (`/login`, `pages/LoginPage.tsx`, `lib/auth.ts`, `lib/account.ts`). The app needs a signed-in
-session; without one every `/app` page sends you to the login (and back afterwards). The login page
-asks only for email and password (no company ID). There is one account — RunTruck's owner, a super
-admin with every part of the app, Company ID 1 — and every record and setting is stored under that
-company ID (`runtruck-1-loads`, …; anything saved under the old ID 30017 or unscoped moves over on
-load, including an open session). The login email is the account's own: it changes only in Settings ›
-Security (with the current password), not with the Profile email; until it is changed there, the
-original email and the Profile email both work. The
-password is checked against a salted PBKDF2-SHA-256 fingerprint (210,000 rounds); the starting
-password is not in the code. Settings › Security changes it and the login email (kept on that
-browser) and shows the session. "Keep me signed in" lasts 30 days, otherwise until the browser closes (at most 12 hours).
-Five wrong tries lock the form for a minute. Log out ends the session. With no server yet this is a
-browser-side gate, not server-side security.
+**Login** (`/login`, `pages/LoginPage.tsx`, `lib/auth.ts`, `lib/account.ts`, `lib/password.ts`). The app
+needs a signed-in session; without one every `/app` page sends you to the login (and back afterwards).
+The login page asks only for email and password. Two kinds of account can log in: RunTruck's owner
+(Account ID 100482731, Company ID 1, a super admin), and accounts made in Developer › Create account.
+Passwords are never stored, only a salted PBKDF2-SHA-256 fingerprint (210,000 rounds), so nobody can read
+one back — a super admin can only replace it. "Keep me signed in" lasts 30 days, otherwise until the
+browser closes (at most 12 hours). Five wrong tries lock the form for a minute. A disabled account, or an
+account whose company is paused or cancelled, cannot log in. Every account changes its own password in
+Settings › Security; only super admins change a login email (their own there, anyone's in Developer).
 
-**Developer** (`/app/developer/<tab>`, super admins only; `pages/app/developer/`, `data/companies.ts`).
-This account (Member ID 100482731, Company ID 1) is RunTruck's owner and **Super admin** (`roleOf` in `lib/account.ts`,
-`isSuperAdmin` in `lib/auth.ts`); only a super admin sees Developer in the sidebar or can open its URLs.
-*Account manager* lists every paying client company with its unique Company ID, contact, login
-accounts, trucks, plan and monthly price; a row opens to the company details and its accounts (Member
-ID, role, last sign-in). *Clients* shows each company's subscription: plan (Starter $39/truck up to 15
-trucks, Growth $32/truck up to 100, Enterprise custom), billing cycle, start, last payment, next
-renewal, price and status (Active, Trial, Past due, Paused, Cancelled). **Create company** (top bar;
-`components/CompanyDialog.tsx`, `lib/companyStore.ts`) adds a client company in five sections —
-Company (name, legal name, business type, USDOT, MC, EIN, SCAC, website), Address (with time zone and
-main phone), Contacts (main contact and billing contact), Fleet (trucks, trailers, drivers, equipment)
-and Subscription (plan, Enterprise price, billing cycle, trial or active, start date, trial end,
-payment method, notes). USDOT is required for businesses that run trucks, MC for brokers, and neither
-may already belong to another client; a plan must fit the truck count. Each company gets a random
-seven-digit Company ID that has never been issued (every issued ID is kept in
-`runtruck-1-company-ids`, so a deleted company's ID is never reused). Creating a company creates no
-login accounts. Companies are stored in `runtruck-1-companies`; a row in Account manager opens to all
-the details, with Edit company (and Delete, while it has no accounts). Settings › Data reset leaves
-companies alone. **Create account** still shows what that form will ask for; it comes next.
+**One company's data per session** (`lib/account.ts`). The session says which Company ID is open, and
+every record and setting is stored under it (`runtruck-<company ID>-loads`, …), so an account reads and
+writes its own company's data and nothing else. Logging in or out reloads the page, and a tab whose
+session changes in another tab reloads too, so data from two companies is never in memory together.
+Company ID 1 (RunTruck) keeps the built-in demo records; a client company starts with none, and its
+settings start from its own entry in the client register (no demo team, terminals, bank or customers).
+Profile and Appearance are per account (`…-member-<account ID>-settings`); the rest of Settings is shared
+by the company. Settings › Data only backs up, restores or resets the open company, and never logins or
+RunTruck's registers. Anything saved under the old ID 30017 or unscoped moves to Company ID 1.
+
+**Permissions** (`data/accounts.ts`, `can()` in `lib/auth.ts`, `App.tsx`). Every account has the
+Dashboard and its own Profile, Security and Appearance. Everything else is granted per section (Loads,
+Planner, Fleet, CRM, Facilities, Accounting, HR, Safety, Company settings) and, for sections with tabs,
+per tab. The sidebar, the tab bars, Settings' sections, the start page, the dashboard's widgets and its
+Needs-attention list show only what is granted; every route checks again, so typing an address does not
+get round it. Each screen is its own download, fetched the first time it is opened, so a section an
+account may not open is never loaded or run; data from another section is only used where a granted
+screen needs it (the planner shows loads only to accounts with Loads). Developer is only for super
+admins, who always belong to Company ID 1 and have everything.
+
+**Developer** (`/app/developer/<tab>`, super admins only; `pages/app/developer/`, `data/companies.ts`,
+`data/accounts.ts`). *Account manager* lists every client company with its unique Company ID, contact,
+login accounts, trucks, plan and monthly price; a row opens to the company details and its accounts,
+with Edit company and + Create account for that company. *Clients* shows each company's subscription:
+plan (Starter $39/truck up to 15 trucks, Growth $32/truck up to 100, Enterprise custom), billing cycle,
+start, last payment, next renewal, price and status (Active, Trial, Past due, Paused, Cancelled).
+*Accounts* lists every login (the owner included) with its type, company, status and last sign-in; a row
+opens to what it may access, with Edit account. **Create company** (`components/CompanyDialog.tsx`,
+`lib/companyStore.ts`) adds a client company in five sections — Company (name, legal name, business
+type, USDOT, MC, EIN, SCAC, website), Address, Contacts, Fleet and Subscription. USDOT is required for
+businesses that run trucks, MC for brokers, and neither may already belong to another client. Each
+company gets a random seven-digit Company ID never issued before (`runtruck-1-company-ids`); creating a
+company creates no accounts. **Create account** (`components/AccountDialog.tsx`, `lib/accountStore.ts`)
+makes a login in three sections — Account (type, company, name, title, phone, notes), Login (login
+email, password, status) and Access (the section checklist, with a tab checklist under each ticked
+section that has tabs). Types: Super admin (always Company ID 1, everything plus Developer), Company
+admin, Dispatcher, Broker / sales agent, Accounting & billing, Safety & compliance, Fleet manager, HR &
+recruiting and Custom; picking one ticks its usual access, which can then be changed. Each account gets
+a random ten-digit Account ID never issued before (`runtruck-1-account-ids`), and login emails are
+unique. Accounts are kept in `runtruck-1-accounts`. A super admin can edit any account at any time
+(type, company, details, email, a new password, status, access) or delete it; nobody can disable,
+delete or demote their own account. A company can only be deleted once it has no accounts.
 
 **Date and time** (`lib/clock.ts`). The app runs on the real clock, in the time zone from Settings ›
 Profile (or this device's): the top bar and dashboard show the live date and time, and every "today"

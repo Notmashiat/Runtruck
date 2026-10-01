@@ -1,44 +1,75 @@
+import { lazy, type ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
 import { TabbedSection } from './components/TabbedSection';
+import { SECTION_TABS, type ViewKey } from './data/mock';
 import { LandingPage } from './pages/marketing/LandingPage';
 import { LoginPage } from './pages/LoginPage';
-import { DashboardPage } from './pages/app/DashboardPage';
-import { LoadsPage } from './pages/app/LoadsPage';
-import { LoadDetailPage } from './pages/app/LoadDetailPage';
-import { PlannerPage } from './pages/app/PlannerPage';
-import { CustomersPage } from './pages/app/CustomersPage';
-import { FacilitiesPage } from './pages/app/FacilitiesPage';
-import { SettingsPage } from './pages/app/SettingsPage';
+import { can } from './lib/auth';
 import { getSettings } from './lib/settingsStore';
-import { isSuperAdmin } from './lib/auth';
-import { AccountManagerTab } from './pages/app/developer/AccountManagerTab';
-import { ClientsTab } from './pages/app/developer/ClientsTab';
-import { DriversTab } from './pages/app/fleet/DriversTab';
-import { TrucksTab } from './pages/app/fleet/TrucksTab';
-import { TrailersTab } from './pages/app/fleet/TrailersTab';
-import { UninvoicedTab } from './pages/app/accounting/UninvoicedTab';
-import { InvoicedTab } from './pages/app/accounting/InvoicedTab';
-import { BatchesTab } from './pages/app/accounting/BatchesTab';
-import { PastDueTab } from './pages/app/accounting/PastDueTab';
-import { PaidTab } from './pages/app/accounting/PaidTab';
-import { PayrollTab } from './pages/app/accounting/PayrollTab';
-import { BillsTab } from './pages/app/accounting/BillsTab';
-import { EmployeeContractsTab } from './pages/app/hr/EmployeeContractsTab';
-import { OnboardingTab } from './pages/app/hr/OnboardingTab';
-import { MaintenanceTab } from './pages/app/safety/MaintenanceTab';
-import { DriverDocumentsTab } from './pages/app/safety/DriverDocumentsTab';
-import { ViolationsTab } from './pages/app/safety/ViolationsTab';
-import { ClaimSettlementsTab } from './pages/app/safety/ClaimSettlementsTab';
 
-// /app opens the start page chosen in Settings › Appearance (read when it is visited).
-function StartPage() {
-  return <Navigate to={getSettings().appearance.startPage} replace />;
+// Each screen is its own download, fetched the first time it is opened, so
+// an account never loads the code of a section it may not open.
+const page = <K extends string>(load: () => Promise<Record<NoInfer<K>, () => ReactNode>>, name: K) =>
+  lazy(() => load().then((m) => ({ default: m[name] })));
+
+const DashboardPage = page(() => import('./pages/app/DashboardPage'), 'DashboardPage');
+const LoadsPage = page(() => import('./pages/app/LoadsPage'), 'LoadsPage');
+const LoadDetailPage = page(() => import('./pages/app/LoadDetailPage'), 'LoadDetailPage');
+const PlannerPage = page(() => import('./pages/app/PlannerPage'), 'PlannerPage');
+const CustomersPage = page(() => import('./pages/app/CustomersPage'), 'CustomersPage');
+const FacilitiesPage = page(() => import('./pages/app/FacilitiesPage'), 'FacilitiesPage');
+const SettingsPage = page(() => import('./pages/app/SettingsPage'), 'SettingsPage');
+const DriversTab = page(() => import('./pages/app/fleet/DriversTab'), 'DriversTab');
+const TrucksTab = page(() => import('./pages/app/fleet/TrucksTab'), 'TrucksTab');
+const TrailersTab = page(() => import('./pages/app/fleet/TrailersTab'), 'TrailersTab');
+const UninvoicedTab = page(() => import('./pages/app/accounting/UninvoicedTab'), 'UninvoicedTab');
+const InvoicedTab = page(() => import('./pages/app/accounting/InvoicedTab'), 'InvoicedTab');
+const BatchesTab = page(() => import('./pages/app/accounting/BatchesTab'), 'BatchesTab');
+const PastDueTab = page(() => import('./pages/app/accounting/PastDueTab'), 'PastDueTab');
+const PaidTab = page(() => import('./pages/app/accounting/PaidTab'), 'PaidTab');
+const PayrollTab = page(() => import('./pages/app/accounting/PayrollTab'), 'PayrollTab');
+const BillsTab = page(() => import('./pages/app/accounting/BillsTab'), 'BillsTab');
+const EmployeeContractsTab = page(() => import('./pages/app/hr/EmployeeContractsTab'), 'EmployeeContractsTab');
+const OnboardingTab = page(() => import('./pages/app/hr/OnboardingTab'), 'OnboardingTab');
+const MaintenanceTab = page(() => import('./pages/app/safety/MaintenanceTab'), 'MaintenanceTab');
+const DriverDocumentsTab = page(() => import('./pages/app/safety/DriverDocumentsTab'), 'DriverDocumentsTab');
+const ViolationsTab = page(() => import('./pages/app/safety/ViolationsTab'), 'ViolationsTab');
+const ClaimSettlementsTab = page(() => import('./pages/app/safety/ClaimSettlementsTab'), 'ClaimSettlementsTab');
+const AccountManagerTab = page(() => import('./pages/app/developer/AccountManagerTab'), 'AccountManagerTab');
+const ClientsTab = page(() => import('./pages/app/developer/ClientsTab'), 'ClientsTab');
+const AccountsTab = page(() => import('./pages/app/developer/AccountsTab'), 'AccountsTab');
+
+// A section or tab the signed-in account may not open sends it to the
+// Dashboard (which every account has). The check runs on every visit, so
+// typing the address does not get round it.
+function Allow({ perm, children }: { perm: string; children: ReactNode }) {
+  return can(perm) ? children : <Navigate to="/app/dashboard" replace />;
 }
 
-// Developer is RunTruck's own console: super admins only.
-function DeveloperSection() {
-  return isSuperAdmin() ? <TabbedSection /> : <Navigate to="/app" replace />;
+// A tabbed section opens on the first tab the account may use.
+function FirstTab({ section }: { section: ViewKey }) {
+  const first = SECTION_TABS[section]?.find((t) => can(`${section}/${t.key}`));
+  return <Navigate to={first ? first.key : '/app/dashboard'} replace />;
+}
+
+// /app opens the start page chosen in Settings › Appearance (read when it is
+// visited), or the Dashboard if that page is not allowed.
+function StartPage() {
+  const start = getSettings().appearance.startPage;
+  return <Navigate to={can(start) ? start : 'dashboard'} replace />;
+}
+
+// A tabbed section: its own permission, then one per tab.
+function section(key: ViewKey, tabs: [string, ReactNode][]) {
+  return (
+    <Route path={key} element={<Allow perm={key}><TabbedSection /></Allow>}>
+      <Route index element={<FirstTab section={key} />} />
+      {tabs.map(([tab, el]) => (
+        <Route key={tab} path={tab} element={<Allow perm={`${key}/${tab}`}>{el}</Allow>} />
+      ))}
+    </Route>
+  );
 }
 
 export default function App() {
@@ -49,46 +80,24 @@ export default function App() {
       <Route path="/app" element={<AppLayout />}>
         <Route index element={<StartPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="loads" element={<LoadsPage />} />
-        <Route path="loads/:id" element={<LoadDetailPage />} />
-        <Route path="planner" element={<PlannerPage />} />
-        <Route path="fleet" element={<TabbedSection />}>
-          <Route index element={<Navigate to="drivers" replace />} />
-          <Route path="drivers" element={<DriversTab />} />
-          <Route path="trucks" element={<TrucksTab />} />
-          <Route path="trailers" element={<TrailersTab />} />
-        </Route>
-        <Route path="crm" element={<CustomersPage />} />
-        <Route path="facilities" element={<FacilitiesPage />} />
+        <Route path="loads" element={<Allow perm="loads"><LoadsPage /></Allow>} />
+        <Route path="loads/:id" element={<Allow perm="loads"><LoadDetailPage /></Allow>} />
+        <Route path="planner" element={<Allow perm="planner"><PlannerPage /></Allow>} />
+        {section('fleet', [['drivers', <DriversTab />], ['trucks', <TrucksTab />], ['trailers', <TrailersTab />]])}
+        <Route path="crm" element={<Allow perm="crm"><CustomersPage /></Allow>} />
+        <Route path="facilities" element={<Allow perm="facilities"><FacilitiesPage /></Allow>} />
         <Route path="settings" element={<Navigate to="profile" replace />} />
         <Route path="settings/:section" element={<SettingsPage />} />
-        <Route path="accounting" element={<TabbedSection />}>
-          <Route index element={<Navigate to="uninvoiced" replace />} />
-          <Route path="uninvoiced" element={<UninvoicedTab />} />
-          <Route path="invoiced" element={<InvoicedTab />} />
-          <Route path="batches" element={<BatchesTab />} />
-          <Route path="past-due" element={<PastDueTab />} />
-          <Route path="paid" element={<PaidTab />} />
-          <Route path="payroll" element={<PayrollTab />} />
-          <Route path="bills" element={<BillsTab />} />
-        </Route>
-        <Route path="hr" element={<TabbedSection />}>
-          <Route index element={<Navigate to="employee-contracts" replace />} />
-          <Route path="employee-contracts" element={<EmployeeContractsTab />} />
-          <Route path="onboarding" element={<OnboardingTab />} />
-        </Route>
-        <Route path="safety" element={<TabbedSection />}>
-          <Route index element={<Navigate to="maintenance" replace />} />
-          <Route path="maintenance" element={<MaintenanceTab />} />
-          <Route path="driver-documents" element={<DriverDocumentsTab />} />
-          <Route path="violations" element={<ViolationsTab />} />
-          <Route path="settlements" element={<ClaimSettlementsTab />} />
-        </Route>
-        <Route path="developer" element={<DeveloperSection />}>
-          <Route index element={<Navigate to="account-manager" replace />} />
-          <Route path="account-manager" element={<AccountManagerTab />} />
-          <Route path="clients" element={<ClientsTab />} />
-        </Route>
+        {section('accounting', [
+          ['uninvoiced', <UninvoicedTab />], ['invoiced', <InvoicedTab />], ['batches', <BatchesTab />], ['past-due', <PastDueTab />],
+          ['paid', <PaidTab />], ['payroll', <PayrollTab />], ['bills', <BillsTab />],
+        ])}
+        {section('hr', [['employee-contracts', <EmployeeContractsTab />], ['onboarding', <OnboardingTab />]])}
+        {section('safety', [
+          ['maintenance', <MaintenanceTab />], ['driver-documents', <DriverDocumentsTab />], ['violations', <ViolationsTab />], ['settlements', <ClaimSettlementsTab />],
+        ])}
+        {/* Developer is RunTruck's own console: super admins under Company ID 1 only. */}
+        {section('developer', [['account-manager', <AccountManagerTab />], ['clients', <ClientsTab />], ['accounts', <AccountsTab />]])}
       </Route>
       {/* Section URLs from before the sidebar was reorganised, so old links still land. They
           sit outside the /app layout on purpose: the tab bar and top bar key off the section

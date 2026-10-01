@@ -623,3 +623,9 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 .co-banner { display: flex; flex-direction: column; gap: 4px; }
 .co-banner .ui-label { margin-right: 8px; }
 .co-id { font-size: 18px; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+
+/* Account access chips (Developer › Accounts) */
+.acc-perms { display: flex; flex-wrap: wrap; gap: 8px; }
+.acc-perm { display: inline-flex; flex-direction: column; gap: 2px; padding: 6px 10px; border: 1px dashed var(--ui-border); border-radius: 10px; font-size: 13px; color: var(--ui-muted); text-decoration: line-through; }
+.acc-perm.is-on { border-style: solid; background: var(--ui-card); color: inherit; font-weight: 600; text-decoration: none; }
+.acc-perm small { font-size: 11px; font-weight: 400; color: var(--ui-muted); }

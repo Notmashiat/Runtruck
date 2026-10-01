@@ -1,8 +1,7 @@
 // RunTruck's own client register (Developer › Account manager and Clients):
-// every company that uses RunTruck, its unique Company ID, its subscription
-// and the login accounts assigned to it. Creating a company creates no
-// accounts; accounts are added to a company later.
-import type { AccountRole } from '../lib/account';
+// every company that uses RunTruck, its unique Company ID and its
+// subscription. Creating a company creates no accounts; login accounts are
+// assigned to a Company ID in Developer › Create account (data/accounts.ts).
 import { isoDateAt } from '../lib/clock';
 import type { FormValues } from './fleet';
 
@@ -38,14 +37,6 @@ export const COMPANY_TIME_ZONES = [
 export const STATUS_TAG: Record<SubscriptionStatus, string> = {
   Active: 'tag-green', Trial: 'tag-accent', 'Past due': 'tag-outline', Paused: 'tag-neutral', Cancelled: 'tag-neutral',
 };
-
-export interface LoginAccount {
-  memberId: string;
-  name: string;
-  email: string;
-  role: AccountRole;
-  lastSignIn?: string;
-}
 
 export interface ClientCompany {
   companyId: string;
@@ -87,7 +78,6 @@ export interface ClientCompany {
   customPrice: number | null;
   paymentMethod: string;
   notes: string;
-  accounts: LoginAccount[];
 }
 
 // The plan a fleet size fits.
@@ -203,7 +193,6 @@ export function companyFromForm(v: FormValues, companyId: string, prev?: ClientC
     customPrice: plan === 'Enterprise' && str(v, 'customPrice') ? Number(str(v, 'customPrice')) : null,
     paymentMethod: str(v, 'paymentMethod'),
     notes: str(v, 'notes'),
-    accounts: prev?.accounts ?? [],
   };
 }
 
@@ -219,6 +208,5 @@ export function reviveCompany(raw: unknown): ClientCompany | null {
     plan: PLAN_NAMES.includes(r.plan as Plan) ? r.plan : 'Starter',
     status: STATUSES.includes(r.status as SubscriptionStatus) ? r.status : 'Active',
     equipment: Array.isArray(r.equipment) ? r.equipment : [],
-    accounts: Array.isArray(r.accounts) ? r.accounts : [],
   } as ClientCompany;
 }

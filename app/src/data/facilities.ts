@@ -7,6 +7,7 @@
 import type { FormValues } from './fleet';
 import { stopsOf, type Load } from './mock';
 import { TODAY } from './planner';
+import { IS_DEMO } from '../lib/account';
 
 export interface Facility {
   id: string;
@@ -477,4 +478,5 @@ const DETAILS: FormValues[] = [
   }),
 ];
 
-export const FACILITY_SEED: Facility[] = DETAILS.map((d, i) => facilityFromForm(d, `FAC-${101 + i}`));
+// Demo records exist only in RunTruck's own workspace (Company ID 1); a client company starts empty.
+export const FACILITY_SEED: Facility[] = !IS_DEMO ? [] : DETAILS.map((d, i) => facilityFromForm(d, `FAC-${101 + i}`));

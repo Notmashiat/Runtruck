@@ -1,3 +1,4 @@
+import { can } from '../../lib/auth';
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarSettings, type SettingsPage } from '../../components/CalendarSettings';
@@ -136,7 +137,7 @@ export function PlannerPage() {
   const time = (min: number) => formatTime(min, prefs.hour24);
 
   // — colors —
-  const all = [...events, ...loadEvents(loads)];
+  const all = [...events, ...(can('loads') ? loadEvents(loads) : [])];
   const catOf = new Map(categories.map((c) => [c.key, c]));
   const values = byValue ? [...new Set(all.filter((e) => e.readOnly).map((e) => valueOf(e, colorBy)))].sort() : [];
   const valueTone = (v: string) => prefs.valueTones[`${colorBy}:${v}`] ?? TONES[values.indexOf(v) % TONES.length];

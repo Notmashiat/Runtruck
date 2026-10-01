@@ -3,6 +3,7 @@
 import { addDays, fromIso, iso } from '../lib/dates';
 import { isoFromText, shiftDemo, shiftIso, todayIso } from '../lib/clock';
 import type { Load } from './mock';
+import { IS_DEMO } from '../lib/account';
 
 // Today, in the time zone chosen in Settings (lib/clock.ts). Everything that
 // asks "what day is it" — planner, dashboard, accounting, safety — uses this.
@@ -180,4 +181,5 @@ export function loadEvents(loads: Load[]): PlannerEvent[] {
   });
 }
 
-export const PLANNER_EVENTS: PlannerEvent[] = [...STANDUPS, ...shiftDemo(EVENTS_2026)];
+// Demo records exist only in RunTruck's own workspace (Company ID 1); a client company starts empty.
+export const PLANNER_EVENTS: PlannerEvent[] = !IS_DEMO ? [] : [...STANDUPS, ...shiftDemo(EVENTS_2026)];

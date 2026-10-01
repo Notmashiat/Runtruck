@@ -5,6 +5,7 @@ import {
 } from '../data/companies';
 import type { FormValues } from '../data/fleet';
 import { fmtDate } from '../data/invoicing';
+import { useAccounts } from '../lib/accountStore';
 import { deleteCompany, isIssued, newCompanyId, saveCompany, useCompanies } from '../lib/companyStore';
 import { NON_NEGATIVE, PHONE, POSITIVE, STATE, ZIP } from '../lib/rules';
 import { RecordDialog, type FieldSpec, type SectionSpec } from './RecordDialog';
@@ -124,13 +125,14 @@ export function CompanyDialog({ company, onClose }: { company?: ClientCompany; o
   const [id] = useState(() => company?.companyId ?? newCompanyId());
   const [initial] = useState(() => (company ? companyToForm(company) : blankCompanyForm(todayInZone())));
   const others = companies.filter((c) => c.companyId !== id);
+  const logins = useAccounts().filter((a) => a.companyId === id).length;
 
   const banner = (
     <div className="ui-note co-banner">
       <div><span className="ui-label">Company ID</span><strong className="co-id">{id}</strong></div>
       <div className="ui-stop-meta" style={{ marginTop: 0 }}>
         {company
-          ? `Created ${fmtDate(company.created.slice(0, 10))} · ${company.accounts.length} login account${company.accounts.length === 1 ? '' : 's'}`
+          ? `Created ${fmtDate(company.created.slice(0, 10))} · ${logins} login account${logins === 1 ? '' : 's'}${logins ? ' (delete them before the company can be deleted)' : ''}`
           : 'Random and never issued before; it is the company’s for good. Creating the company creates no login accounts — they are assigned to it later.'}
       </div>
     </div>
@@ -152,7 +154,7 @@ export function CompanyDialog({ company, onClose }: { company?: ClientCompany; o
         const cid = !company && isIssued(id) ? newCompanyId() : id;
         saveCompany(companyFromForm(v, cid, company));
       }}
-      onDelete={company && company.accounts.length === 0 ? () => deleteCompany(company.companyId) : undefined}
+      onDelete={company && logins === 0 ? () => deleteCompany(company.companyId) : undefined}
       onClose={onClose}
     />
   );

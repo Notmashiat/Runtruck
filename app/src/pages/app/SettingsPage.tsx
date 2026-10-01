@@ -11,12 +11,13 @@ import {
 import { invoiceDoc } from '../../lib/invoicePdf';
 import { openPdf } from '../../lib/pdf';
 import { todayIso } from '../../lib/clock';
-import { currentKey, roleOf } from '../../lib/account';
+import { IS_DEMO, currentKey, isOwnKey } from '../../lib/account';
+import { PERSONAL_SETTINGS } from '../../data/accounts';
 import {
-  MIN_PASSWORD, accountEmail, changeLoginEmail, changePassword, currentSession, isSuperAdmin, logOut, loginEmailChangedOn,
-  passwordChangedOn, passwordProblems,
+  MIN_PASSWORD, accountEmail, can, changeLoginEmail, changePassword, currentSession, isSuperAdmin, logOutAndLeave, loginEmailChangedOn,
+  me, passwordChangedOn, passwordProblems,
 } from '../../lib/auth';
-import { fillTemplate, useSettings } from '../../lib/settingsStore';
+import { defaultSettings, fillTemplate, useSettings } from '../../lib/settingsStore';
 
 type SectionKey = 'profile' | 'company' | 'invoicing' | 'messages' | 'operations' | 'alerts' | 'team' | 'security' | 'appearance' | 'data';
 const SECTIONS: { key: SectionKey; title: string; about: string }[] = [
@@ -169,7 +170,7 @@ function Profile() {
       </Group>
       <Group title="Account" about="Quote these when you contact RunTruck support.">
         <dl className="set-ids">
-          <div><dt>Member ID</dt><dd>{USER.memberId}</dd></div>
+          <div><dt>Account ID</dt><dd>{USER.memberId}</dd></div>
           <div><dt>Company ID</dt><dd>{USER.companyId}</dd></div>
         </dl>
       </Group>
@@ -591,7 +592,6 @@ function Team() {
 }
 
 function Security() {
-  const navigate = useNavigate();
   const session = currentSession();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -622,18 +622,24 @@ function Security() {
 
   return (
     <>
-      <Group title="Signed in" about={isSuperAdmin() ? 'RunTruck’s owner account: every part of RunTruck, plus Developer.' : 'Your RunTruck account.'}>
+      <Group title="Signed in" about={isSuperAdmin() ? 'A RunTruck super admin: every part of RunTruck, plus Developer.' : `Your ${me()?.type ?? 'RunTruck'} account at ${USER.company}.`}>
         <dl className="set-ids">
           <div><dt>Email</dt><dd>{session?.email ?? '—'}</dd></div>
           <div><dt>Company ID</dt><dd>{session?.companyId ?? '—'}</dd></div>
-          <div><dt>Member ID</dt><dd>{session?.memberId ?? '—'}</dd></div>
-          <div><dt>Role</dt><dd>{session ? roleOf(session.memberId) : '—'}</dd></div>
+          <div><dt>Account ID</dt><dd>{session?.memberId ?? '—'}</dd></div>
+          <div><dt>Account type</dt><dd>{me()?.type ?? '—'}</dd></div>
           <div><dt>Signed in</dt><dd>{when(session?.started)}</dd></div>
           <div><dt>{session?.remember ? 'Stays signed in until' : 'Signs out'}</dt><dd>{session?.remember ? when(session.expires) : 'When the browser closes'}</dd></div>
         </dl>
-        <div><button type="button" className="ui-btn" onClick={() => { logOut(); navigate('/login', { replace: true }); }}>Log out</button></div>
+        <div><button type="button" className="ui-btn" onClick={logOutAndLeave}>Log out</button></div>
       </Group>
-      {isSuperAdmin() && <LoginEmail when={when} />}
+      {isSuperAdmin() ? (
+        <LoginEmail when={when} />
+      ) : (
+        <Group title="Login email" about={`You log in with ${accountEmail()}.`}>
+          <div className="ui-note">To change your login email, contact a RunTruck super admin. You can change your password below.</div>
+        </Group>
+      )}
       <Group title="Change password" about={`At least ${MIN_PASSWORD} characters, with letters and a number. Last changed: ${changed ? when(changed) : 'never (starting password)'}.`}>
         <div className="ui-form-grid">
           <Field label="Current password" required wide error={(tried && !current && 'Required') || (wrong && 'That is not your current password')}>
@@ -648,7 +654,7 @@ function Security() {
         </div>
         <div><button type="button" className="ui-btn ui-btn-primary" disabled={busy} onClick={submit}>{busy ? 'Saving…' : 'Change password'}</button></div>
         {done && <div className="ui-note">{done}</div>}
-        <p className="ui-stop-meta">RunTruck has no server yet: a changed password is kept on this browser. Other browsers keep using the starting password until accounts move to RunTruck’s servers.</p>
+        <p className="ui-stop-meta">RunTruck has no server yet: accounts and passwords are kept on this browser until they move to RunTruck’s servers.</p>
       </Group>
     </>
   );
@@ -731,7 +737,7 @@ function Appearance() {
         <div className="dash-opt">
           <div><strong>Start page</strong><span>Where RunTruck opens.</span></div>
           <select className="ui-input" style={{ width: 180 }} value={a.startPage} onChange={(e) => set('startPage', e.target.value as Settings['appearance']['startPage'])}>
-            {START_PAGES.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+            {START_PAGES.filter((p) => can(p.key)).map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
           </select>
         </div>
       </div>
@@ -744,9 +750,10 @@ function DataSection() {
   const [, update] = useSettings();
   const fileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState('');
-  // The login (session and password fingerprint) is never backed up, restored or reset here.
-  const isLogin = (k: string) => k === 'runtruck-session' || k.endsWith('-auth') || k.endsWith('-login-email');
-  const keys = () => Object.keys(localStorage).filter((k) => k.startsWith('runtruck-') && !isLogin(k));
+  // Logins (session, passwords, accounts) and RunTruck's client register are
+  // never backed up, restored or reset here; nor is any other company's data.
+  const isLogin = (k: string) => k === 'runtruck-session' || /-(auth|login-email|accounts|account-ids|companies|company-ids)$/.test(k);
+  const keys = () => Object.keys(localStorage).filter((k) => k.startsWith('runtruck-') && isOwnKey(k) && !isLogin(k));
 
   const exportAll = () => {
     const data: Record<string, unknown> = {};
@@ -768,21 +775,14 @@ function DataSection() {
   const importFile = async (file: File) => {
     try {
       const parsed = JSON.parse(await file.text()) as { app?: string; data?: Record<string, unknown> };
-      const entries = Object.entries(parsed.data ?? {}).filter(([k]) => k.startsWith('runtruck-') && !isLogin(k));
+      const entries = Object.entries(parsed.data ?? {}).filter(([k]) => k.startsWith('runtruck-') && !isLogin(k) && isOwnKey(currentKey(k)));
       if (parsed.app !== 'RunTruck' || entries.length === 0) {
-        setMessage('That file is not a RunTruck backup.');
+        setMessage('That file is not a backup of this company’s RunTruck.');
         return;
       }
       if (!window.confirm(`Replace what is stored in this browser with the backup (${entries.length} parts)? The page will reload.`)) return;
-      // Company IDs issued since the backup stay issued, so none is given out twice.
-      const idsKey = keys().find((k) => k.endsWith('-company-ids'));
-      const issued: unknown[] = idsKey ? JSON.parse(localStorage.getItem(idsKey) ?? '[]') : [];
       for (const k of keys()) localStorage.removeItem(k);
-      for (const [k, v] of entries) {
-        const value = k.endsWith('-company-ids') && Array.isArray(v) ? [...new Set([...issued, ...v])] : v;
-        localStorage.setItem(currentKey(k), typeof value === 'string' ? value : JSON.stringify(value));
-      }
-      if (idsKey && !entries.some(([k]) => k.endsWith('-company-ids'))) localStorage.setItem(idsKey, JSON.stringify(issued));
+      for (const [k, v] of entries) localStorage.setItem(currentKey(k), typeof v === 'string' ? v : JSON.stringify(v));
       window.location.reload();
     } catch {
       setMessage('Could not read that file.');
@@ -790,7 +790,7 @@ function DataSection() {
   };
 
   const resetRecords = () => {
-    if (!window.confirm('Put loads, fleet, facilities, invoices, batches and dashboard layout back to the demo data? Your settings are kept. The page will reload.')) return;
+    if (!window.confirm(`${IS_DEMO ? 'Put loads, fleet, facilities, invoices, batches and dashboard layout back to the demo data' : 'Delete every load, fleet record, facility, invoice and batch, and the dashboard layout'}? Your settings are kept. The page will reload.`)) return;
     // Settings and RunTruck's client companies are not demo data: they stay.
     const keep = (k: string) => k.endsWith('-settings') || k === 'runtruck-theme' || k.endsWith('-companies') || k.endsWith('-company-ids');
     for (const k of keys()) if (!keep(k)) localStorage.removeItem(k);
@@ -820,12 +820,12 @@ function DataSection() {
       <Group title="Reset">
         <div className="dash-opts">
           <div className="dash-opt">
-            <div><strong>Reset records to the demo data</strong><span>Loads, fleet, facilities, invoices, batches, dashboard layout. Settings stay.</span></div>
+            <div><strong>{IS_DEMO ? 'Reset records to the demo data' : 'Clear all records'}</strong><span>Loads, fleet, facilities, invoices, batches, dashboard layout. Settings stay.</span></div>
             <button type="button" className="ui-btn ui-btn-danger" onClick={resetRecords}>Reset records</button>
           </div>
           <div className="dash-opt">
             <div><strong>Reset all settings</strong><span>Everything on this page back to how RunTruck started.</span></div>
-            <button type="button" className="ui-btn ui-btn-danger" onClick={() => { if (window.confirm('Reset every setting to its default?')) { update(() => structuredCopy(DEFAULT_SETTINGS)); setMessage('Settings reset.'); } }}>Reset settings</button>
+            <button type="button" className="ui-btn ui-btn-danger" onClick={() => { if (window.confirm('Reset every setting to its default?')) { update(() => defaultSettings()); setMessage('Settings reset.'); } }}>Reset settings</button>
           </div>
         </div>
       </Group>
@@ -838,7 +838,9 @@ function DataSection() {
 export function SettingsPage() {
   const { section = 'profile' } = useParams();
   const navigate = useNavigate();
-  const current = SECTIONS.find((s) => s.key === section) ?? SECTIONS[0];
+  // Profile, Security and Appearance are everyone's; company settings need permission.
+  const allowed = SECTIONS.filter((s) => can(PERSONAL_SETTINGS.includes(s.key) ? 'settings' : `settings/${s.key}`));
+  const current = allowed.find((s) => s.key === section) ?? allowed[0];
   const body: Record<SectionKey, ReactNode> = {
     profile: <Profile />, company: <Company />, invoicing: <Invoicing />, messages: <Messages />, operations: <Operations />,
     alerts: <Alerts />, team: <Team />, security: <Security />, appearance: <Appearance />, data: <DataSection />,
@@ -847,7 +849,7 @@ export function SettingsPage() {
     <div className="set-page">
       <nav className="set-nav" aria-label="Settings sections">
         <div className="set-nav-title">Settings</div>
-        {SECTIONS.map((s) => (
+        {allowed.map((s) => (
           <button
             key={s.key} type="button" className={`set-nav-item${s.key === current.key ? ' is-active' : ''}`}
             aria-current={s.key === current.key ? 'page' : undefined}

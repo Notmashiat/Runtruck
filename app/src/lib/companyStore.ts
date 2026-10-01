@@ -1,22 +1,19 @@
 import { useSyncExternalStore } from 'react';
 import { reviveCompany, type ClientCompany } from '../data/companies';
-import { COMPANY_ID, readScoped, scopedKey } from './account';
+import { OWNER_COMPANY_ID, OWNER_COMPANY_NAME, readRegistry, registryKey } from './account';
 
 // The client companies (runtruck-1-companies) and every Company ID ever
 // issued (runtruck-1-company-ids). An ID stays issued when its company is
-// deleted, so no Company ID is ever given out twice.
+// deleted, so no Company ID is ever given out twice. These are RunTruck's
+// own registers, kept under Company ID 1 whoever is signed in.
 
-const KEY = 'runtruck-companies';
-const IDS_KEY = 'runtruck-company-ids';
+const KEY = 'companies';
+const IDS_KEY = 'company-ids';
 // IDs RunTruck used before client companies existed.
-const RESERVED = [COMPANY_ID, '30017'];
+const RESERVED = [OWNER_COMPANY_ID, '30017'];
 
 function read<T>(key: string, fallback: T): T {
-  try {
-    return (JSON.parse(readScoped(key) ?? 'null') as T) ?? fallback;
-  } catch {
-    return fallback;
-  }
+  return readRegistry<T>(key) ?? fallback;
 }
 
 function load(): ClientCompany[] {
@@ -34,8 +31,8 @@ const listeners = new Set<() => void>();
 
 function persist() {
   try {
-    localStorage.setItem(scopedKey(KEY), JSON.stringify(companies));
-    localStorage.setItem(scopedKey(IDS_KEY), JSON.stringify(issued));
+    localStorage.setItem(registryKey(KEY), JSON.stringify(companies));
+    localStorage.setItem(registryKey(IDS_KEY), JSON.stringify(issued));
   } catch {
     // Storage blocked: the companies last for this visit.
   }
@@ -55,6 +52,13 @@ function subscribe(fn: () => void): () => void {
 
 export function useCompanies(): ClientCompany[] {
   return useSyncExternalStore(subscribe, getCompanies, getCompanies);
+}
+
+export const companyById = (id: string) => companies.find((c) => c.companyId === id);
+
+// 'RunTruck' for Company ID 1, otherwise the client's name.
+export function companyName(id: string): string {
+  return id === OWNER_COMPANY_ID ? OWNER_COMPANY_NAME : companyById(id)?.name ?? `Company ${id}`;
 }
 
 export function isIssued(id: string): boolean {

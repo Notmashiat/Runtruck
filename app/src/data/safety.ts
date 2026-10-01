@@ -2,6 +2,7 @@
 // files, roadside violations and cargo/liability claims. Units, drivers and
 // customers match data/mock.ts; dates move with the real clock (lib/clock.ts).
 import { shiftDemo } from '../lib/clock';
+import { IS_DEMO } from '../lib/account';
 
 // Amounts are stored as numbers so the KPIs can sum them; format at render time.
 export function money(n: number): string {
@@ -75,6 +76,7 @@ const CLAIMS_2026: Claim[] = [
 ];
 
 // The demo records, moved to today's date.
-export const MAINTENANCE: WorkOrder[] = shiftDemo(MAINTENANCE_2026);
-export const VIOLATIONS: Violation[] = shiftDemo(VIOLATIONS_2026);
-export const CLAIMS: Claim[] = shiftDemo(CLAIMS_2026);
+// Demo records exist only in RunTruck's own workspace (Company ID 1); a client company starts empty.
+export const MAINTENANCE: WorkOrder[] = !IS_DEMO ? [] : shiftDemo(MAINTENANCE_2026);
+export const VIOLATIONS: Violation[] = !IS_DEMO ? [] : shiftDemo(VIOLATIONS_2026);
+export const CLAIMS: Claim[] = !IS_DEMO ? [] : shiftDemo(CLAIMS_2026);

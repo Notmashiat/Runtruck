@@ -619,7 +619,7 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
 
     Carrier: (
       <>
-        <Head title="Carrier" help="Haul it with the Sunridge fleet, or broker it to a partner carrier." />
+        <Head title="Carrier" help={`Haul it with the ${USER.company || 'own'} fleet, or broker it to a partner carrier.`} />
         <Field label="Hauled by" group>
           <Choice
             options={['Own fleet', 'Partner carrier']}

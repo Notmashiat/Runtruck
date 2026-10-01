@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { FormValues } from '../data/fleet';
 
-export type FieldType = 'text' | 'number' | 'date' | 'time' | 'url' | 'select' | 'textarea' | 'tel' | 'email' | 'checks';
+export type FieldType = 'text' | 'number' | 'date' | 'time' | 'url' | 'select' | 'textarea' | 'tel' | 'email' | 'checks' | 'password';
 
 export interface FieldSpec {
   key: string;
@@ -41,6 +41,8 @@ interface RecordDialogProps {
   deleteNote: string;
   // Shown under every section's title (e.g. the record's ID).
   banner?: ReactNode;
+  // Follow-on changes when a field changes (e.g. a preset filling a checklist).
+  adjust?: (prev: FormValues, next: FormValues, key: string) => FormValues;
   onSave: (v: FormValues) => void;
   onArchive?: (archived: boolean) => void;
   onDelete?: () => void;
@@ -94,7 +96,11 @@ export function RecordDialog(p: RecordDialogProps) {
 
   const errors = validate(p.sections, v);
   const dirty = JSON.stringify(v) !== JSON.stringify(p.initial);
-  const set = (key: string, value: string | string[]) => setV((prev) => ({ ...prev, [key]: value }));
+  const set = (key: string, value: string | string[]) =>
+    setV((prev) => {
+      const next = { ...prev, [key]: value };
+      return p.adjust ? p.adjust(prev, next, key) : next;
+    });
   const sectionErrors = (i: number) => visibleFields(p.sections[i], v).filter((f) => errors[f.key]).length;
 
   const go = (i: number) => {
@@ -182,6 +188,7 @@ export function RecordDialog(p: RecordDialogProps) {
           value={value}
           placeholder={f.placeholder}
           maxLength={f.maxLength}
+          autoComplete={f.type === 'password' ? 'new-password' : undefined}
           inputMode={f.type === 'number' ? 'decimal' : undefined}
           onChange={(e) => set(f.key, f.upper ? e.target.value.toUpperCase() : e.target.value)}
         />

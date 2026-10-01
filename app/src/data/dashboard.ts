@@ -38,6 +38,15 @@ export const WIDGETS: WidgetDef[] = [
   { id: 'upcoming', title: 'Next 7 days', about: 'Upcoming pickups and deliveries', group: 'Tables & lists', minSpan: 3, minH: 200 },
 ];
 
+// The section (or tab) each widget shows data from: an account without it
+// does not get the widget.
+export const WIDGET_NEEDS: Record<WidgetId, string> = {
+  'kpi-active': 'loads', 'kpi-revenue': 'accounting/invoiced', 'kpi-rpm': 'loads', 'kpi-unbilled': 'accounting/uninvoiced',
+  'kpi-overdue': 'accounting/past-due', 'kpi-drivers': 'fleet/drivers', 'kpi-trucks': 'fleet/trucks', 'kpi-docs': 'safety/driver-documents',
+  attention: 'dashboard', revenue: 'accounting/invoiced', 'ar-aging': 'accounting/invoiced', 'by-customer': 'accounting/invoiced',
+  lanes: 'loads', cash: 'accounting/bills', fleet: 'fleet', 'active-loads': 'loads', drivers: 'fleet/drivers', upcoming: 'loads',
+};
+
 export const widgetDef = (id: WidgetId) => WIDGETS.find((w) => w.id === id) as WidgetDef;
 
 export interface LayoutItem {

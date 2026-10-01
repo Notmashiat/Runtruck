@@ -9,6 +9,7 @@ import {
 import { USER } from '../data/mock';
 import { NON_NEGATIVE, PHONE, POSITIVE, STATE, UNIQUE, VIN, YEAR, ZIP } from '../lib/rules';
 import { RecordDialog, type SectionSpec } from './RecordDialog';
+import { IS_DEMO } from '../lib/account';
 
 // — form helpers —
 
@@ -43,7 +44,7 @@ function driverSections(truckUnits: string[], takenIds: string[], takenNames: st
     },
     {
       title: 'Employment',
-      help: 'How the driver works for Sunridge Freight.',
+      help: `How the driver works for ${USER.company || 'the company'}.`,
       fields: [
         { key: 'employeeId', label: 'Employee ID', required: true, upper: true, check: UNIQUE(takenIds, 'driver') },
         { key: 'driverType', label: 'Driver type', type: 'select', required: true, options: DRIVER_TYPES },
@@ -313,7 +314,7 @@ export function TrailerDialog({ trailer, onClose }: { trailer?: FleetTrailer; on
   const others = trailers.filter((t) => t.id !== id);
   const takenVins = [...others.map((t) => val(t.details, 'vin')), ...trucks.map((t) => val(t.details, 'vin'))].filter(Boolean);
   const initial: FormValues = trailer?.details ?? {
-    type: 'Dry van', length: '53', status: 'Empty', location: 'Yard · Modesto', ownership: 'Owned', axles: 'Tandem', suspension: 'Air ride',
+    type: 'Dry van', length: '53', status: 'Empty', location: IS_DEMO ? 'Yard · Modesto' : '', ownership: 'Owned', axles: 'Tandem', suspension: 'Air ride',
   };
 
   return (

@@ -1,4 +1,5 @@
 import { Fragment, useState, type ReactNode } from 'react';
+import { AccountDialog } from '../../../components/AccountDialog';
 import { Card } from '../../../components/Card';
 import { CompanyDialog } from '../../../components/CompanyDialog';
 import { Kpis } from '../../../components/Kpis';
@@ -6,6 +7,7 @@ import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
 import { BUSINESS_TYPES, STATUS_TAG, STATUSES, isPaying, monthlyPrice, type ClientCompany } from '../../../data/companies';
 import { fmtDate, usd0 } from '../../../data/invoicing';
+import { useAccounts } from '../../../lib/accountStore';
 import { useCompanies } from '../../../lib/companyStore';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
@@ -37,8 +39,11 @@ export function AccountManagerTab() {
   const companies = useCompanies();
   const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState<ClientCompany | null>(null);
+  const [addingTo, setAddingTo] = useState<string | null>(null);
+  const allAccounts = useAccounts();
+  const accountsOf = (id: string) => allAccounts.filter((a) => a.companyId === id);
   const paying = companies.filter(isPaying);
-  const accounts = companies.reduce((n, c) => n + c.accounts.length, 0);
+  const accounts = companies.reduce((n, c) => n + accountsOf(c.companyId).length, 0);
   const mrr = paying.reduce((s, c) => s + (monthlyPrice(c) ?? 0), 0);
 
   const kpis = [
@@ -49,8 +54,8 @@ export function AccountManagerTab() {
   ];
 
   const sort = useSort(
-    usePageFilters(companies.filter((c) => matchesQuery({ ...c, accounts: c.accounts.map((a) => `${a.name} ${a.email}`).join(' ') }, query)), FILTERS),
-    { accounts: (c) => c.accounts.length, mrr: (c) => monthlyPrice(c), location: (c) => `${c.state} ${c.city}` },
+    usePageFilters(companies.filter((c) => matchesQuery({ ...c, accounts: accountsOf(c.companyId).map((a) => `${a.name} ${a.email} ${a.accountId}`).join(' ') }, query)), FILTERS),
+    { accounts: (c) => accountsOf(c.companyId).length, mrr: (c) => monthlyPrice(c), location: (c) => `${c.state} ${c.city}` },
   );
   const rows = sort.rows;
 
@@ -78,7 +83,7 @@ export function AccountManagerTab() {
                     <td className="strong">{c.name}<div className="ui-stop-meta">{c.businessType}</div></td>
                     <td>{[c.city, c.state].filter(Boolean).join(', ')}</td>
                     <td>{c.contact}</td>
-                    <td className="num">{c.accounts.length}</td>
+                    <td className="num">{accountsOf(c.companyId).length}</td>
                     <td className="num">{c.trucks}</td>
                     <td>{c.plan}</td>
                     <td className="num">{price === null ? 'Custom' : usd0(price)}</td>
@@ -109,21 +114,26 @@ export function AccountManagerTab() {
                             <Fact k="Subscription">{`${c.plan}, ${c.cycle.toLowerCase()}`}<div className="ui-stop-meta">{c.status === 'Trial' ? `Trial ends ${fmtDate(c.trialEnds)}` : `Since ${fmtDate(c.started)}`}{c.paymentMethod ? ` · ${c.paymentMethod}` : ''}</div></Fact>
                             {c.notes && <Fact k="Notes">{c.notes}</Fact>}
                           </div>
-                          <div className="ui-label" style={{ margin: '16px 0 8px' }}>Login accounts</div>
-                          {c.accounts.length === 0 ? (
-                            <div className="ui-stop-meta">None yet. Create account will assign accounts to Company ID {c.companyId}.</div>
+                          <div className="ui-batch-head" style={{ paddingTop: 16 }}>
+                            <div className="ui-label">Login accounts</div>
+                            <div style={{ flex: 1 }} />
+                            <button type="button" className="ui-btn ui-btn-sm" onClick={() => setAddingTo(c.companyId)}>+ Create account for {c.name}</button>
+                          </div>
+                          {accountsOf(c.companyId).length === 0 ? (
+                            <div className="ui-stop-meta">None yet. Accounts created for Company ID {c.companyId} see this company’s data and nothing else.</div>
                           ) : (
                             <table className="ui-table ui-table-inner">
                               <thead>
-                                <tr><th>Member ID</th><th>Name</th><th>Email</th><th>Role</th><th className="num">Last sign-in</th></tr>
+                                <tr><th>Account ID</th><th>Name</th><th>Login email</th><th>Type</th><th>Status</th><th className="num">Last sign-in</th></tr>
                               </thead>
                               <tbody>
-                                {c.accounts.map((a) => (
-                                  <tr key={a.memberId}>
-                                    <td className="strong">{a.memberId}</td>
+                                {accountsOf(c.companyId).map((a) => (
+                                  <tr key={a.accountId}>
+                                    <td className="strong">{a.accountId}</td>
                                     <td>{a.name}</td>
                                     <td className="muted">{a.email}</td>
-                                    <td><Tag label={a.role} tagClass={a.role === 'Super admin' ? 'tag-accent' : 'tag-neutral'} /></td>
+                                    <td><Tag label={a.type} tagClass={a.type === 'Company admin' ? 'tag-green' : 'tag-neutral'} /></td>
+                                    <td><Tag label={a.status} tagClass={a.status === 'Active' ? 'tag-green' : 'tag-neutral'} /></td>
                                     <td className="num">{when(a.lastSignIn)}</td>
                                   </tr>
                                 ))}
@@ -146,6 +156,7 @@ export function AccountManagerTab() {
         )}
       </Card>
       {editing && <CompanyDialog company={editing} onClose={() => setEditing(null)} />}
+      {addingTo && <AccountDialog companyId={addingTo} onClose={() => setAddingTo(null)} />}
     </>
   );
 }

@@ -1,31 +1,33 @@
-import { COMPANY_ID, MEMBER_ID, roleOf, scopedKey } from './account';
+import { ALL_PERMS, permits, type AccountType } from '../data/accounts';
 import { DEFAULT_SETTINGS } from '../data/settings';
+import {
+  COMPANY_ID, MEMBER_ID, OWNER_COMPANY_ID, OWNER_MEMBER_ID, registryKey, storedSession,
+} from './account';
+import { accountByEmail, accountById, saveAccount } from './accountStore';
+import { companyById } from './companyStore';
+import { MIN_PASSWORD, makePasswordRecord, passwordFits, passwordProblems as problemsFor, type PasswordRecord } from './password';
 import { getSettings } from './settingsStore';
 
-// Logging in to the one account: RunTruck's owner (Company ID 1).
-//
-// The password is never stored: only a PBKDF2-SHA-256 fingerprint (salted,
-// 210,000 rounds). Until it is changed in Settings › Security the account
-// uses the starting password below; a changed password is kept in this
-// browser under the company ID. There is no server yet, so this is a gate
-// in the browser, not server-side security.
+// Logging in. There are two kinds of account:
+// - RunTruck's owner (Account ID 100482731, Company ID 1). Until the password
+//   is changed in Settings › Security it is the starting password below.
+// - Accounts made in Developer › Create account (lib/accountStore.ts), each
+//   with its own login email, password, Company ID and permissions.
+// A session opens exactly one company's data (lib/account.ts). There is no
+// server yet, so all of this lives in this browser: it is a gate in the
+// browser, not server-side security.
 
-interface PasswordRecord {
-  salt: string;
-  hash: string;
-  iterations: number;
-  changed?: string;
-}
+export { MIN_PASSWORD };
 
-// The starting password's fingerprint (the password itself is not in the code).
+// The owner's starting password fingerprint (the password itself is not in the code).
 const STARTING: PasswordRecord = {
   salt: '10bd890a82a7af9eafb061e54ffa5ecb',
   hash: 'd330e5c7bf6ce5ba8851c4baf52495e9e2f5c0c0d4b5538d3d0d549707af9379',
   iterations: 210_000,
 };
 
-const AUTH_KEY = scopedKey('runtruck-auth');
-const LOGIN_EMAIL_KEY = scopedKey('runtruck-login-email');
+const OWNER_AUTH_KEY = registryKey('auth');
+const OWNER_EMAIL_KEY = registryKey('login-email');
 const SESSION_KEY = 'runtruck-session';
 const FAILS_KEY = 'runtruck-login-fails';
 const REMEMBER_DAYS = 30;
@@ -42,18 +44,11 @@ export interface Session {
   remember: boolean;
 }
 
-const hex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
-const fromHex = (s: string) => new Uint8Array(s.match(/../g)?.map((h) => parseInt(h, 16)) ?? []);
+// — the owner account —
 
-async function fingerprint(password: string, saltHex: string, iterations: number): Promise<string> {
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password) as BufferSource, 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: fromHex(saltHex) as BufferSource, iterations, hash: 'SHA-256' }, key, 256);
-  return hex(bits);
-}
-
-function passwordRecord(): PasswordRecord {
+function ownerPassword(): PasswordRecord {
   try {
-    const saved = JSON.parse(localStorage.getItem(AUTH_KEY) ?? 'null') as PasswordRecord | null;
+    const saved = JSON.parse(localStorage.getItem(OWNER_AUTH_KEY) ?? 'null') as PasswordRecord | null;
     if (saved && saved.salt && saved.hash && saved.iterations) return saved;
   } catch {
     // Fall back to the starting password.
@@ -61,18 +56,14 @@ function passwordRecord(): PasswordRecord {
   return STARTING;
 }
 
-export function passwordChangedOn(): string | undefined {
-  return passwordRecord().changed;
-}
-
 interface LoginEmailRecord {
   email: string;
   changed: string;
 }
 
-function loginEmailRecord(): LoginEmailRecord | null {
+function ownerEmailRecord(): LoginEmailRecord | null {
   try {
-    const saved = JSON.parse(localStorage.getItem(LOGIN_EMAIL_KEY) ?? 'null') as LoginEmailRecord | null;
+    const saved = JSON.parse(localStorage.getItem(OWNER_EMAIL_KEY) ?? 'null') as LoginEmailRecord | null;
     if (saved && typeof saved.email === 'string' && saved.email.includes('@')) return saved;
   } catch {
     // Fall back to the original email.
@@ -80,19 +71,70 @@ function loginEmailRecord(): LoginEmailRecord | null {
   return null;
 }
 
-// The login email. It is changed only in Settings › Security (not by the
-// Settings › Profile email); until then it is the account's original email.
-export function accountEmail(): string {
-  return loginEmailRecord()?.email ?? DEFAULT_SETTINGS.profile.email;
+// The owner's login email: changed only in Settings › Security; until then
+// the account's original email.
+export function ownerEmail(): string {
+  return ownerEmailRecord()?.email ?? DEFAULT_SETTINGS.profile.email;
 }
 
-export function loginEmailChangedOn(): string | undefined {
-  return loginEmailRecord()?.changed;
+// Until a login email is set, the owner's Profile email also works (it used
+// to be the login email).
+function ownerEmailMatches(typed: string): boolean {
+  const t = typed.trim().toLowerCase();
+  const accepted = ownerEmailRecord() ? [ownerEmail()] : [ownerEmail(), MEMBER_ID === OWNER_MEMBER_ID ? getSettings().profile.email : ''];
+  return accepted.some((e) => e && e.trim().toLowerCase() === t);
 }
 
-async function passwordMatches(password: string): Promise<boolean> {
-  const rec = passwordRecord();
-  return (await fingerprint(password, rec.salt, rec.iterations)) === rec.hash;
+// — the signed-in account —
+
+export interface Me {
+  accountId: string;
+  companyId: string;
+  type: AccountType;
+  email: string;
+  perms: string[];
+  owner: boolean;
+}
+
+function meFor(memberId: string, companyId: string): Me | null {
+  if (memberId === OWNER_MEMBER_ID) {
+    return companyId === OWNER_COMPANY_ID
+      ? { accountId: OWNER_MEMBER_ID, companyId, type: 'Super admin', email: ownerEmail(), perms: ALL_PERMS, owner: true }
+      : null;
+  }
+  const a = accountById(memberId);
+  if (!a || a.status !== 'Active' || a.companyId !== companyId) return null;
+  return { accountId: a.accountId, companyId: a.companyId, type: a.type, email: a.email, perms: a.type === 'Super admin' ? ALL_PERMS : a.perms, owner: false };
+}
+
+// The account this page was opened for (null when signed out).
+export function me(): Me | null {
+  return currentSession() ? meFor(MEMBER_ID, COMPANY_ID) : null;
+}
+
+// A super admin: RunTruck staff under Company ID 1. Only they see Developer.
+export function isSuperAdmin(): boolean {
+  const m = me();
+  return Boolean(m && m.type === 'Super admin' && m.companyId === OWNER_COMPANY_ID);
+}
+
+// Whether the signed-in account may open a section or tab ('loads',
+// 'fleet/trucks', 'settings/company'). Everyone has the Dashboard, Settings
+// (their own Profile, Security and Appearance); Developer is super admins only.
+export function can(key: string): boolean {
+  const m = me();
+  if (!m) return false;
+  if (key === 'developer' || key.startsWith('developer/')) return isSuperAdmin();
+  if (m.type === 'Super admin') return true;
+  if (key === 'settings') return true;
+  return permits(m.perms, key);
+}
+
+// '/app/accounting/past-due' → can('accounting/past-due').
+export function canPath(path: string): boolean {
+  const [, , section = 'dashboard', tab] = path.toLowerCase().split('/');
+  if (section === 'loads') return can('loads');
+  return can(tab ? `${section}/${tab}` : section);
 }
 
 // — too many tries —
@@ -123,64 +165,82 @@ function noteFail() {
 
 // — logging in and out —
 
-export type LoginResult = { ok: true } | { ok: false; reason: 'locked' | 'email' | 'password'; seconds?: number };
+export type LoginResult =
+  | { ok: true }
+  | { ok: false; reason: 'locked' | 'email' | 'password' | 'disabled' | 'company'; seconds?: number; company?: string };
 
-// The email the account answers to. Until a login email is set in Security,
-// the Settings › Profile email also works (it used to be the login email).
-function emailMatches(email: string): boolean {
-  const typed = email.trim().toLowerCase();
-  const accepted = loginEmailRecord() ? [accountEmail()] : [accountEmail(), getSettings().profile.email];
-  return accepted.some((e) => e.trim().toLowerCase() === typed);
+function openSession(companyId: string, memberId: string, email: string, remember: boolean) {
+  const now = Date.now();
+  const session: Session = {
+    companyId,
+    memberId,
+    email,
+    started: new Date(now).toISOString(),
+    expires: new Date(now + (remember ? REMEMBER_DAYS * 86_400_000 : SESSION_HOURS * 3_600_000)).toISOString(),
+    remember,
+  };
+  logOut();
+  try {
+    (remember ? localStorage : sessionStorage).setItem(SESSION_KEY, JSON.stringify(session));
+  } catch {
+    // Storage blocked: the person has to log in again after reloading.
+  }
 }
 
-// 'rosa.medina@sunridgefreight.com' → 'r•••@sunridgefreight.com', as a hint.
-export function emailHint(): string {
-  const [name, domain] = accountEmail().split('@');
-  return `${name.slice(0, 1)}•••@${domain ?? ''}`;
-}
-
+// Check the email and password and open a session. The caller then reloads
+// the app, so it opens with that account's company and nothing else.
 export async function logIn(email: string, password: string, remember: boolean): Promise<LoginResult> {
   if (lockedFor() > 0) return { ok: false, reason: 'locked', seconds: lockedFor() };
   // Spaces copied around a password are not part of it.
-  const emailOk = emailMatches(email);
-  const passwordOk = await passwordMatches(password.trim());
-  if (!emailOk || !passwordOk) {
+  const typed = password.trim();
+  const fail = (reason: 'email' | 'password'): LoginResult => {
     noteFail();
-    if (lockedFor() > 0) return { ok: false, reason: 'locked', seconds: lockedFor() };
-    return { ok: false, reason: emailOk ? 'password' : 'email' };
+    return lockedFor() > 0 ? { ok: false, reason: 'locked', seconds: lockedFor() } : { ok: false, reason };
+  };
+
+  if (ownerEmailMatches(email)) {
+    if (!(await passwordFits(typed, ownerPassword()))) return fail('password');
+    openSession(OWNER_COMPANY_ID, OWNER_MEMBER_ID, ownerEmail(), remember);
+  } else {
+    const a = accountByEmail(email);
+    if (!a) return fail('email');
+    if (!(await passwordFits(typed, a.password))) return fail('password');
+    if (a.status !== 'Active') return { ok: false, reason: 'disabled' };
+    if (a.companyId !== OWNER_COMPANY_ID) {
+      const c = companyById(a.companyId);
+      if (!c || c.status === 'Paused' || c.status === 'Cancelled') return { ok: false, reason: 'company', company: c ? `${c.name} (${c.status.toLowerCase()})` : 'This company' };
+    }
+    saveAccount({ ...a, lastSignIn: new Date().toISOString() });
+    openSession(a.companyId, a.accountId, a.email, remember);
   }
   try {
     sessionStorage.removeItem(FAILS_KEY);
   } catch {
     // Nothing to clear.
   }
-  const now = Date.now();
-  const session: Session = {
-    companyId: COMPANY_ID,
-    memberId: MEMBER_ID,
-    email: accountEmail(),
-    started: new Date(now).toISOString(),
-    expires: new Date(now + (remember ? REMEMBER_DAYS * 86_400_000 : SESSION_HOURS * 3_600_000)).toISOString(),
-    remember,
-  };
-  try {
-    (remember ? localStorage : sessionStorage).setItem(SESSION_KEY, JSON.stringify(session));
-  } catch {
-    // Storage blocked: the person has to log in again after reloading.
-  }
   return { ok: true };
 }
 
+// The session this page runs on: it must still be valid, for an account that
+// is active, and for the company this page opened. A session for a different
+// account (from another tab) does not count: see sessionChanged().
 export function currentSession(): Session | null {
   for (const store of [sessionStorage, localStorage]) {
     try {
       const s = JSON.parse(store.getItem(SESSION_KEY) ?? 'null') as Session | null;
-      if (s && s.companyId === COMPANY_ID && s.memberId === MEMBER_ID && Date.parse(s.expires) > Date.now()) return s;
+      if (s && s.companyId === COMPANY_ID && s.memberId === MEMBER_ID && Date.parse(s.expires) > Date.now() && meFor(s.memberId, s.companyId)) return s;
     } catch {
       // Ignore a damaged session.
     }
   }
   return null;
+}
+
+// Someone logged in as a different account in another tab: this page holds
+// the other company's data, so it must reload before showing anything.
+export function sessionChanged(): boolean {
+  const s = storedSession();
+  return Boolean(s && (s.companyId !== COMPANY_ID || s.memberId !== MEMBER_ID));
 }
 
 export function logOut() {
@@ -193,35 +253,78 @@ export function logOut() {
   }
 }
 
-// — changing the password —
-
-export const MIN_PASSWORD = 10;
-
-export function passwordProblems(next: string): string[] {
-  const out: string[] = [];
-  if (next.length < MIN_PASSWORD) out.push(`At least ${MIN_PASSWORD} characters`);
-  if (next !== next.trim()) out.push('No spaces at the start or end');
-  if (!/[A-Za-z]/.test(next) || !/\d/.test(next)) out.push('Letters and at least one number');
-  if (next.toLowerCase().includes(accountEmail().split('@')[0].toLowerCase())) out.push('Not based on your email');
-  return out;
+// Log out and reload on the login page, so no company data stays in memory.
+export function logOutAndLeave() {
+  logOut();
+  window.location.replace('/login');
 }
 
+// — the signed-in account's own login —
+
+export function accountEmail(): string {
+  return me()?.email ?? ownerEmail();
+}
+
+export function passwordChangedOn(): string | undefined {
+  const m = me();
+  if (!m) return undefined;
+  return m.owner ? ownerPassword().changed : accountById(m.accountId)?.password.changed;
+}
+
+export function loginEmailChangedOn(): string | undefined {
+  const m = me();
+  if (!m) return undefined;
+  return m.owner ? ownerEmailRecord()?.changed : accountById(m.accountId)?.updated;
+}
+
+export const passwordProblems = (next: string) => problemsFor(next, accountEmail());
+
+async function currentFits(current: string): Promise<boolean> {
+  const m = me();
+  if (!m) return false;
+  if (m.owner) return passwordFits(current, ownerPassword());
+  const a = accountById(m.accountId);
+  return Boolean(a && (await passwordFits(current, a.password)));
+}
+
+// Every account can change its own password.
 export async function changePassword(current: string, next: string): Promise<'ok' | 'wrong-current' | 'weak'> {
-  if (!(await passwordMatches(current))) return 'wrong-current';
+  if (!(await currentFits(current))) return 'wrong-current';
   if (passwordProblems(next).length) return 'weak';
-  const salt = hex(crypto.getRandomValues(new Uint8Array(16)).buffer);
-  const record: PasswordRecord = { salt, hash: await fingerprint(next, salt, STARTING.iterations), iterations: STARTING.iterations, changed: new Date().toISOString() };
-  localStorage.setItem(AUTH_KEY, JSON.stringify(record));
+  const record = await makePasswordRecord(next);
+  const m = me();
+  if (m?.owner) {
+    localStorage.setItem(OWNER_AUTH_KEY, JSON.stringify(record));
+  } else if (m) {
+    const a = accountById(m.accountId);
+    if (a) saveAccount({ ...a, password: { ...record, by: 'self' } });
+  }
   return 'ok';
 }
 
-// — changing the login email —
+// Whether a login email is free (no other account, owner included, uses it).
+export function emailTaken(email: string, exceptId?: string): boolean {
+  const e = email.trim().toLowerCase();
+  if (exceptId !== OWNER_MEMBER_ID && ownerEmail().toLowerCase() === e) return true;
+  const other = accountByEmail(e);
+  return Boolean(other && other.accountId !== exceptId);
+}
 
-export async function changeLoginEmail(current: string, next: string): Promise<'ok' | 'wrong-current' | 'invalid'> {
-  if (!(await passwordMatches(current))) return 'wrong-current';
+// Only super admins change a login email (their own here; anyone's in
+// Developer). Everyone else asks a RunTruck super admin.
+export async function changeLoginEmail(current: string, next: string): Promise<'ok' | 'wrong-current' | 'invalid' | 'taken' | 'not-allowed'> {
+  const m = me();
+  if (!m || !isSuperAdmin()) return 'not-allowed';
+  if (!(await currentFits(current))) return 'wrong-current';
   const email = next.trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'invalid';
-  localStorage.setItem(LOGIN_EMAIL_KEY, JSON.stringify({ email, changed: new Date().toISOString() } satisfies LoginEmailRecord));
+  if (emailTaken(email, m.accountId)) return 'taken';
+  if (m.owner) {
+    localStorage.setItem(OWNER_EMAIL_KEY, JSON.stringify({ email, changed: new Date().toISOString() } satisfies LoginEmailRecord));
+  } else {
+    const a = accountById(m.accountId);
+    if (a) saveAccount({ ...a, email, updated: new Date().toISOString() });
+  }
   // The open session now shows the new email.
   for (const store of [sessionStorage, localStorage]) {
     try {
@@ -232,9 +335,4 @@ export async function changeLoginEmail(current: string, next: string): Promise<'
     }
   }
   return 'ok';
-}
-
-// Whether the signed-in member is a RunTruck super admin (sees Developer).
-export function isSuperAdmin(): boolean {
-  return roleOf(currentSession()?.memberId) === 'Super admin';
 }

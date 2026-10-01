@@ -4,10 +4,11 @@ import { useAppShell } from '../context/AppShellContext';
 import { NAV, SECTION_TABS, type ViewKey } from '../data/mock';
 import { formatNow, useNow } from '../lib/clock';
 import { isActive, pageKeyOf } from '../lib/tableTools';
+import { can } from '../lib/auth';
 import { describe, FilterPanel } from './FilterPanel';
 import { BatchDialog } from './BatchDialog';
 import { CompanyDialog } from './CompanyDialog';
-import { CreateAccountSoonDialog } from './DeveloperDialogs';
+import { AccountDialog } from './AccountDialog';
 import { FacilityDialog } from './FacilityDialog';
 import { InvoiceDialog } from './InvoiceDialog';
 import { ReminderDialog } from './ReminderDialog';
@@ -47,7 +48,8 @@ export function Header() {
     { label: '+ Create company', primary: true, onClick: () => setAdding('company') },
   ];
   const actionsFor: Record<string, HeadAction[]> = {
-    dashboard: [{ label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) }],
+    // New Load from the Dashboard only for accounts that may open Loads.
+    dashboard: can('loads') ? [{ label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) }] : [],
     loads: [{ label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) }],
     loadDetail: [
       { label: 'Message driver' },
@@ -74,6 +76,7 @@ export function Header() {
     'safety/settlements': [{ label: '+ New Claim', primary: true }],
     'developer/account-manager': developer,
     'developer/clients': developer,
+    'developer/accounts': developer,
   };
   const headActions = actionsFor[onLoadDetail ? 'loadDetail' : tab ? `${view}/${tab}` : view] ?? [];
   const page = pageKeyOf(location.pathname);
@@ -129,7 +132,7 @@ export function Header() {
       {adding === 'batch' && <BatchDialog onClose={() => setAdding(null)} />}
       {adding === 'reminders' && <ReminderDialog onClose={() => setAdding(null)} />}
       {adding === 'company' && <CompanyDialog onClose={() => setAdding(null)} />}
-      {adding === 'account' && <CreateAccountSoonDialog onClose={() => setAdding(null)} />}
+      {adding === 'account' && <AccountDialog onClose={() => setAdding(null)} />}
       {filtersOpen && <FilterPanel page={page} title={pageTitle} onClose={() => setFiltersOpen(false)} />}
     </header>
     {showFilters && activeFilters.length > 0 && (

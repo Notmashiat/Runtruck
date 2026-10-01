@@ -6,6 +6,7 @@ import { CUSTOMERS, INVOICES, LOADS, USER, type Load } from './mock';
 import { TODAY } from './planner';
 import { isoFromText, shiftDemo } from '../lib/clock';
 import { fillTemplate, getSettings, numSetting } from '../lib/settingsStore';
+import { IS_DEMO } from '../lib/account';
 
 export { TODAY };
 
@@ -86,9 +87,10 @@ export interface BillTo {
   phone: string;
 }
 
-export const FACTORING = ['TriPoint Capital (factoring)'];
+export const FACTORING: string[] = !IS_DEMO ? [] : ['TriPoint Capital (factoring)'];
 
-export const BILLING: Record<string, BillTo> = {
+// Demo records exist only in RunTruck's own workspace (Company ID 1); a client company starts empty.
+export const BILLING: Record<string, BillTo> = !IS_DEMO ? {} : {
   'Northgate Foods': { name: 'Northgate Foods', attn: 'Accounts Payable · Dana Ruiz', street: '1200 N Blackstone Ave', city: 'Fresno', state: 'CA', zip: '93703', email: 'ap@northgatefoods.example', phone: '(559) 555-0101' },
   'Bayline Distribution': { name: 'Bayline Distribution', attn: 'Owen Petrakis, Payables', street: '455 W Weber Ave', city: 'Stockton', state: 'CA', zip: '95203', email: 'payables@bayline.example', phone: '(209) 555-0130' },
   'Cascade Building Supply': { name: 'Cascade Building Supply', attn: 'Marta Lind, Accounts Payable', street: '9100 Folsom Blvd', city: 'Sacramento', state: 'CA', zip: '95826', email: 'ap@cascadebuild.example', phone: '(916) 555-0110' },
@@ -367,7 +369,7 @@ function seedInvoice(s: (typeof SEED_INVOICES)[number]): InvoiceRecord {
   };
 }
 
-export const INVOICE_SEED: InvoiceRecord[] = shiftDemo(SEED_INVOICES).map(seedInvoice);
+export const INVOICE_SEED: InvoiceRecord[] = !IS_DEMO ? [] : shiftDemo(SEED_INVOICES).map(seedInvoice);
 
 // — batches —
 
@@ -437,4 +439,4 @@ export function invoiceEmail(inv: InvoiceRecord): { subject: string; body: strin
 }
 
 // The demo batches, moved to today's date.
-export const BATCH_SEED: Batch[] = shiftDemo(BATCHES_2026);
+export const BATCH_SEED: Batch[] = !IS_DEMO ? [] : shiftDemo(BATCHES_2026);

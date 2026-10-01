@@ -1,23 +1,45 @@
 import { useSyncExternalStore } from 'react';
-import { mergeSettings, type Settings } from '../data/settings';
-import { readScoped, scopedKey } from './account';
+import { mergeSettings, startingSettings, type Settings, type StartingCompany, type StartingPerson } from '../data/settings';
+import { COMPANY_ID, IS_DEMO, MEMBER_ID, OWNER_MEMBER_ID, readRegistry, readScoped, scopedKey } from './account';
 
-// The saved settings (runtruck-settings), readable anywhere with
-// getSettings() and in components with useSettings(). lib/applySettings.ts
-// carries changes into the rest of the app.
+// The saved settings, readable anywhere with getSettings() and in components
+// with useSettings(). lib/applySettings.ts carries changes into the rest of
+// the app. Company settings are shared by the company's accounts
+// (runtruck-<company ID>-settings); Profile and Appearance belong to each
+// account (runtruck-<company ID>-member-<account ID>-settings).
 
-const KEY = 'runtruck-settings'; // stored as runtruck-<company ID>-settings
+const KEY = 'runtruck-settings';
+const PERSONAL_KEY = `runtruck-member-${MEMBER_ID}-settings`;
+
+type Stored = Partial<Settings> | null;
+
+function parse(raw: string | null): Stored {
+  try {
+    const v = JSON.parse(raw ?? 'null') as unknown;
+    return v && typeof v === 'object' ? (v as Partial<Settings>) : null;
+  } catch {
+    return null;
+  }
+}
+
+// How a company's settings start: RunTruck's workspace has the demo
+// company; a client company starts from its own details in the client
+// register, and each account from its own name and email.
+export function defaultSettings(): Settings {
+  const company = IS_DEMO ? null : (readRegistry<StartingCompany[]>('companies') ?? []).find((c) => c?.companyId === COMPANY_ID) ?? null;
+  const person = MEMBER_ID === OWNER_MEMBER_ID ? null : (readRegistry<StartingPerson[]>('accounts') ?? []).find((a) => a?.accountId === MEMBER_ID) ?? null;
+  return startingSettings(company, person, IS_DEMO);
+}
 
 function load(): Settings {
-  try {
-    const raw = readScoped(KEY);
-    const s = mergeSettings(JSON.parse(raw ?? 'null'));
-    // Before Settings existed, dark mode was saved on its own.
-    if (raw === null && localStorage.getItem('runtruck-theme') === 'dark') s.appearance.theme = 'Dark';
-    return s;
-  } catch {
-    return mergeSettings(null);
-  }
+  const shared = parse(readScoped(KEY));
+  // The owner's Profile and Appearance were kept with the company settings
+  // before each account had its own.
+  const personal = parse(readScoped(PERSONAL_KEY)) ?? (MEMBER_ID === OWNER_MEMBER_ID && shared ? { profile: shared.profile, appearance: shared.appearance } : null);
+  const s = mergeSettings({ ...(shared ?? {}), profile: personal?.profile, appearance: personal?.appearance }, defaultSettings());
+  // Before Settings existed, dark mode was saved on its own.
+  if (!personal && localStorage.getItem('runtruck-theme') === 'dark') s.appearance.theme = 'Dark';
+  return s;
 }
 
 let current: Settings = load();
@@ -30,7 +52,9 @@ export function getSettings(): Settings {
 export function setSettings(next: Settings) {
   current = next;
   try {
-    localStorage.setItem(scopedKey(KEY), JSON.stringify(next));
+    const { profile, appearance, ...shared } = next;
+    localStorage.setItem(scopedKey(KEY), JSON.stringify(shared));
+    localStorage.setItem(scopedKey(PERSONAL_KEY), JSON.stringify({ profile, appearance }));
   } catch {
     // Storage blocked: the settings last for this visit.
   }

@@ -1,3 +1,4 @@
+import { canPath } from '../lib/auth';
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppShell } from '../context/AppShellContext';
@@ -145,7 +146,8 @@ function Attention({ d }: { d: DashData }) {
     { key: 'lowHours', n: d.drivers.filter((x) => x.status === 'On duty' && hoursLeft(x.hos) < warnHours).length, label: `Drivers under ${warnHours} h of driving time`, to: '/app/fleet/drivers', tone: 'amber' },
     { key: 'drafts', n: d.invoices.filter((i) => i.draft).length, label: 'Draft invoices not issued', to: '/app/accounting/invoiced', tone: 'blue' },
   ];
-  const items = all.filter((i) => i.n > 0 && s.alerts[i.key]);
+  // Only what this account may open.
+  const items = all.filter((i) => i.n > 0 && s.alerts[i.key] && canPath(i.to));
   if (items.length === 0) return <div className="dash-empty">All clear — nothing is waiting on anyone.</div>;
   return (
     <div className="dash-list">
