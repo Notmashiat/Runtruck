@@ -62,7 +62,7 @@ export function DeactivatedTab() {
       <Kpis items={kpis} />
       <Card title="Deactivated" flush>
         {groups.length === 0 ? (
-          <div className="ui-empty">No deactivated accounts or companies. Deactivate an account from its Edit account form, or a company from Account manager.</div>
+          <div className="ui-empty">No deactivated accounts or companies. Deactivate an account in the Accounts tab, or a whole company in Account manager.</div>
         ) : (
           <div className="deact-list">
             {groups.map((g) => {
