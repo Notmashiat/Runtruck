@@ -4,7 +4,7 @@
 // inactive when someone moves it there, or by itself after a year with no
 // loads or invoices; every move is logged with when, why and by whom.
 import { IS_DEMO } from '../lib/account';
-import { shiftIso } from '../lib/clock';
+import { isoDateAt, shiftIso } from '../lib/clock';
 import type { BillDocument } from './bills';
 import type { FormValues } from './fleet';
 
@@ -90,10 +90,13 @@ export interface CustomerRecord {
 // — activity and the one-year rule —
 
 export interface Usage {
-  // The latest date anything happened with the customer.
+  // The latest date anything happened with the customer, and what it was.
   lastUsed: string;
   why: string;
 }
+
+// The local day of a stored timestamp.
+export const dayOf = (iso: string) => (/T12:00:00\.000Z$/.test(iso) ? iso.slice(0, 10) : isoDateAt(new Date(iso)));
 
 const MONTHS: Record<string, string> = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
 // 'Oct 1' / 'Oct 1, 2026' → ISO (this year when no year).
@@ -105,11 +108,11 @@ export function isoOfShort(s: string, year: string): string {
 // The last time a customer was used: its latest load or invoice, when it was
 // added or reactivated, or its last shipment before RunTruck.
 export function usageOf(c: CustomerRecord, loads: { customer: string; pickup: string; delivery: string }[], invoices: { customer: string; issued: string }[], year: string): Usage {
-  const dates: [string, string][] = [[c.created.slice(0, 10), 'added']];
-  if (c.lastUsedBefore) dates.push([c.lastUsedBefore, 'last shipment before RunTruck']);
+  const dates: [string, string][] = [[dayOf(c.created), 'added to CRM']];
+  if (c.lastUsedBefore) dates.push([c.lastUsedBefore, 'shipment before RunTruck']);
   for (const l of loads) if (l.customer === c.name) dates.push([isoOfShort(l.delivery, year) || isoOfShort(l.pickup, year), 'load']);
   for (const i of invoices) if (i.customer === c.name && i.issued) dates.push([i.issued, 'invoice']);
-  for (const e of c.log) if (e.action === 'Reactivated') dates.push([e.at.slice(0, 10), 'reactivated']);
+  for (const e of c.log) if (e.action === 'Reactivated') dates.push([dayOf(e.at), 'reactivated']);
   const best = dates.filter(([d]) => d).sort((a, b) => (a[0] < b[0] ? 1 : -1))[0];
   return { lastUsed: best[0], why: best[1] };
 }

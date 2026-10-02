@@ -149,7 +149,7 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
         const last = new Date(`${u.lastUsed}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
         return {
           ...c, status: 'Inactive' as const,
-          log: [...c.log, { at: `${due}T12:00:00.000Z`, by: AUTO_BY, action: 'Moved to inactive' as const, reason: `Not used for over a year (last ${u.why}: ${last})` }],
+          log: [...c.log, { at: `${due}T12:00:00.000Z`, by: AUTO_BY, action: 'Moved to inactive' as const, reason: `Not used for over a year (last activity: ${u.why}, ${last})` }],
         };
       });
       return changed ? next : list;

@@ -7,7 +7,7 @@ import { Kpis } from '../../components/Kpis';
 import { Tag } from '../../components/Tag';
 import { useAppShell } from '../../context/AppShellContext';
 import {
-  AUTO_BY, CUSTOMER_TYPES, ON_FILE, STANDINGS, STANDING_TAG, lastInactive, usageOf, type CustomerRecord,
+  AUTO_BY, CUSTOMER_TYPES, ON_FILE, STANDINGS, STANDING_TAG, dayOf, lastInactive, usageOf, type CustomerRecord,
 } from '../../data/customers';
 import { BILLING, fmtDate, invoiceTotal, statusOf, usd0 } from '../../data/invoicing';
 import { compactUsd } from '../../data/metrics';
@@ -136,7 +136,7 @@ function CustomerManager() {
         <Fact k="Customer since">{c.since ? fmtDate(c.since) : ''}</Fact>
         <Fact k="Account owner">{c.salesRep}</Fact>
         <Fact k="Main contact">{[c.contact, c.contactTitle].filter(Boolean).join(', ')}<div className="ui-stop-meta">{[c.email, c.phone].filter(Boolean).join(' · ')}</div></Fact>
-        <Fact k="Shipping contact">{c.shippingContact}<div className="ui-stop-meta">{[c.shippingPhone, c.afterHoursPhone && `After hours ${c.afterHoursPhone}`].filter(Boolean).join(' · ')}</div></Fact>
+        <Fact k="Shipping contact">{(c.shippingContact || c.shippingPhone || c.afterHoursPhone) && <>{c.shippingContact}<div className="ui-stop-meta">{[c.shippingPhone, c.afterHoursPhone && `After hours ${c.afterHoursPhone}`].filter(Boolean).join(' · ')}</div></>}</Fact>
         <Fact k="Bill to">{[c.billTo, c.attn].filter(Boolean).join(' · ')}<div className="ui-stop-meta">{[c.street, c.city, [c.state, c.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')}</div></Fact>
         <Fact k="Billing contact">{[c.billingEmail, c.billingPhone].filter(Boolean).join(' · ')}<div className="ui-stop-meta">Invoices by {c.invoiceDelivery.toLowerCase()}{c.podRequired ? ' · POD required' : ''}</div></Fact>
         <Fact k="Terms · credit">
@@ -146,8 +146,8 @@ function CustomerManager() {
           </div>
         </Fact>
         <Fact k="Authority">{[c.mc && `MC ${c.mc}`, c.dot && `USDOT ${c.dot}`, c.ein && `EIN ${c.ein}`].filter(Boolean).join(' · ')}</Fact>
-        <Fact k="Freight">{[c.equipment.join(', '), c.commodities].filter(Boolean).join(' · ')}<div className="ui-stop-meta">{c.lanes}</div></Fact>
-        <Fact k="Requirements">{c.needs.join(', ')}<div className="ui-stop-meta">{c.instructions}</div></Fact>
+        <Fact k="Freight">{(c.equipment.length > 0 || c.commodities || c.lanes) && <>{[c.equipment.join(', '), c.commodities].filter(Boolean).join(' · ')}<div className="ui-stop-meta">{c.lanes}</div></>}</Fact>
+        <Fact k="Requirements">{(c.needs.length > 0 || c.instructions) && <>{c.needs.join(', ')}<div className="ui-stop-meta">{c.instructions}</div></>}</Fact>
         {c.invoiceInstructions && <Fact k="Billing instructions">{c.invoiceInstructions}</Fact>}
         {c.website && <Fact k="Website">{c.website}</Fact>}
         {c.notes && <Fact k="Notes">{c.notes}</Fact>}
@@ -167,7 +167,7 @@ function CustomerManager() {
             <li key={i} className={e.action === 'Moved to inactive' ? 'is-off' : e.action === 'Reactivated' ? 'is-on' : ''}>
               <strong>{e.action}</strong>
               <span>{e.reason}</span>
-              <span className="ui-stop-meta" style={{ marginTop: 0 }}>{e.by === AUTO_BY ? fmtDate(e.at.slice(0, 10)) : when(e.at)} · {e.by}</span>
+              <span className="ui-stop-meta" style={{ marginTop: 0 }}>{e.by === AUTO_BY ? fmtDate(dayOf(e.at)) : when(e.at)} · {e.by}</span>
             </li>
           ))}
         </ul>
@@ -225,7 +225,7 @@ function CustomerManager() {
                     <td className="muted">{c.contact}</td>
                     {showInactive ? (
                       <>
-                        <td>{c.inactiveEntry ? fmtDate(c.inactiveEntry.at.slice(0, 10)) : '—'}</td>
+                        <td>{c.inactiveEntry ? fmtDate(dayOf(c.inactiveEntry.at)) : '—'}</td>
                         <td>{c.inactiveEntry?.reason ?? '—'}</td>
                         <td>{c.inactiveEntry ? (c.inactiveEntry.by === AUTO_BY ? <Tag label="Automatic · 1 year unused" tagClass="tag-outline" /> : c.inactiveEntry.by) : '—'}</td>
                         <td>{fmtDate(c.lastUsed)}</td>
