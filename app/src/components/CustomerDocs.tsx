@@ -13,7 +13,7 @@ const kindLabel = (d: BillDocument) => (d.type === 'application/pdf' ? 'PDF' : d
 // Every document a customer has: one row per required document (W-9,
 // credit application…) with its file, or "on file" for a paper copy, then
 // any other files. Attach, open, download, replace and remove from here.
-export function CustomerDocs({ docs, onFile, onChange }: { docs: BillDocument[]; onFile: string[]; onChange: (docs: BillDocument[], onFile: string[]) => void }) {
+export function CustomerDocs({ docs, onFile, onChange, owner = 'Customer' }: { docs: BillDocument[]; onFile: string[]; onChange: (docs: BillDocument[], onFile: string[]) => void; owner?: string }) {
   // Which document the popup attaches (OTHER: any files, typed by the user).
   const [attaching, setAttaching] = useState<string | null>(null);
 
@@ -86,7 +86,7 @@ export function CustomerDocs({ docs, onFile, onChange }: { docs: BillDocument[];
       )}
       {attaching && (
         <AttachDialog
-          title={attaching === OTHER ? 'Documents' : attaching}
+          title={owner}
           kinds={attaching === OTHER ? ON_FILE : []}
           only={attaching === OTHER ? undefined : attaching}
           onAttach={attach}
@@ -117,7 +117,7 @@ export function CustomerDocsDialog({ customer, onClose }: { customer: CustomerRe
             </p>
           </div>
           <CustomerDocs
-            docs={c.documents} onFile={c.onFile}
+            docs={c.documents} onFile={c.onFile} owner={c.name}
             onChange={(documents, onFile) => saveCustomer({ ...c, documents, onFile, updated: new Date().toISOString() })}
           />
         </section>

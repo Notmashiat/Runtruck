@@ -164,7 +164,7 @@ function BillManager() {
                             <Fact k="Remit to">{b.remitTo}</Fact>
                             {b.notes && <Fact k="Notes">{b.notes}</Fact>}
                           </div>
-                          <BillDocuments docs={b.documents} onChange={(documents) => saveBill({ ...b, documents, updated: new Date().toISOString() })} />
+                          <BillDocuments docs={b.documents} owner={`${b.vendor} · ${b.id}`} onChange={(documents) => saveBill({ ...b, documents, updated: new Date().toISOString() })} />
                         </div>
                       </td>
                     </tr>

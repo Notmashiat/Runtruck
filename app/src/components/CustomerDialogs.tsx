@@ -124,7 +124,7 @@ export function CustomerDialog({ customer, onClose }: { customer?: CustomerRecor
       recordLabel={customer ? customer.name : 'customer'}
       noun="customer"
       deleteNote="The customer and its documents are removed for good; loads and invoices keep the name. To keep the record, move it to inactive instead."
-      extras={{ Documents: <CustomerDocs docs={docs} onFile={onFile} onChange={(d, f) => { setDocs(d); setOnFile(f); }} /> }}
+      extras={{ Documents: <CustomerDocs docs={docs} onFile={onFile} owner={customer?.name ?? 'New customer'} onChange={(d, f) => { setDocs(d); setOnFile(f); }} /> }}
       footerExtra={
         customer && (customer.status === 'Active'
           ? <button type="button" className="ui-btn ui-btn-danger" onClick={() => setInactivating(true)}>Move to inactive</button>

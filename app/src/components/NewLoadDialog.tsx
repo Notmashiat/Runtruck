@@ -783,7 +783,7 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
         </div>
         {attachingDoc && (
           <AttachDialog
-            title={attachingDoc} only={attachingDoc} accept=".pdf,image/*"
+            title={load ? `Load ${load.id}` : 'New load'} only={attachingDoc} accept=".pdf,image/*"
             onAttach={(docs) => { if (docs[0]) set('docs', { ...d.docs, [attachingDoc]: docs[0].name }); }}
             onClose={() => setAttachingDoc(null)}
           />

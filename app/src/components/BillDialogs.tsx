@@ -21,7 +21,7 @@ const YES_NO = ['Yes', 'No'];
 export { downloadDocument, fileSize, openDocument, readAttachment } from '../lib/attachments';
 
 // The documents on a bill: attach (PDF, images, Word, Excel), open, download, remove.
-export function BillDocuments({ docs, onChange, hint = 'The vendor’s invoice, receipts, contracts' }: { docs: BillDocument[]; onChange: (d: BillDocument[]) => void; hint?: string }) {
+export function BillDocuments({ docs, onChange, owner = 'Documents', hint = 'The vendor’s invoice, receipts, contracts' }: { docs: BillDocument[]; onChange: (d: BillDocument[]) => void; owner?: string; hint?: string }) {
   const [attaching, setAttaching] = useState(false);
 
   return (
@@ -50,7 +50,7 @@ export function BillDocuments({ docs, onChange, hint = 'The vendor’s invoice, 
           ))}
         </ul>
       )}
-      {attaching && <AttachDialog title="Documents" onAttach={(added) => onChange([...docs, ...added])} onClose={() => setAttaching(false)} />}
+      {attaching && <AttachDialog title={owner} onAttach={(added) => onChange([...docs, ...added])} onClose={() => setAttaching(false)} />}
     </div>
   );
 }
@@ -148,7 +148,7 @@ export function BillDialog({ bill, onClose }: { bill?: BillRecord; onClose: () =
       recordLabel={bill ? `${bill.vendor} bill ${bill.id}` : 'bill'}
       noun="bill"
       deleteNote="The bill and its documents are removed for good. To keep a record, void it instead."
-      extras={{ 'Documents & notes': <BillDocuments docs={docs} onChange={setDocs} /> }}
+      extras={{ 'Documents & notes': <BillDocuments docs={docs} onChange={setDocs} owner={bill ? `${bill.vendor} · ${bill.id}` : 'New bill'} /> }}
       adjust={(_prev, next, key) => {
         // The due date follows the bill date and terms; vendor auto-pay pays itself.
         if (key === 'issued' || key === 'terms') return { ...next, due: dueFrom(val(next, 'issued'), val(next, 'terms')) || val(next, 'due') };
