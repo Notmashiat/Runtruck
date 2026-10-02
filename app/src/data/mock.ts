@@ -1,5 +1,12 @@
 import { COMPANY_ID, IS_DEMO, MEMBER_ID } from '../lib/account';
 import { shiftDemo } from '../lib/clock';
+import { isLive } from '../lib/releases';
+
+// Release 1.6: Payroll is HR's first tab instead of an Accounting tab. Fixed for
+// the page load (a company's release only changes on the next login).
+export const PAYROLL_IN_HR = isLive('payroll-in-hr');
+export const PAYROLL_SECTION: ViewKey = PAYROLL_IN_HR ? 'hr' : 'accounting';
+export const PAYROLL_PATH = `/app/${PAYROLL_SECTION}/payroll`;
 
 // Mock data for the RunTruck app. Static in-memory data, matching the
 // dataset defined in the original Claude Design prototype.
@@ -311,10 +318,11 @@ export const SECTION_TABS: Partial<Record<ViewKey, SectionTab[]>> = {
     { key: 'batches', label: 'Batches' },
     { key: 'past-due', label: 'Past Due' },
     { key: 'paid', label: 'Paid' },
-    { key: 'payroll', label: 'Payroll' },
+    ...(PAYROLL_IN_HR ? [] : [{ key: 'payroll', label: 'Payroll' }]),
     { key: 'bills', label: 'Bills' },
   ],
   hr: [
+    ...(PAYROLL_IN_HR ? [{ key: 'payroll', label: 'Payroll' }] : []),
     { key: 'employee-contracts', label: 'Employee Contracts' },
     { key: 'onboarding', label: 'Onboarding' },
   ],

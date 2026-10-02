@@ -4,7 +4,7 @@
 // granted section by section, and tab by tab inside sections that have tabs.
 // Super admins (Company ID 1 only) have everything, including Developer.
 import type { FormValues } from './fleet';
-import { NAV, SECTION_TABS, type ViewKey } from './mock';
+import { NAV, PAYROLL_IN_HR, SECTION_TABS, type ViewKey } from './mock';
 import type { PasswordRecord } from '../lib/password';
 
 export type AccountType =
@@ -82,7 +82,7 @@ export const ACCOUNT_TYPES: { type: AccountType; about: string; preset: string[]
   { type: 'Company admin', about: 'Runs their company’s RunTruck: every section and company setting.', preset: ALL_PERMS },
   { type: 'Dispatcher', about: 'Books and runs loads with the fleet.', preset: [...every('loads'), ...every('planner'), ...every('fleet'), 'crm', 'facilities'] },
   { type: 'Broker / sales agent', about: 'Finds freight and customers and books loads.', preset: ['loads', 'planner', 'crm', 'facilities'] },
-  { type: 'Accounting & billing', about: 'Invoices, collections, payroll and bills.', preset: ['loads', 'crm', ...every('accounting'), ...some('settings', 'invoicing', 'messages')] },
+  { type: 'Accounting & billing', about: 'Invoices, collections, payroll and bills.', preset: ['loads', 'crm', ...every('accounting'), ...(PAYROLL_IN_HR ? some('hr', 'payroll') : []), ...some('settings', 'invoicing', 'messages')] },
   { type: 'Safety & compliance', about: 'Driver files, maintenance, violations and claims.', preset: [...every('fleet'), ...every('safety')] },
   { type: 'Fleet manager', about: 'Trucks, trailers and their upkeep.', preset: [...every('fleet'), ...some('safety', 'maintenance'), 'facilities'] },
   { type: 'HR & recruiting', about: 'Hiring, onboarding and driver contracts.', preset: [...every('hr'), ...some('fleet', 'drivers'), ...some('safety', 'driver-documents')] },
@@ -91,10 +91,18 @@ export const ACCOUNT_TYPES: { type: AccountType; about: string; preset: string[]
 export const TYPE_NAMES = ACCOUNT_TYPES.map((t) => t.type);
 export const typeInfo = (type: AccountType) => ACCOUNT_TYPES.find((t) => t.type === type) ?? ACCOUNT_TYPES[ACCOUNT_TYPES.length - 1];
 
+// Payroll moved from Accounting to HR in release 1.6: a Payroll tick saved under
+// either section opens Payroll wherever it is for this company.
+function withPayroll(perms: string[]): string[] {
+  const [from, to] = PAYROLL_IN_HR ? ['accounting', 'hr'] : ['hr', 'accounting'];
+  return perms.includes(`${from}/payroll`) && perms.includes(from) && !perms.includes(`${to}/payroll`) ? [...perms, to, `${to}/payroll`] : perms;
+}
+
 // Whether a set of permissions opens a section or tab ('fleet', 'fleet/trucks').
 // A section with tabs needs at least one of its tabs.
-export function permits(perms: string[], key: string): boolean {
+export function permits(given: string[], key: string): boolean {
   if (key === 'dashboard' || PERSONAL_SETTINGS.includes(key.replace(/^settings\//, ''))) return true;
+  const perms = withPayroll(given);
   const [section] = key.split('/');
   if (!perms.includes(section)) return false;
   if (key.includes('/')) return perms.includes(key);
@@ -103,7 +111,8 @@ export function permits(perms: string[], key: string): boolean {
 }
 
 // "Loads, Fleet (Drivers, Trucks), Accounting (all)" for lists.
-export function describePerms(perms: string[]): string {
+export function describePerms(given: string[]): string {
+  const perms = withPayroll(given);
   const parts = PERM_TREE.filter((n) => permits(perms, n.key)).map((n) => {
     if (n.children.length === 0) return n.label;
     const on = n.children.filter((c) => perms.includes(c.key));
@@ -119,7 +128,8 @@ export function describePerms(perms: string[]): string {
 export const sectionField = 'sections';
 export const tabsField = (section: string) => `tabs-${section}`;
 
-export function permsToForm(perms: string[]): FormValues {
+export function permsToForm(given: string[]): FormValues {
+  const perms = withPayroll(given);
   const v: FormValues = { [sectionField]: PERM_TREE.filter((n) => perms.includes(n.key)).map((n) => n.label) };
   for (const n of PERM_TREE) {
     if (n.children.length) v[tabsField(n.key)] = n.children.filter((c) => perms.includes(c.key)).map((c) => c.label);

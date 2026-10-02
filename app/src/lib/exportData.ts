@@ -8,13 +8,17 @@ import type { Facility } from '../data/facilities';
 import type { FleetDriver, FleetTrailer, FleetTruck, FormValues } from '../data/fleet';
 import { CONTRACTS, ONBOARDING } from '../data/hr';
 import { batchStatus, batchTotal, billableLoads, invoiceTotal, statusOf, usd, type Batch, type InvoiceRecord } from '../data/invoicing';
-import type { Load } from '../data/mock';
+import { PAYROLL_IN_HR, type Load } from '../data/mock';
 import { payLabel, runTotals, type Employee, type PayRun } from '../data/payroll';
 import type { CustomerRecord } from '../data/customers';
 import { PLANNER_EVENTS, type PlannerEvent } from '../data/planner';
 import { CLAIMS, MAINTENANCE, VIOLATIONS } from '../data/safety';
 import { isoFromText } from './clock';
 import { readScoped } from './account';
+
+// Release 1.6 moves Payroll from Accounting to HR.
+const PAYROLL_GROUP = PAYROLL_IN_HR ? 'HR' : 'Accounting';
+const PAYROLL_PERM = PAYROLL_IN_HR ? 'hr/payroll' : 'accounting/payroll';
 
 export interface ExportColumn {
   key: string;
@@ -200,7 +204,7 @@ export function buildExportSets(s: ExportSources): ExportSet[] {
       ['sentOn', 'Sent on', (b) => b.sentOn], ['notes', 'Notes', (b) => b.notes],
     ], (b) => ({ date: b.created })),
 
-    makeSet({ key: 'payroll', label: 'Payroll (pay run lines)', group: 'Accounting', perm: 'accounting/payroll', dateLabel: 'pay date' },
+    makeSet({ key: 'payroll', label: 'Payroll (pay run lines)', group: PAYROLL_GROUP, perm: PAYROLL_PERM, dateLabel: 'pay date' },
       payRuns.flatMap((r) => r.lines.map((l) => ({ r, l }))), [
       ['run', 'Run', (x) => x.r.id], ['payDate', 'Pay date', (x) => x.r.payDate], ['name', 'Employee', (x) => x.l.name], ['role', 'Role', (x) => x.l.role],
       ['basis', 'Paid', (x) => x.l.basis], ['units', 'Units', (x) => (x.l.basis === 'Salary' ? '' : x.l.units)], ['gross', 'Gross', (x) => money(x.l.gross)],
@@ -211,7 +215,7 @@ export function buildExportSets(s: ExportSources): ExportSet[] {
       ['items', 'Items', (x) => x.l.items.map((i) => `${i.label} ${i.kind === 'Deduction' ? '-' : '+'}${i.amount}`), false], ['runNet', 'Run total net', (x) => money(runTotals(x.r).net), false],
     ], (x) => ({ date: x.r.payDate, drivers: [x.l.name] })),
 
-    makeSet({ key: 'employees', label: 'Employees', group: 'Accounting', perm: 'accounting/payroll', dateLabel: 'start date' }, employees, [
+    makeSet({ key: 'employees', label: 'Employees', group: PAYROLL_GROUP, perm: PAYROLL_PERM, dateLabel: 'start date' }, employees, [
       ['name', 'Employee', (e) => e.name], ['role', 'Role', (e) => e.role], ['workerType', 'Type', (e) => e.workerType], ['pay', 'Pay', (e) => payLabel(e)],
       ['frequency', 'Schedule', (e) => e.frequency], ['method', 'Paid by', (e) => e.method], ['status', 'Status', (e) => e.status], ['hired', 'Started', (e) => e.hired],
       ['id', 'Employee ID', (e) => e.id, false], ['email', 'Email', (e) => e.email, false], ['phone', 'Phone', (e) => e.phone, false],

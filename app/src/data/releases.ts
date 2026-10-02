@@ -119,6 +119,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.6',
+    date: '2026-10-01',
+    title: 'Payroll in HR',
+    changes: [
+      {
+        id: 'payroll-in-hr', kind: 'Updated', section: 'HR', title: 'Payroll moves to HR',
+        details: 'Payroll is now the first tab under HR (HR › Payroll, then Employee Contracts and Onboarding) and leaves Accounting. Old Accounting › Payroll links open HR › Payroll, and anyone who could open Accounting › Payroll can open HR › Payroll.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

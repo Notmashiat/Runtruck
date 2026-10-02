@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppShell } from '../context/AppShellContext';
-import { NAV, SECTION_TABS, type ViewKey } from '../data/mock';
+import { NAV, PAYROLL_PATH, PAYROLL_SECTION, SECTION_TABS, type ViewKey } from '../data/mock';
 import { formatNow, todayIso, useNow } from '../lib/clock';
 import { isActive, pageKeyOf } from '../lib/tableTools';
 import { can } from '../lib/auth';
@@ -93,11 +93,11 @@ export function Header() {
     'accounting/past-due': [{ label: 'Send reminders', primary: true, onClick: () => setAdding('reminders') }],
     'accounting/paid': [{ label: 'Export' }],
     // Release 1.5: employees, the archived list and pay runs.
-    'accounting/payroll': isLive('payroll')
+    [`${PAYROLL_SECTION}/payroll`]: isLive('payroll')
       ? [
           archivedView
-            ? { label: '← Active employees', onClick: () => navigate('/app/accounting/payroll') }
-            : { label: 'Archived', onClick: () => navigate('/app/accounting/payroll?view=archived') },
+            ? { label: '← Active employees', onClick: () => navigate(PAYROLL_PATH) }
+            : { label: 'Archived', onClick: () => navigate(`${PAYROLL_PATH}?view=archived`) },
           { label: '+ Add employee', onClick: () => setAdding('employee') },
           { label: '+ New pay run', primary: true, onClick: () => setAdding('payrun') },
         ]
@@ -170,7 +170,7 @@ export function Header() {
       {adding === 'bill' && <BillDialog onClose={() => setAdding(null)} />}
       {adding === 'customer' && <CustomerDialog onClose={() => setAdding(null)} />}
       {adding === 'employee' && <EmployeeDialog onClose={() => setAdding(null)} />}
-      {adding === 'payrun' && <PayRunDialog onClose={() => setAdding(null)} onCreated={() => navigate('/app/accounting/payroll')} />}
+      {adding === 'payrun' && <PayRunDialog onClose={() => setAdding(null)} onCreated={() => navigate(PAYROLL_PATH)} />}
       {adding === 'company' && <CompanyDialog onClose={() => setAdding(null)} />}
       {adding === 'account' && <AccountDialog onClose={() => setAdding(null)} />}
       {filtersOpen && <FilterPanel page={page} title={pageTitle} onClose={() => setFiltersOpen(false)} />}

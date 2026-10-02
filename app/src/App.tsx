@@ -1,8 +1,8 @@
 import { lazy, type ReactNode } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
 import { TabbedSection } from './components/TabbedSection';
-import { SECTION_TABS, type ViewKey } from './data/mock';
+import { PAYROLL_IN_HR, PAYROLL_PATH, SECTION_TABS, type ViewKey } from './data/mock';
 import { LandingPage } from './pages/marketing/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { can } from './lib/auth';
@@ -62,6 +62,12 @@ function StartPage() {
   return <Navigate to={can(start) ? start : 'dashboard'} replace />;
 }
 
+// Old payroll links (and Accounting › Payroll once it is in HR), keeping ?view=archived.
+function ToPayroll() {
+  const { search } = useLocation();
+  return <Navigate to={`${PAYROLL_PATH}${search}`} replace />;
+}
+
 // A tabbed section: its own permission, then one per tab.
 function section(key: ViewKey, tabs: [string, ReactNode][]) {
   return (
@@ -92,9 +98,13 @@ export default function App() {
         <Route path="settings/:section" element={<SettingsPage />} />
         {section('accounting', [
           ['uninvoiced', <UninvoicedTab />], ['invoiced', <InvoicedTab />], ['batches', <BatchesTab />], ['past-due', <PastDueTab />],
-          ['paid', <PaidTab />], ['payroll', <PayrollTab />], ['bills', <BillsTab />],
+          ['paid', <PaidTab />], ...(PAYROLL_IN_HR ? [] : [['payroll', <PayrollTab />] as [string, ReactNode]]), ['bills', <BillsTab />],
         ])}
-        {section('hr', [['employee-contracts', <EmployeeContractsTab />], ['onboarding', <OnboardingTab />]])}
+        {PAYROLL_IN_HR && <Route path="accounting/payroll" element={<ToPayroll />} />}
+        {section('hr', [
+          ...(PAYROLL_IN_HR ? [['payroll', <PayrollTab />] as [string, ReactNode]] : []),
+          ['employee-contracts', <EmployeeContractsTab />], ['onboarding', <OnboardingTab />],
+        ])}
         {section('safety', [
           ['maintenance', <MaintenanceTab />], ['driver-documents', <DriverDocumentsTab />], ['violations', <ViolationsTab />], ['settlements', <ClaimSettlementsTab />],
         ])}
@@ -108,8 +118,8 @@ export default function App() {
       <Route path="/app/trucks" element={<Navigate to="/app/fleet/trucks" replace />} />
       <Route path="/app/customers" element={<Navigate to="/app/crm" replace />} />
       <Route path="/app/invoices" element={<Navigate to="/app/accounting/invoiced" replace />} />
-      <Route path="/app/settlements" element={<Navigate to="/app/accounting/payroll" replace />} />
-      <Route path="/app/accounting/settlements" element={<Navigate to="/app/accounting/payroll" replace />} />
+      <Route path="/app/settlements" element={<ToPayroll />} />
+      <Route path="/app/accounting/settlements" element={<ToPayroll />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

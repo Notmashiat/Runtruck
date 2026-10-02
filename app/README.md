@@ -183,7 +183,7 @@ unique. Accounts are kept in `runtruck-1-accounts`. A super admin can edit any a
 (type, company, details, email, a new password, status, access) or delete it; nobody can disable,
 delete or demote their own account. A company can only be deleted once it has no accounts.
 
-**Payroll** (Accounting › Payroll; `data/payroll.ts`, `components/PayrollDialogs.tsx`, `lib/payStub.ts`;
+**Payroll** (HR › Payroll from release 1.6, Accounting › Payroll before it; `PAYROLL_PATH` in `data/mock.ts`; `data/payroll.ts`, `components/PayrollDialogs.tsx`, `lib/payStub.ts`;
 release 1.5). Everyone the company pays is kept per company (`runtruck-<id>-employees`): role (company
 driver, owner-operator, lease-purchase driver, dispatcher, mechanic, office…), W-2 or 1099, contact and
 address, start date, how they are paid (per mile, % of line haul, per load, hourly or salary, with the
