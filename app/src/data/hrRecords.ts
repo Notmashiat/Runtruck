@@ -544,7 +544,8 @@ function progressed(role: string, workerType: string, n: number, from: string, e
     if (left <= 0) return { ...s, ...extra(s) };
     if (s.required) left -= 1;
     day += 1;
-    return { ...s, done: true, doneOn: addDays(from, Math.min(day, 20)), by: 'Rosa Medina', ...extra(s) };
+    const on = addDays(from, Math.min(day, 20));
+    return { ...s, done: true, doneOn: on > todayIso() ? todayIso() : on, by: 'Rosa Medina', ...extra(s) };
   });
 }
 
