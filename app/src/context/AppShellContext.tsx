@@ -1,6 +1,10 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BATCH_SEED, INVOICE_SEED, type Batch, type InvoiceRecord } from '../data/invoicing';
 import { BILL_SEED, reviveBills, type BillRecord } from '../data/bills';
+import { AUTO_BY, AUTO_INACTIVE_DAYS, CUSTOMER_SEED, addDays, reviveCustomers, usageOf, type CustomerRecord } from '../data/customers';
+import { todayIso } from '../lib/clock';
+import { syncCustomers } from '../lib/customerSync';
+import { isLive } from '../lib/releases';
 import { FACILITY_SEED, renameInLoad, sameName, type Facility } from '../data/facilities';
 import { DRIVER_SEED, TRAILER_SEED, TRUCK_SEED, type FleetDriver, type FleetTrailer, type FleetTruck } from '../data/fleet';
 import { LOADS, type Load } from '../data/mock';
@@ -51,6 +55,9 @@ interface AppShellState {
   bills: BillRecord[];
   saveBill: (b: BillRecord) => void;
   deleteBill: (id: string) => void;
+  customers: CustomerRecord[];
+  saveCustomer: (c: CustomerRecord) => void;
+  deleteCustomer: (id: string) => void;
   // Table filters, per page ('loads', 'fleet/drivers', …): what each page
   // offers (registered by the page) and what is chosen (kept while you move around).
   filterMeta: Record<string, FilterMeta[]>;
@@ -97,6 +104,9 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
   const [invoices, setInvoices] = usePersisted<InvoiceRecord[]>('runtruck-invoices', INVOICE_SEED, (raw) => reviveInvoices(raw));
   const [batches, setBatches] = usePersisted<Batch[]>('runtruck-batches', BATCH_SEED, (raw) => reviveBatches(raw));
   const [bills, setBills] = usePersisted<BillRecord[]>('runtruck-bills', BILL_SEED, reviveBills);
+  const [customers, setCustomers] = usePersisted<CustomerRecord[]>('runtruck-customers', CUSTOMER_SEED, reviveCustomers);
+  // The pickers and invoice billing details follow the CRM.
+  useMemo(() => syncCustomers(customers), [customers]);
   const [filterMeta, setFilterMeta] = useState<Record<string, FilterMeta[]>>({});
   const [filterValues, setFilterValues] = useState<Record<string, FilterValues>>({});
   const registerFilters = useCallback((page: string, meta: FilterMeta[]) =>
@@ -122,6 +132,31 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
         return t;
       }),
     );
+
+  // Release 1.4: a customer with no loads or invoices for over a year moves to
+  // inactive by itself, logged on the day it passed the year.
+  useEffect(() => {
+    if (!isLive('crm-customers')) return;
+    const today = todayIso();
+    setCustomers((list) => {
+      let changed = false;
+      const next = list.map((c) => {
+        if (c.status !== 'Active') return c;
+        const u = usageOf(c, loads, invoices, today.slice(0, 4));
+        const due = addDays(u.lastUsed, AUTO_INACTIVE_DAYS);
+        if (due >= today) return c;
+        changed = true;
+        const last = new Date(`${u.lastUsed}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+        return {
+          ...c, status: 'Inactive' as const,
+          log: [...c.log, { at: `${due}T12:00:00.000Z`, by: AUTO_BY, action: 'Moved to inactive' as const, reason: `Not used for over a year (last ${u.why}: ${last})` }],
+        };
+      });
+      return changed ? next : list;
+    });
+    // Once, as the app opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const value: AppShellState = {
     query,
@@ -209,6 +244,17 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
     bills,
     saveBill: (b) => setBills((list) => upsert(list, b)),
     deleteBill: (id) => setBills((list) => list.filter((b) => b.id !== id)),
+    customers,
+    saveCustomer: (c) => {
+      const prev = customers.find((x) => x.id === c.id);
+      setCustomers((list) => upsert(list, c));
+      // A renamed customer keeps its loads and invoices.
+      if (prev && prev.name !== c.name) {
+        setLoads((list) => list.map((l) => (l.customer === prev.name ? { ...l, customer: c.name } : l)));
+        setInvoices((list) => list.map((i) => (i.customer === prev.name ? { ...i, customer: c.name } : i)));
+      }
+    },
+    deleteCustomer: (id) => setCustomers((list) => list.filter((c) => c.id !== id)),
     filterMeta,
     registerFilters,
     filterValues,

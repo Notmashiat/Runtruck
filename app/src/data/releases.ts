@@ -89,6 +89,21 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.4',
+    date: '2026-10-01',
+    title: 'Customers',
+    changes: [
+      {
+        id: 'crm-customers', kind: 'New', section: 'CRM', title: 'Add Customer form and customer details',
+        details: '+ Add Customer opens a form for the company, contacts, billing (bill-to, terms, credit limit, how they pay and get invoices), freight profile and documents on file. Each customer on CRM opens to every detail, with Edit customer, attached documents and a log.',
+      },
+      {
+        id: 'crm-inactive', kind: 'New', section: 'CRM', title: 'Inactive customers',
+        details: 'Customers can be moved to inactive with a reason, and move there by themselves after a year with no loads or invoices. Inactive customers (top right) lists them with when, why and by whom, and can reactivate them.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

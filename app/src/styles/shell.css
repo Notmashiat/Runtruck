@@ -707,3 +707,12 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 .ui-link.is-danger { color: var(--ui-red); }
 .bill-schedule { display: inline-flex; align-items: center; gap: 8px; }
 .bill-schedule .ui-input { width: 160px; height: 32px; }
+
+/* CRM customers */
+.crm-onfile { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.crm-onfile .ui-label { margin-right: 4px; }
+.crm-log { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.crm-log li { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; align-items: baseline; gap: 12px; padding: 8px 12px; font-size: 13px; background: var(--ui-card); border: 1px solid var(--ui-border); border-left-width: 3px; border-radius: 8px; }
+.crm-log li.is-off { border-left-color: var(--ui-red); }
+.crm-log li.is-on { border-left-color: var(--ui-green, #16a34a); }
+@media (max-width: 760px) { .crm-log li { grid-template-columns: minmax(0, 1fr); } }

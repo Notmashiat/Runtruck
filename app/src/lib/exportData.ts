@@ -8,7 +8,8 @@ import type { Facility } from '../data/facilities';
 import type { FleetDriver, FleetTrailer, FleetTruck, FormValues } from '../data/fleet';
 import { CONTRACTS, ONBOARDING } from '../data/hr';
 import { batchStatus, batchTotal, billableLoads, invoiceTotal, statusOf, usd, type Batch, type InvoiceRecord } from '../data/invoicing';
-import { CUSTOMERS, SETTLEMENTS, type Load } from '../data/mock';
+import { SETTLEMENTS, type Load } from '../data/mock';
+import type { CustomerRecord } from '../data/customers';
 import { PLANNER_EVENTS, type PlannerEvent } from '../data/planner';
 import { CLAIMS, MAINTENANCE, VIOLATIONS } from '../data/safety';
 import { isoFromText } from './clock';
@@ -49,6 +50,7 @@ export interface ExportSources {
   invoices: InvoiceRecord[];
   batches: Batch[];
   bills: BillRecord[];
+  customers: CustomerRecord[];
 }
 
 // '2026-10-01', 'Oct 1', 'Thu Oct 1 · 08:00' → '2026-10-01' ('' when there is no date).
@@ -129,7 +131,7 @@ function plannerEvents(): PlannerEvent[] {
 }
 
 export function buildExportSets(s: ExportSources): ExportSet[] {
-  const { loads, drivers, trucks, trailers, facilities, invoices, batches, bills } = s;
+  const { loads, drivers, trucks, trailers, facilities, invoices, batches, bills, customers } = s;
   return [
     makeSet({ key: 'loads', label: 'Loads', group: 'Loads', perm: 'loads', dateLabel: 'pickup date' }, loads, [
       ['id', 'Load', (l) => l.id], ['status', 'Status', (l) => l.status], ['customer', 'Customer', (l) => l.customer], ['ref', 'Reference', (l) => l.ref],
@@ -155,10 +157,17 @@ export function buildExportSets(s: ExportSources): ExportSet[] {
       ['unit', 'Unit', (t) => t.unit], ['kind', 'Type', (t) => t.kind], ['status', 'Status', (t) => t.status], ['where', 'Location', (t) => t.where],
     ], (t) => ({ trucks: [t.unit], archived: Boolean(t.archived) }), (t) => t.details),
 
-    makeSet({ key: 'customers', label: 'Customers', group: 'CRM', perm: 'crm' }, CUSTOMERS, [
-      ['name', 'Customer', (c) => c.name], ['contact', 'Contact', (c) => c.contact], ['loads', 'Loads', (c) => c.loads], ['revenue', 'Revenue', (c) => c.revenue],
-      ['onTime', 'On time', (c) => c.onTime], ['terms', 'Terms', (c) => c.terms], ['ar', 'AR balance', (c) => c.ar], ['tier', 'Standing', (c) => c.tier],
-    ], (c) => ({ customer: c.name })),
+    makeSet({ key: 'customers', label: 'Customers', group: 'CRM', perm: 'crm' }, customers, [
+      ['name', 'Customer', (c) => c.name], ['status', 'Status', (c) => c.status], ['type', 'Type', (c) => c.type], ['contact', 'Contact', (c) => c.contact],
+      ['email', 'Email', (c) => c.email], ['phone', 'Phone', (c) => c.phone], ['terms', 'Terms', (c) => c.terms], ['standing', 'Standing', (c) => c.standing],
+      ['city', 'City', (c) => c.city], ['state', 'State', (c) => c.state],
+      ['id', 'Customer ID', (c) => c.id, false], ['legalName', 'Legal name', (c) => c.legalName, false], ['industry', 'Industry', (c) => c.industry, false],
+      ['billTo', 'Bill to', (c) => c.billTo, false], ['billingEmail', 'Billing email', (c) => c.billingEmail, false], ['street', 'Billing address', (c) => c.street, false],
+      ['zip', 'ZIP', (c) => c.zip, false], ['creditLimit', 'Credit limit', (c) => (c.creditLimit ? money(c.creditLimit) : ''), false], ['payMethod', 'Pays by', (c) => c.payMethod, false],
+      ['mc', 'MC', (c) => c.mc, false], ['dot', 'USDOT', (c) => c.dot, false], ['equipment', 'Equipment', (c) => c.equipment, false], ['commodities', 'Commodities', (c) => c.commodities, false],
+      ['lanes', 'Lanes', (c) => c.lanes, false], ['onFile', 'On file', (c) => c.onFile, false], ['salesRep', 'Account owner', (c) => c.salesRep, false],
+      ['documents', 'Documents', (c) => c.documents.map((d) => d.name), false], ['notes', 'Notes', (c) => c.notes, false],
+    ], (c) => ({ customer: c.name, archived: c.status === 'Inactive' })),
 
     makeSet({ key: 'facilities', label: 'Facilities', group: 'Facilities', perm: 'facilities' }, facilities, [
       ['name', 'Facility', (f) => f.name], ['type', 'Type', (f) => f.type], ['city', 'City', (f) => f.city], ['state', 'State', (f) => f.state], ['customer', 'Customer', (f) => f.customer],

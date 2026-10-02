@@ -183,6 +183,23 @@ unique. Accounts are kept in `runtruck-1-accounts`. A super admin can edit any a
 (type, company, details, email, a new password, status, access) or delete it; nobody can disable,
 delete or demote their own account. A company can only be deleted once it has no accounts.
 
+**Customers** (CRM; `data/customers.ts`, `components/CustomerDialogs.tsx`, `lib/customerSync.ts`; release
+1.4). Customers are kept per company (`runtruck-<id>-customers`). **+ Add Customer** opens a form in five
+parts: company (name, legal name, type — shipper, broker, 3PL, forwarder, manufacturer, retailer… —
+industry, standing, customer since, account owner, website, and MC/USDOT for brokers, EIN), contacts (main,
+shipping/dispatch, after hours), billing (bill-to, attention, billing email and phone, address, terms,
+credit limit, how they pay, how invoices are sent, POD required, billing instructions), freight
+(equipment, commodities, regular lanes, requirements such as appointments, hazmat, TWIC, lumpers,
+food-grade, and pickup/delivery instructions) and documents (a checklist of what is on file — shipping
+agreement, credit application, W-9, rate agreement, COI, routing guide — plus attached files and notes).
+Every customer row opens to all of it, with open AR against the credit limit, attached documents
+(attach, open, download, remove), a log, Move to inactive (with a reason) and Edit customer (which can
+also delete). New Load, invoices, batches and facilities pick from active customers, and invoices use
+the CRM billing details; renaming a customer renames it on its loads and invoices. **Inactive
+customers** (top right) lists customers moved there by a person (with the reason, who and when) or by
+RunTruck after a year with no loads or invoices (logged on the day the year passed, with the last use),
+and can reactivate them; reactivating counts as use. Companies not on 1.4 keep the read-only list.
+
 **Bills** (Accounting › Bills; `data/bills.ts`, `components/BillDialogs.tsx`; release 1.3). Bills are kept
 per company (`runtruck-<id>-bills`). **+ Add Bill** opens a form in five parts: the bill (vendor, vendor
 invoice #, category from a trucking list — fuel, repairs, parts, tires, insurance, leases, ELD, permits,

@@ -10,6 +10,7 @@ import { isLive } from '../lib/releases';
 import { describe, FilterPanel } from './FilterPanel';
 import { BatchDialog } from './BatchDialog';
 import { BillDialog } from './BillDialogs';
+import { CustomerDialog } from './CustomerDialogs';
 import { CompanyDialog } from './CompanyDialog';
 import { AccountDialog } from './AccountDialog';
 import { FacilityDialog } from './FacilityDialog';
@@ -30,12 +31,12 @@ const NO_FILTERS: ViewKey[] = ['dashboard', 'planner'];
 export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { query, setQuery, approveAll, loads, filterMeta, filterValues, setFilter, clearFilters } = useAppShell();
+  const { query, setQuery, approveAll, loads, customers, filterMeta, filterValues, setFilter, clearFilters } = useAppShell();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const now = useNow(15_000);
   const [newLoadOpen, setNewLoadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | 'bill' | null>(null);
+  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | 'bill' | 'customer' | null>(null);
 
   // Route matching is case-insensitive, so normalise before keying off the section.
   const segments = location.pathname.toLowerCase().split('/');
@@ -57,6 +58,7 @@ export function Header() {
     { label: '+ Create account', onClick: () => setAdding('account') },
     { label: '+ Create company', primary: true, onClick: () => setAdding('company') },
   ];
+  const inactiveView = view === 'crm' && new URLSearchParams(location.search).get('view') === 'inactive';
   const actionsFor: Record<string, HeadAction[]> = {
     // New Load from the Dashboard only for accounts that may open Loads.
     dashboard: can('loads') ? [{ label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) }] : [],
@@ -73,7 +75,15 @@ export function Header() {
     'fleet/drivers': [{ label: '+ Add Driver', primary: true, onClick: () => setAdding('driver') }],
     'fleet/trucks': [{ label: 'Log service' }, { label: '+ Add Unit', primary: true, onClick: () => setAdding('truck') }],
     'fleet/trailers': [{ label: '+ Add Trailer', primary: true, onClick: () => setAdding('trailer') }],
-    crm: [{ label: '+ Add Customer', primary: true }],
+    // Release 1.4: the inactive list and the Add Customer form.
+    crm: isLive('crm-customers')
+      ? [
+          inactiveView
+            ? { label: '← Active customers', onClick: () => navigate('/app/crm') }
+            : { label: `Inactive customers (${customers.filter((c) => c.status === 'Inactive').length})`, onClick: () => navigate('/app/crm?view=inactive') },
+          { label: '+ Add Customer', primary: true, onClick: () => setAdding('customer') },
+        ]
+      : [{ label: '+ Add Customer', primary: true }],
     facilities: [{ label: '+ Add Facility', primary: true, onClick: () => setAdding('facility') }],
     'accounting/uninvoiced': [{ label: '+ New Invoice', primary: true, onClick: () => setAdding('invoice') }],
     'accounting/invoiced': [{ label: '+ New Invoice', primary: true, onClick: () => setAdding('invoice') }],
@@ -147,6 +157,7 @@ export function Header() {
       {adding === 'batch' && <BatchDialog onClose={() => setAdding(null)} />}
       {adding === 'reminders' && <ReminderDialog onClose={() => setAdding(null)} />}
       {adding === 'bill' && <BillDialog onClose={() => setAdding(null)} />}
+      {adding === 'customer' && <CustomerDialog onClose={() => setAdding(null)} />}
       {adding === 'company' && <CompanyDialog onClose={() => setAdding(null)} />}
       {adding === 'account' && <AccountDialog onClose={() => setAdding(null)} />}
       {filtersOpen && <FilterPanel page={page} title={pageTitle} onClose={() => setFiltersOpen(false)} />}

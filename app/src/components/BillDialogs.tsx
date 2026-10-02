@@ -44,7 +44,7 @@ export function downloadDocument(d: BillDocument) {
 }
 
 // The documents on a bill: attach (PDF, images, Word, Excel), open, download, remove.
-export function BillDocuments({ docs, onChange }: { docs: BillDocument[]; onChange: (d: BillDocument[]) => void }) {
+export function BillDocuments({ docs, onChange, hint = 'The vendor’s invoice, receipts, contracts' }: { docs: BillDocument[]; onChange: (d: BillDocument[]) => void; hint?: string }) {
   const input = useRef<HTMLInputElement>(null);
   const [error, setError] = useState('');
 
@@ -69,7 +69,7 @@ export function BillDocuments({ docs, onChange }: { docs: BillDocument[]; onChan
     <div className="bill-docs">
       <div className="bill-docs-head">
         <span className="ui-label">Documents</span>
-        <span className="ui-stop-meta" style={{ marginTop: 0 }}>The vendor’s invoice, receipts, contracts · PDF, images, Word or Excel, up to 2 MB each</span>
+        <span className="ui-stop-meta" style={{ marginTop: 0 }}>{hint} · PDF, images, Word or Excel, up to 2 MB each</span>
         <div style={{ flex: 1 }} />
         <button type="button" className="ui-btn ui-btn-sm" onClick={() => input.current?.click()}>Attach document</button>
         <input
