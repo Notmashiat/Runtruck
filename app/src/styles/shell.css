@@ -178,6 +178,11 @@
 .ui-btn:hover { background: var(--ui-hover); }
 .ui-btn-primary { color: var(--ui-on-primary); background: var(--ui-primary); border-color: var(--ui-primary); }
 .ui-btn-primary:hover { background: var(--ui-primary-hover); border-color: var(--ui-primary-hover); }
+/* A second highlighted action next to the primary one (Create account beside
+   Create company): filled like it, in teal, so the two are told apart at a glance. */
+.ui-btn-teal { color: var(--ui-on-primary); background: var(--ui-teal); border-color: var(--ui-teal); }
+.ui-btn-teal:hover { background: color-mix(in srgb, var(--ui-teal) 86%, #000); border-color: color-mix(in srgb, var(--ui-teal) 86%, #000); }
+:root[data-theme="dark"] .ui-btn-teal:hover { background: color-mix(in srgb, var(--ui-teal) 82%, #fff); border-color: color-mix(in srgb, var(--ui-teal) 82%, #fff); }
 
 /* — section tabs (the centred pill bar) — */
 .ui-tabs {

@@ -71,6 +71,8 @@ const PREFETCH_AFTER_MS = 600;
 interface HeadAction {
   label: string;
   primary?: boolean;
+  // A second highlighted action beside the primary one, in its own colour.
+  tone?: 'teal';
   onClick?: () => void;
 }
 
@@ -115,7 +117,7 @@ export function Header() {
   // no onClick belongs to a release the company has not been given yet.
   const developer: HeadAction[] = [
     { label: '+ Create company', primary: true, onClick: () => setAdding('company') },
-    { label: '+ Create account', primary: true, onClick: () => setAdding('account') },
+    { label: '+ Create account', tone: 'teal', onClick: () => setAdding('account') },
   ];
   const inactiveView = view === 'crm' && new URLSearchParams(location.search).get('view') === 'inactive';
   const archivedView = tab === 'payroll' && new URLSearchParams(location.search).get('view') === 'archived';
@@ -225,7 +227,7 @@ export function Header() {
         </button>
       )}
       {headActions.map((a) => (
-        <button key={a.label} onClick={a.onClick} className={`ui-btn${a.primary ? ' ui-btn-primary' : ''}`} type="button">
+        <button key={a.label} onClick={a.onClick} className={`ui-btn${a.primary ? ' ui-btn-primary' : ''}${a.tone ? ` ui-btn-${a.tone}` : ''}`} type="button">
           {a.label}
         </button>
       ))}
