@@ -34,6 +34,9 @@ export interface LoadDocument {
   doc?: BillDocument;
 }
 
+// The documents every load has a slot for.
+export const DOCUMENT_SLOTS = ['Rate confirmation', 'Customer load tender', 'Bill of lading', 'Proof of delivery', 'Lumper receipt'];
+
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const iso = (v: unknown): string => (typeof v === 'string' && ISO.test(v) ? v : '');
 const dollars = (s: string) => Number(String(s ?? '').replace(/[^0-9.-]/g, '')) || 0;

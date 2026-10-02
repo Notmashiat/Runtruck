@@ -11,7 +11,7 @@ import { todayIso } from '../lib/clock';
 import { PHONE, STATE, ZIP } from '../lib/rules';
 import { getSettings } from '../lib/settingsStore';
 import { CustomerDocs } from './CustomerDocs';
-import { Field, useModal } from './FormBits';
+import { Field, useModal, useTracked } from './FormBits';
 import { RecordDialog, type SectionSpec } from './RecordDialog';
 
 const val = (v: FormValues, k: string) => (typeof v[k] === 'string' ? (v[k] as string).trim() : '');
@@ -99,8 +99,8 @@ function customerSections(takenNames: string[], reps: string[]): SectionSpec[] {
 export function CustomerDialog({ customer, onClose }: { customer?: CustomerRecord; onClose: () => void }) {
   const { customers, saveCustomer, deleteCustomer } = useAppShell();
   const [id] = useState(() => customer?.id ?? nextCustomerId(customers));
-  const [docs, setDocs] = useState<BillDocument[]>(customer?.documents ?? []);
-  const [onFile, setOnFile] = useState<string[]>(customer?.onFile ?? []);
+  const [docs, setDocs, docsChanged] = useTracked<BillDocument[]>(customer?.documents ?? []);
+  const [onFile, setOnFile, onFileChanged] = useTracked<string[]>(customer?.onFile ?? []);
   const [inactivating, setInactivating] = useState(false);
   const [initial] = useState<FormValues>(() => (customer ? customerToForm(customer) : blankCustomerForm(todayIso(), USER.name)));
   const taken = customers.filter((c) => c.id !== id).map((c) => c.name.toLowerCase());
@@ -125,6 +125,7 @@ export function CustomerDialog({ customer, onClose }: { customer?: CustomerRecor
       noun="customer"
       deleteNote="The customer and its documents are removed for good; loads and invoices keep the name. To keep the record, move it to inactive instead."
       extras={{ Documents: <CustomerDocs docs={docs} onFile={onFile} owner={customer?.name ?? 'New customer'} onChange={(d, f) => { setDocs(d); setOnFile(f); }} /> }}
+      extraDirty={docsChanged || onFileChanged}
       footerExtra={
         customer && (customer.status === 'Active'
           ? <button type="button" className="ui-btn ui-btn-danger" onClick={() => setInactivating(true)}>Move to inactive</button>

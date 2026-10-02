@@ -168,6 +168,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.9',
+    date: '2026-10-02',
+    title: 'Load status, documents and history',
+    changes: [
+      {
+        id: 'load-tracking', kind: 'Updated', section: 'Loads', title: 'Update a load from its page: status, documents, history',
+        details: 'Update status on a load’s page moves it through Needs driver, Dispatched, At pickup, In transit, Delayed, Needs POD and Delivered, and records the day it was delivered (which invoicing and driver pay use). Documents on the load page can be attached, replaced, opened and downloaded; attaching the proof of delivery to a load that is waiting for it marks it Delivered. Activity shows who did what and when.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

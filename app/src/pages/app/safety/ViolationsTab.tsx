@@ -9,7 +9,7 @@ import type { FormValues } from '../../../data/fleet';
 import { fmtDate, usd } from '../../../data/invoicing';
 import { USER } from '../../../data/mock';
 import { VIOLATIONS, type Violation } from '../../../data/safety';
-import { BASICS, CLEAN, VIOLATION_TAG, daysBetween, isClean, timeWeight, weightedPoints, type ViolationRecord } from '../../../data/safetyRecords';
+import { BASICS, CLEAN, VIOLATION_TAG, countsAgainst, daysBetween, isClean, isRemoved, timeWeight, weightedPoints, type ViolationRecord } from '../../../data/safetyRecords';
 import { isoDateAt, todayIso } from '../../../lib/clock';
 import { isLive } from '../../../lib/releases';
 import { matchesQuery } from '../../../lib/search';
@@ -45,12 +45,12 @@ function Inspections() {
 
   const window24 = violations.filter((v) => daysBetween(v.date, today) <= 730);
   const last12 = violations.filter((v) => daysBetween(v.date, today) <= 365);
-  const oos12 = last12.filter((v) => v.oos);
+  const oos12 = last12.filter((v) => v.oos && countsAgainst(v));
   const unresolved = violations.filter((v) => !isClean(v) && v.status !== 'Closed');
   const points = window24.reduce((s, v) => s + weightedPoints(v, today), 0);
 
   const kpis = [
-    { label: 'Inspections (12 mo)', value: String(last12.length), note: `${last12.filter(isClean).length} clean · ${last12.filter((v) => !isClean(v)).length} with violations` },
+    { label: 'Inspections (12 mo)', value: String(last12.length), note: `${last12.filter((v) => !countsAgainst(v)).length} clean or removed · ${last12.filter(countsAgainst).length} with violations` },
     { label: 'Out-of-service rate', value: last12.length ? `${Math.round((oos12.length / last12.length) * 100)}%` : '—', note: `${oos12.length} of ${last12.length} inspections · last 12 months` },
     { label: 'Open & contested', value: String(unresolved.length), note: unresolved.map((v) => `${v.driver.split(' ').at(-1)} ${v.code || v.basic}`).join(' · ') || 'Nothing waiting' },
     { label: 'Weighted points (24 mo)', value: String(points), note: 'Severity × time weight, all BASICs' },
@@ -58,12 +58,12 @@ function Inspections() {
 
   // Per BASIC and per driver, over the 24 months FMCSA counts.
   const byBasic = BASICS.map((b) => {
-    const list = window24.filter((v) => v.basic === b);
+    const list = window24.filter((v) => v.basic === b && countsAgainst(v));
     return { basic: b, count: list.length, oos: list.filter((v) => v.oos).length, points: list.reduce((s, v) => s + weightedPoints(v, today), 0), last: list.map((v) => v.date).sort().pop() ?? '' };
   });
   const maxPoints = Math.max(1, ...byBasic.map((b) => b.points));
-  const byDriver = [...new Set(window24.filter((v) => !isClean(v)).map((v) => v.driver))].map((name) => {
-    const list = window24.filter((v) => v.driver === name && !isClean(v));
+  const byDriver = [...new Set(window24.filter(countsAgainst).map((v) => v.driver))].map((name) => {
+    const list = window24.filter((v) => v.driver === name && countsAgainst(v));
     return { name, count: list.length, points: list.reduce((s, v) => s + weightedPoints(v, today), 0), coached: list.filter((v) => v.coached).length };
   }).sort((a, b) => b.points - a.points);
 
@@ -146,7 +146,7 @@ function Inspections() {
                     <td className="strong">{v.driver}<div className="ui-stop-meta">{[v.truck, v.trailer].filter(Boolean).join(' / ')}</div></td>
                     <td>{clean ? 'Clean inspection' : v.basic}<div className="ui-stop-meta">{clean ? v.level : `${v.code} · ${v.description}`}</div></td>
                     <td className="muted">{v.location}{v.state ? `, ${v.state}` : ''}</td>
-                    <td className="num">{clean ? '—' : weightedPoints(v, today)}{!clean && <div className="ui-stop-meta">{v.severity}{v.oos ? ' + 2 OOS' : ''} × {timeWeight(v.date, today)}</div>}</td>
+                    <td className="num">{clean ? '—' : weightedPoints(v, today)}{!clean && <div className="ui-stop-meta">{isRemoved(v) ? 'Removed: does not count' : `${v.severity}${v.oos ? ' + 2 OOS' : ''} × ${timeWeight(v.date, today)}`}</div>}</td>
                     <td className="num"><Tag label={st} tagClass={VIOLATION_TAG[st as keyof typeof VIOLATION_TAG]} />{v.oos && <div className="ui-stop-meta" style={{ color: 'var(--ui-red)' }}>Out of service</div>}</td>
                   </tr>
                   {isOpen && (

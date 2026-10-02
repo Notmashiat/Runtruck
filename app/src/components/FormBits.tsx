@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode, type SyntheticEvent } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from 'react';
 
 // Small pieces shared by the accounting popups.
 
@@ -54,6 +54,15 @@ export function useModal(onClose: () => void) {
     return mine;
   };
   return { ref, closeNow, ownEvent };
+}
+
+// useState that also says whether the value has been changed since it
+// started. For the parts of a form kept outside its fields (attached
+// documents, pay items), so closing asks before discarding them.
+export function useTracked<T>(initial: T | (() => T)) {
+  const [value, setValue] = useState(initial);
+  const [start] = useState(value);
+  return [value, setValue, value !== start] as const;
 }
 
 export const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());

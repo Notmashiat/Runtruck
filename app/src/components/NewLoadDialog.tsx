@@ -3,7 +3,7 @@ import { useAppShell } from '../context/AppShellContext';
 import { money } from '../data/accounting';
 import type { BillDocument } from '../data/bills';
 import { facilityFor, isRoad, stopHint, type Facility } from '../data/facilities';
-import { LOAD_TAG, normalizeLoad } from '../data/loads';
+import { DOCUMENT_SLOTS, LOAD_TAG, normalizeLoad } from '../data/loads';
 import { CARRIERS, CUSTOMERS, stopsOf, USER, type Load } from '../data/mock';
 import { isoFromText, shortDate } from '../lib/clock';
 import { nextSerial } from '../lib/ids';
@@ -20,7 +20,7 @@ const PACKAGING = ['Pallets', 'Skids', 'Crates', 'Boxes', 'Drums', 'Totes', 'Loo
 const FREIGHT_CLASSES = ['50', '55', '60', '65', '70', '77.5', '85', '92.5', '100', '110', '125', '150', '175', '200', '250', '300', '400', '500'];
 const LTL_SERVICES = ['Liftgate at pickup', 'Liftgate at delivery', 'Residential delivery', 'Inside delivery', 'Delivery appointment', 'Limited access'];
 const TERMS = ['Net 15', 'Net 30', 'Net 45', 'Net 60', 'Quick pay'];
-const DOCUMENTS = ['Rate confirmation', 'Customer load tender', 'Bill of lading', 'Proof of delivery', 'Lumper receipt'];
+const DOCUMENTS = DOCUMENT_SLOTS;
 
 interface StopDraft {
   kind: 'Pickup' | 'Delivery';

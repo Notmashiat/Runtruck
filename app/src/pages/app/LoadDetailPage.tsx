@@ -2,10 +2,14 @@ import type { CSSProperties } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Card } from '../../components/Card';
 import { Kpis } from '../../components/Kpis';
+import { LoadDocuments } from '../../components/LoadDialogs';
 import { Tag } from '../../components/Tag';
 import { useAppShell } from '../../context/AppShellContext';
 import { facilityFor, stopHint } from '../../data/facilities';
-import { USER } from '../../data/mock';
+import { usd } from '../../data/invoicing';
+import { LOAD_TAG, loadTotal } from '../../data/loads';
+import { when } from '../../lib/format';
+import { isLive } from '../../lib/releases';
 
 export function LoadDetailPage() {
   const { id = '' } = useParams();
@@ -24,6 +28,8 @@ export function LoadDetailPage() {
   }
 
   const delivered = sel.status === 'Delivered';
+  // Release 1.9: status, documents and history are worked from this page.
+  const tracking = isLive('load-tracking');
 
   // Loads entered with New Load carry their own stops, documents and history.
   const stops = sel.stops
@@ -35,7 +41,9 @@ export function LoadDetailPage() {
       ];
 
   const facts: { k: string; v: string; note?: string }[] = [
-    { k: 'Miles', v: sel.miles }, { k: 'Line haul', v: sel.rate, note: sel.rpm === '—' ? undefined : `${sel.rpm} / mi` },
+    { k: 'Miles', v: sel.miles },
+    // With fuel or accessorials on the load, the customer pays more than the line haul.
+    { k: 'Line haul', v: sel.rate, note: [sel.rpm === '—' ? '' : `${sel.rpm} / mi`, sel.charges && loadTotal(sel) !== sel.charges.lineHaul ? `${usd(loadTotal(sel))} total to customer` : ''].filter(Boolean).join(' · ') || undefined },
     { k: sel.carrierRate ? 'Carrier cost' : 'Driver pay', v: sel.pay }, { k: 'Margin', v: sel.margin },
   ];
   const freight = [
@@ -55,20 +63,25 @@ export function LoadDetailPage() {
         { name: 'Bill of lading', state: delivered || sel.status === 'Needs POD' ? 'Attached' : 'Pending' },
         { name: 'Proof of delivery', state: delivered ? 'Attached' : 'Pending' },
       ];
-  const activity = [
-    ...(sel.createdAt
+  // What happened to the load, newest last: its recorded history (who and
+  // when), or for a load saved before history was kept, what is known.
+  const activity = sel.history?.length
+    ? [
+        ...sel.history.map((h) => ({ when: when(h.at), what: `${h.what} · ${h.by}` })),
+        ...(sel.notes ? [{ when: '', what: `Driver instructions: ${sel.notes}` }] : []),
+      ]
+    : sel.createdAt || sel.form
       ? [
-          { when: sel.createdAt, what: `Load created by ${USER.name}` },
-          ...(sel.notes ? [{ when: sel.createdAt, what: `Driver instructions: ${sel.notes}` }] : []),
+          { when: 'Earlier', what: 'Load created' },
+          ...(sel.notes ? [{ when: '', what: `Driver instructions: ${sel.notes}` }] : []),
+          ...(sel.updatedAt ? [{ when: 'Earlier', what: 'Load edited' }] : []),
         ]
       : [
           { when: 'Today 07:12', what: 'Driver accepted the load in the app' },
           { when: 'Today 08:41', what: `Arrived at ${sel.from}` },
           { when: 'Today 10:05', what: 'Bill of lading uploaded from the cab' },
           { when: 'Today 10:06', what: delivered ? 'Invoice queued for billing' : 'Dispatch notified the consignee' },
-        ]),
-    ...(sel.updatedAt ? [{ when: sel.updatedAt, what: `Load edited by ${USER.name}` }] : []),
-  ];
+        ];
 
   const rowStyle = (i: number): CSSProperties => ({
     display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0',
@@ -89,8 +102,10 @@ export function LoadDetailPage() {
     <>
       <Card>
         <h2 className="ui-h2" style={{ margin: 0 }}>{sel.route}</h2>
-        <div style={{ marginTop: 6, fontSize: 14, color: 'var(--ui-muted)' }}>
-          Load {sel.id} · {sel.customer} · {sel.status}
+        <div style={{ marginTop: 6, fontSize: 14, color: 'var(--ui-muted)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+          <span>Load {sel.id} · {sel.customer}</span>
+          {tracking ? <Tag label={sel.status} tagClass={LOAD_TAG[sel.status] ?? sel.tagClass} /> : <span>· {sel.status}</span>}
+          {tracking && sel.deliveredOn && <span>· delivered {sel.delivery}</span>}
         </div>
       </Card>
 
@@ -126,7 +141,7 @@ export function LoadDetailPage() {
           <Card title="Carrier">{kv(carrier)}</Card>
 
           <Card title="Documents">
-            {docs.map((d, i) => (
+            {tracking ? <LoadDocuments load={sel} /> : docs.map((d, i) => (
               <div key={d.name} style={rowStyle(i)}>
                 <div style={{ flex: 1 }}>{d.name}</div>
                 <Tag label={d.state} tagClass={d.state === 'Attached' ? 'tag-green' : 'tag-outline'} />
@@ -137,7 +152,7 @@ export function LoadDetailPage() {
           <Card title="Activity">
             {activity.map((a, i) => (
               <div key={i} style={rowStyle(i)}>
-                <div style={{ width: 96, flex: 'none', fontSize: 13, color: 'var(--ui-muted)', fontVariantNumeric: 'tabular-nums' }}>{a.when}</div>
+                <div style={{ width: 150, flex: 'none', fontSize: 13, color: 'var(--ui-muted)', fontVariantNumeric: 'tabular-nums' }}>{a.when}</div>
                 <div style={{ flex: 1 }}>{a.what}</div>
               </div>
             ))}

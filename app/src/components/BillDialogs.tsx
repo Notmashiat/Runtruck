@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import {
   BILL_CATEGORIES, BILL_KINDS, BILL_TERMS, ENDS, FREQUENCIES, PAY_METHODS,
-  billFromForm, billToForm, blankBillForm, dueFrom, nextBillId, nextInSeries,
+  billFromForm, billToForm, blankBillForm, dueFrom, nextBillId, nextInSeries, seriesHasBillFrom,
   type BillDocument, type BillRecord,
 } from '../data/bills';
 import { TERMINALS, type FormValues } from '../data/fleet';
@@ -11,7 +11,7 @@ import { downloadDocument, fileSize, openDocument } from '../lib/attachments';
 import { isoDateAt, todayIso } from '../lib/clock';
 import { PHONE } from '../lib/rules';
 import { AttachDialog } from './AttachDialog';
-import { Field, useModal } from './FormBits';
+import { Field, useModal, useTracked } from './FormBits';
 import { RecordDialog, type SectionSpec } from './RecordDialog';
 
 const val = (v: FormValues, k: string) => (typeof v[k] === 'string' ? (v[k] as string).trim() : '');
@@ -128,7 +128,7 @@ function billSections(units: string[], trailers: string[], drivers: string[], lo
 export function BillDialog({ bill, onClose }: { bill?: BillRecord; onClose: () => void }) {
   const { bills, saveBill, deleteBill, trucks, trailers, drivers, loads } = useAppShell();
   const [id] = useState(() => bill?.id ?? nextBillId(bills));
-  const [docs, setDocs] = useState<BillDocument[]>(bill?.documents ?? []);
+  const [docs, setDocs, docsChanged] = useTracked<BillDocument[]>(bill?.documents ?? []);
   const [initial] = useState<FormValues>(() => (bill ? billToForm(bill) : blankBillForm(todayIso())));
 
   const sections = billSections(
@@ -149,13 +149,23 @@ export function BillDialog({ bill, onClose }: { bill?: BillRecord; onClose: () =
       noun="bill"
       deleteNote="The bill and its documents are removed for good. To keep a record, void it instead."
       extras={{ 'Documents & notes': <BillDocuments docs={docs} onChange={setDocs} owner={bill ? `${bill.vendor} · ${bill.id}` : 'New bill'} /> }}
+      extraDirty={docsChanged}
       adjust={(_prev, next, key) => {
         // The due date follows the bill date and terms; vendor auto-pay pays itself.
         if (key === 'issued' || key === 'terms') return { ...next, due: dueFrom(val(next, 'issued'), val(next, 'terms')) || val(next, 'due') };
         if (key === 'method' && val(next, 'method') === 'Vendor auto-pay') return { ...next, autopay: 'Yes' };
         return next;
       }}
-      onSave={(v) => saveBill(billFromForm(v, id, docs, bill))}
+      onSave={(v) => {
+        const saved = billFromForm(v, id, docs, bill);
+        saveBill(saved);
+        // A recurring bill entered as already paid starts its series here,
+        // as marking it paid would have.
+        if (saved.paid && !bill?.paid) {
+          const next = nextInSeries(saved, nextBillId([...bills, saved]));
+          if (next && !seriesHasBillFrom(bills, saved, next.due)) saveBill(next);
+        }
+      }}
       onDelete={bill ? () => deleteBill(bill.id) : undefined}
       onClose={onClose}
     />
@@ -171,11 +181,20 @@ export function PayBillDialog({ bill, onClose, onPaid }: { bill: BillRecord; onC
   const [method, setMethod] = useState(bill.method || 'ACH');
   const [reference, setReference] = useState('');
   const [makeNext, setMakeNext] = useState(true);
-  const next = nextInSeries(bill, nextBillId(bills));
-  const bad = !date || !(Number(amount.replace(/[$,]/g, '')) > 0);
+  const [short, setShort] = useState(false);
+  const candidate = nextInSeries(bill, nextBillId(bills));
+  // Not a second time: undoing a payment and recording it again finds the bill already made.
+  const already = Boolean(candidate && seriesHasBillFrom(bills, bill, candidate.due));
+  const next = already ? null : candidate;
+  const paying = Math.round((Number(amount.replace(/[$,]/g, '')) || 0) * 100) / 100;
+  const unpaid = Math.round((bill.amount - paying) * 100) / 100;
+  const bad = !date || !(paying > 0) || (unpaid > 0 && !short);
 
   const pay = () => {
-    saveBill({ ...bill, paid: { date, amount: Number(amount.replace(/[$,]/g, '')), method, reference: reference.trim() }, scheduledFor: undefined, updated: new Date().toISOString() });
+    saveBill({
+      ...bill, paid: { date, amount: paying, method, reference: reference.trim() }, scheduledFor: undefined, updated: new Date().toISOString(),
+      notes: unpaid > 0 ? [bill.notes, `Closed ${usd(unpaid)} short of ${usd(bill.amount)} on ${fmtDate(date)}.`].filter(Boolean).join(' ') : bill.notes,
+    });
     if (next && makeNext) saveBill(next);
     onPaid?.(`${bill.vendor} paid${next && makeNext ? `; next bill ${next.id} is due ${fmtDate(next.due)}` : ''}.`);
     closeNow();
@@ -201,13 +220,20 @@ export function PayBillDialog({ bill, onClose, onPaid }: { bill: BillRecord; onC
             </Field>
             <Field label="Check # or reference"><input className="ui-input" value={reference} onChange={(e) => setReference(e.target.value)} /></Field>
           </div>
+          {unpaid > 0 && paying > 0 && (
+            <label className="ui-check">
+              <input type="checkbox" checked={short} onChange={(e) => setShort(e.target.checked)} />
+              Close this bill with {usd(unpaid)} unpaid (a discount or credit). Otherwise enter the full {usd(bill.amount)}.
+            </label>
+          )}
           {next && (
             <label className="ui-check">
               <input type="checkbox" checked={makeNext} onChange={(e) => setMakeNext(e.target.checked)} />
               Make the next {bill.frequency?.toLowerCase()} bill ({next.id}, due {fmtDate(next.due)})
             </label>
           )}
-          {bill.frequency && !next && <div className="ui-note">This was the last bill in the series (it ends {fmtDate(bill.endsOn ?? '')}).</div>}
+          {bill.frequency && already && <div className="ui-note">The next bill in this series is already on the list.</div>}
+          {bill.frequency && !candidate && <div className="ui-note">This was the last bill in the series (it ends {fmtDate(bill.endsOn ?? '')}).</div>}
         </section>
         <footer className="ui-dialog-foot">
           <div style={{ flex: 1 }} />

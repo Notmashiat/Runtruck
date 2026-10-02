@@ -3,6 +3,7 @@
 // what is created, edited, emailed, batched and paid survives a reload.
 // Dates are ISO strings ('2026-09-03'); "today" is the planner's.
 import { nextSerial } from '../lib/ids';
+import { addDaysIso, daysBetweenIso } from '../lib/isoDates';
 import { deliveryIso, isDelivered, loadTotal, pickupIso, type LoadCharges } from './loads';
 import { CUSTOMERS, INVOICES, LOADS, USER, type Load } from './mock';
 import { TODAY } from './planner';
@@ -21,18 +22,9 @@ export function isoFromShort(s: string): string {
   return isoFromText(s);
 }
 
-const utc = (iso: string) => {
-  const [y, m, d] = iso.split('-').map(Number);
-  return Date.UTC(y, m - 1, d);
-};
-
-export function addDays(iso: string, n: number): string {
-  return new Date(utc(iso) + n * 86_400_000).toISOString().slice(0, 10);
-}
-
-export function daysFrom(from: string, to: string): number {
-  return Math.round((utc(to) - utc(from)) / 86_400_000);
-}
+// Date arithmetic lives in lib/isoDates.ts (safe on blank or mistyped dates).
+export const addDays = addDaysIso;
+export const daysFrom = daysBetweenIso;
 
 // '2026-09-03' → 'Sep 3, 2026' (or 'Sep 3' short).
 export function fmtDate(iso: string | undefined, short = false): string {

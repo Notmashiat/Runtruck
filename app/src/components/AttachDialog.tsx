@@ -63,7 +63,9 @@ export function AttachDialog({ title, kinds = [], only, accept = 'application/pd
     setBusy(true);
     const docs: BillDocument[] = [];
     const problems: string[] = [];
-    for (const p of ok) {
+    // Of two files marked as the same required document, the last one is the document.
+    const chosen = ok.filter((p, i) => p.kind === OTHER || ok.findLastIndex((q) => q.kind === p.kind) === i);
+    for (const p of chosen) {
       const d = await readAttachment(p.file, p.kind === OTHER ? undefined : p.kind);
       if (typeof d === 'string') problems.push(d);
       else docs.push(d);

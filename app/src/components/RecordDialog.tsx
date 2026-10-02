@@ -46,6 +46,9 @@ interface RecordDialogProps {
   // Extra content under a section's fields, by section title (e.g. attachments);
   // a function gets the form as it is now.
   extras?: Record<string, ReactNode | ((v: FormValues) => ReactNode)>;
+  // Something outside the fields was changed (documents attached, items added):
+  // closing then asks before discarding, as it does for the fields.
+  extraDirty?: boolean;
   // Follow-on changes when a field changes (e.g. a preset filling a checklist).
   adjust?: (prev: FormValues, next: FormValues, key: string) => FormValues;
   onSave: (v: FormValues) => void;
@@ -74,6 +77,7 @@ function validate(sections: SectionSpec[], v: FormValues): Record<string, string
       if (f.required && !value) errors[f.key] = 'Required';
       else if (value && f.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) errors[f.key] = 'Enter a valid email';
       else if (value && f.type === 'url' && !/^https?:\/\/\S+\.\S+$/.test(value)) errors[f.key] = 'Enter a full link, starting with https://';
+      else if (value && f.type === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(value)) errors[f.key] = 'Enter a date with a four-digit year';
       else if (value && f.check) {
         const msg = f.check(value, v);
         if (msg) errors[f.key] = msg;
@@ -100,7 +104,7 @@ export function RecordDialog(p: RecordDialogProps) {
   }, []);
 
   const errors = validate(p.sections, v);
-  const dirty = JSON.stringify(v) !== JSON.stringify(p.initial);
+  const dirty = Boolean(p.extraDirty) || JSON.stringify(v) !== JSON.stringify(p.initial);
   const set = (key: string, value: string | string[]) =>
     setV((prev) => {
       const next = { ...prev, [key]: value };
@@ -190,6 +194,8 @@ export function RecordDialog(p: RecordDialogProps) {
         <input
           className="ui-input"
           type={f.type ?? 'text'}
+          // A date box otherwise accepts five- and six-digit years.
+          max={f.type === 'date' ? '9999-12-31' : undefined}
           value={value}
           placeholder={f.placeholder}
           maxLength={f.maxLength}

@@ -16,6 +16,7 @@ import { describe, FilterPanel } from './FilterPanel';
 // its button responds at once.
 const forms = {
   load: () => import('./NewLoadDialog'),
+  loadStatus: () => import('./LoadDialogs'),
   fleet: () => import('./FleetDialogs'),
   facility: () => import('./FacilityDialog'),
   invoice: () => import('./InvoiceDialog'),
@@ -30,6 +31,7 @@ const forms = {
   account: () => import('./AccountDialog'),
 };
 const NewLoadDialog = lazyNamed(forms.load, 'NewLoadDialog');
+const LoadStatusDialog = lazyNamed(forms.loadStatus, 'LoadStatusDialog');
 const DriverDialog = lazyNamed(forms.fleet, 'DriverDialog');
 const TruckDialog = lazyNamed(forms.fleet, 'TruckDialog');
 const TrailerDialog = lazyNamed(forms.fleet, 'TrailerDialog');
@@ -52,7 +54,7 @@ const AccountDialog = lazyNamed(forms.account, 'AccountDialog');
 
 // Which forms each page's buttons open (the keys match actionsFor below).
 const FORMS_FOR: Record<string, (keyof typeof forms)[]> = {
-  dashboard: ['load'], loads: ['load'], loadDetail: ['load'],
+  dashboard: ['load'], loads: ['load'], loadDetail: ['load', 'loadStatus'],
   'fleet/drivers': ['fleet'], 'fleet/trucks': ['fleet'], 'fleet/trailers': ['fleet'],
   crm: ['customer'], facilities: ['facility'],
   'accounting/uninvoiced': ['invoice'], 'accounting/invoiced': ['invoice'], 'accounting/batches': ['batch'], 'accounting/past-due': ['reminders'],
@@ -80,7 +82,7 @@ export function Header() {
   const now = useNow(15_000);
   const [newLoadOpen, setNewLoadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | 'bill' | 'customer' | 'employee' | 'payrun' | 'contract' | 'onboarding' | 'workorder' | 'docrequest' | 'violation' | 'claim' | null>(null);
+  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | 'bill' | 'customer' | 'employee' | 'payrun' | 'contract' | 'onboarding' | 'workorder' | 'docrequest' | 'violation' | 'claim' | 'loadstatus' | null>(null);
 
   // Route matching is case-insensitive, so normalise before keying off the section.
   const segments = location.pathname.toLowerCase().split('/');
@@ -115,7 +117,8 @@ export function Header() {
     loadDetail: [
       { label: 'Message driver' },
       ...(detailLoad ? [{ label: 'Edit load', onClick: () => setEditOpen(true) }] : []),
-      { label: 'Update status', primary: true },
+      // Release 1.9: the status is changed here (it could not be changed at all before).
+      { label: 'Update status', primary: true, onClick: detailLoad && isLive('load-tracking') ? () => setAdding('loadstatus') : undefined },
     ],
     'fleet/drivers': [{ label: '+ Add Driver', primary: true, onClick: () => setAdding('driver') }],
     'fleet/trucks': [{ label: 'Log service' }, { label: '+ Add Unit', primary: true, onClick: () => setAdding('truck') }],
@@ -219,6 +222,7 @@ export function Header() {
       {editOpen && detailLoad && (
         <NewLoadDialog load={detailLoad} onClose={() => setEditOpen(false)} onDeleted={() => { setEditOpen(false); navigate('/app/loads'); }} />
       )}
+      {adding === 'loadstatus' && detailLoad && <LoadStatusDialog load={detailLoad} onClose={() => setAdding(null)} />}
       {adding === 'driver' && <DriverDialog onClose={() => setAdding(null)} />}
       {adding === 'truck' && <TruckDialog onClose={() => setAdding(null)} />}
       {adding === 'trailer' && <TrailerDialog onClose={() => setAdding(null)} />}

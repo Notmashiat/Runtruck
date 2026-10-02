@@ -6,6 +6,7 @@
 // deductions and estimated tax withholding. Stored per company
 // (runtruck-<id>-employees, runtruck-<id>-payruns).
 import { nextSerial } from '../lib/ids';
+import { addDaysIso } from '../lib/isoDates';
 import { reviveList } from '../lib/persist';
 import { IS_DEMO } from '../lib/account';
 import { shiftIso, todayIso } from '../lib/clock';
@@ -73,8 +74,10 @@ export interface Employee {
   withholdingPct: number;
   // Taken or added every pay.
   recurring: PayItem[];
-  // Gross paid this year before RunTruck pay runs.
+  // Gross paid before RunTruck pay runs, in the year `ytdBeforeYear` (it
+  // counts toward that year's total only, not every year after).
   ytdBefore: number;
+  ytdBeforeYear?: number;
   emergencyContact: string;
   notes: string;
   documents: BillDocument[];
@@ -99,6 +102,8 @@ export interface PayLine {
   loads: string[];
   hold: boolean;
   note: string;
+  // The day held pay was released and paid, when that was after the run's pay date.
+  paidOn?: string;
 }
 
 export interface PayRun {
@@ -122,36 +127,58 @@ export interface PayRun {
 // To the cent, with an exact half-cent rounding up (see round2 in data/invoicing.ts).
 export const round2 = (n: number) => Math.round(n * 100 + Math.sign(n) * 1e-6) / 100;
 
-export function addDays(iso: string, n: number): string {
-  const d = new Date(`${iso}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
+// Date arithmetic lives in lib/isoDates.ts (safe on blank or mistyped dates).
+export const addDays = addDaysIso;
 
 const dow = (iso: string) => new Date(`${iso}T12:00:00Z`).getUTCDay();
 export const mondayOf = (iso: string) => addDays(iso, -((dow(iso) + 6) % 7));
 
-// The last full pay period before `today`, and its pay date (the Friday after).
-export function defaultPeriod(f: PayFrequency, today = todayIso()): { start: string; end: string; payDate: string } {
-  const thisMonday = mondayOf(today);
+// The pay period to offer for a new run, and its pay date.
+//
+// With `lastEnd` (the end of the group's latest run) the period carries on
+// from the day after it, so no days are skipped or paid twice even when a
+// run is made late. Without it: the last full period before `today`. The pay
+// date is the Friday after the period (weekly groups) or five days after it
+// (monthly groups), and never a day that has already passed.
+export function defaultPeriod(f: PayFrequency, today = todayIso(), lastEnd = ''): { start: string; end: string; payDate: string } {
   const fridayAfter = (iso: string) => addDays(iso, (5 - dow(iso) + 7) % 7 || 7);
+  const notPast = (iso: string) => (iso < today ? today : iso);
+  const [y, m, d] = today.split('-').map(Number);
+  const iso = (yy: number, mm: number, dd: number) => new Date(Date.UTC(yy, mm - 1, dd)).toISOString().slice(0, 10);
+  const monthEnd = (day: string) => iso(Number(day.slice(0, 4)), Number(day.slice(5, 7)) + 1, 0);
+
+  const next = lastEnd ? addDays(lastEnd, 1) : '';
+  if (next) {
+    if (f === 'Weekly' || f === 'Every 2 weeks') {
+      const end = addDays(next, f === 'Weekly' ? 6 : 13);
+      return { start: next, end, payDate: notPast(fridayAfter(end)) };
+    }
+    const day = Number(next.slice(8, 10));
+    const end = f === 'Twice a month' && day <= 15 ? `${next.slice(0, 8)}15` : monthEnd(next);
+    return { start: next, end, payDate: notPast(addDays(end, 5)) };
+  }
+
+  const thisMonday = mondayOf(today);
   if (f === 'Weekly') {
     const start = addDays(thisMonday, -7);
     const end = addDays(thisMonday, -1);
-    return { start, end, payDate: fridayAfter(end) };
+    return { start, end, payDate: notPast(fridayAfter(end)) };
   }
   if (f === 'Every 2 weeks') {
     const start = addDays(thisMonday, -14);
     const end = addDays(thisMonday, -1);
-    return { start, end, payDate: fridayAfter(end) };
+    return { start, end, payDate: notPast(fridayAfter(end)) };
   }
-  const [y, m, d] = today.split('-').map(Number);
-  const iso = (yy: number, mm: number, dd: number) => new Date(Date.UTC(yy, mm - 1, dd)).toISOString().slice(0, 10);
   if (f === 'Twice a month') {
-    if (d > 15) return { start: iso(y, m, 1), end: iso(y, m, 15), payDate: iso(y, m, 20) };
-    return { start: iso(y, m - 1, 16), end: iso(y, m, 0), payDate: iso(y, m, 5) };
+    if (d > 15) return { start: iso(y, m, 1), end: iso(y, m, 15), payDate: notPast(iso(y, m, 20)) };
+    return { start: iso(y, m - 1, 16), end: iso(y, m, 0), payDate: notPast(iso(y, m, 5)) };
   }
-  return { start: iso(y, m - 1, 1), end: iso(y, m, 0), payDate: iso(y, m, 5) };
+  return { start: iso(y, m - 1, 1), end: iso(y, m, 0), payDate: notPast(iso(y, m, 5)) };
+}
+
+// The end of a pay group's latest run ('' when it has none yet).
+export function lastRunEnd(payRuns: PayRun[], f: PayFrequency): string {
+  return payRuns.filter((r) => r.frequency === f).map((r) => r.end).sort().pop() ?? '';
 }
 
 // '$0.62 / mi' style, for lists.
@@ -226,6 +253,73 @@ export function lineFor(e: Employee, frequency: PayFrequency, start: string, end
   return settle(base, e, frequency);
 }
 
+// — what has been paid —
+
+export interface PaidSummary {
+  gross: number;
+  net: number;
+  // The latest day they were paid (any year); '' if never.
+  lastPaid: string;
+}
+
+// The year `ytdBefore` belongs to: as recorded, or (records from before it
+// was recorded) the year the employee was added.
+const beforeYear = (e: Employee) => e.ytdBeforeYear ?? Number(e.created.slice(0, 4));
+
+// The day a line was paid: the run's pay date, or the day held pay was released.
+export const paidDay = (r: PayRun, l: PayLine) => l.paidOn ?? r.payDate;
+
+// What everyone was paid in a year, in one pass over the pay runs: paid runs
+// only, held pay left out, plus what an employee was paid before RunTruck
+// when that was in the same year.
+export function paidSummary(payRuns: PayRun[], employees: Employee[], year: string): Map<string, PaidSummary> {
+  const out = new Map<string, PaidSummary>();
+  const at = (id: string) => {
+    let s = out.get(id);
+    if (!s) {
+      s = { gross: 0, net: 0, lastPaid: '' };
+      out.set(id, s);
+    }
+    return s;
+  };
+  for (const e of employees) if (e.ytdBefore && String(beforeYear(e)) === year) at(e.id).gross += e.ytdBefore;
+  for (const r of payRuns) {
+    if (r.status !== 'Paid') continue;
+    for (const l of r.lines) {
+      if (l.hold) continue;
+      const day = paidDay(r, l);
+      const s = at(l.employeeId);
+      if (day > s.lastPaid) s.lastPaid = day;
+      if (day.startsWith(year)) {
+        s.gross = round2(s.gross + l.gross);
+        s.net = round2(s.net + l.net);
+      }
+    }
+  }
+  return out;
+}
+
+// Year to date as a pay statement shows it: everything paid in the run's
+// year up to its pay date, with the statement's own line counted whether or
+// not the run is paid yet.
+export function ytdAsOf(payRuns: PayRun[], e: Employee | undefined, run: PayRun, line: PayLine): { gross: number; net: number } {
+  const year = run.payDate.slice(0, 4);
+  let gross = e && e.ytdBefore && String(beforeYear(e)) === year ? e.ytdBefore : 0;
+  let net = 0;
+  for (const r of payRuns) {
+    for (const l of r.lines) {
+      if (l.employeeId !== line.employeeId) continue;
+      const own = r.id === run.id;
+      const day = paidDay(r, l);
+      if (own || (r.status === 'Paid' && !l.hold && day.startsWith(year) && day <= run.payDate)) {
+        gross += l.gross;
+        net += l.net;
+      }
+    }
+  }
+  return { gross: round2(gross), net: round2(net) };
+}
+
 export const runTotals = (r: PayRun) => {
   const paid = r.lines.filter((l) => !l.hold);
   return {
@@ -278,6 +372,8 @@ export function employeeFromForm(v: FormValues, id: string, recurring: PayItem[]
     payBasis: str(v, 'payBasis') as PayBasis, rate: num(v, 'rate'), hoursPerPeriod: num(v, 'hoursPerPeriod') || 80,
     frequency: str(v, 'frequency') as PayFrequency, method: str(v, 'method'), bank: str(v, 'bank'), accountLast4: str(v, 'accountLast4'),
     withholdingPct: str(v, 'workerType').startsWith('W-2') ? num(v, 'withholdingPct') : 0, recurring, ytdBefore: num(v, 'ytdBefore'),
+    // The year the "before RunTruck" figure is for: kept, unless the figure was changed (then it is for this year).
+    ytdBeforeYear: prev && prev.ytdBefore === num(v, 'ytdBefore') ? prev.ytdBeforeYear ?? Number(prev.created.slice(0, 4)) : Number(todayIso().slice(0, 4)),
     emergencyContact: str(v, 'emergencyContact'), notes: str(v, 'notes'), documents,
     status: prev?.status ?? 'Active', log: prev ? prev.log : [{ at: now, by, action: 'Added', reason: 'Added to payroll' }],
     created: prev?.created ?? now, updated: prev ? now : undefined,

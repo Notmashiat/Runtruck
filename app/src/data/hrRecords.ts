@@ -7,6 +7,7 @@
 // (49 CFR 391 and 382) — then puts them on payroll, the fleet and a contract.
 // Stored per company (runtruck-<id>-contracts, runtruck-<id>-onboarding).
 import { nextSerial } from '../lib/ids';
+import { addMonthsIso, daysBetweenIso, isIsoDate } from '../lib/isoDates';
 import { reviveList } from '../lib/persist';
 import { IS_DEMO } from '../lib/account';
 import { shiftIso, todayIso } from '../lib/clock';
@@ -28,12 +29,9 @@ const num = (v: FormValues, k: string) => Number(str(v, k).replace(/[$,%]/g, '')
 const list = (v: FormValues, k: string) => (Array.isArray(v[k]) ? (v[k] as string[]) : []);
 const made = (iso: string) => `${iso}T12:00:00.000Z`;
 
-export function addMonths(iso: string, months: number): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  const last = new Date(Date.UTC(y, m - 1 + months + 1, 0)).getUTCDate();
-  return new Date(Date.UTC(y, m - 1 + months, Math.min(d, last))).toISOString().slice(0, 10);
-}
-export const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86_400_000);
+// Date arithmetic lives in lib/isoDates.ts (safe on blank or mistyped dates).
+export const addMonths = (iso: string, months: number): string => addMonthsIso(iso, months);
+export const daysBetween = daysBetweenIso;
 export const isDriverRole = (role: string) => DRIVER_ROLES.includes(role);
 
 // — contracts —
@@ -131,10 +129,18 @@ const lengthMonths = (t: string) => {
 
 // The end date in force today: a contract that renews by itself rolls forward a term at a time.
 export function currentEnd(c: Pick<ContractRecord, 'termType' | 'end' | 'renewal' | 'termLength'>, today = todayIso()): string {
-  if (c.termType !== 'Fixed term' || !c.end) return '';
-  let end = c.end;
+  if (c.termType !== 'Fixed term' || !isIsoDate(c.end)) return '';
   const months = lengthMonths(c.termLength);
-  if (c.renewal === 'Renews automatically' && months > 0) while (end < today) end = addMonths(end, months);
+  if (c.renewal !== 'Renews automatically' || months <= 0) return c.end;
+  // Each renewal is counted from the original end date (not from the one
+  // before), so a term ending on the 31st does not drift to the 28th after
+  // passing through February. The cap is a guard, far beyond any real term.
+  let end = c.end;
+  for (let k = 1; end < today && k <= 1200; k += 1) {
+    const next = addMonths(c.end, months * k);
+    if (!next) break;
+    end = next;
+  }
   return end;
 }
 
@@ -164,11 +170,14 @@ export function contractPay(c: Pick<ContractRecord, 'payBasis' | 'rate'>): strin
 
 // '$0.58 / mi' → Per mile 0.58; '75% of line haul'; '$52,000 / yr'; '$34.50 / hr'; '$250 / load'.
 export function parseOffer(text: string): { payBasis: PayBasis; rate: number } | null {
-  const n = Number((/[\d,]+(\.\d+)?/.exec(text)?.[0] ?? '').replace(/,/g, ''));
+  // The first number, which may start with the decimal point ('$.58 / mi').
+  const n = Number((/\d[\d,]*(\.\d+)?|\.\d+/.exec(text)?.[0] ?? '').replace(/,/g, ''));
   if (!n) return null;
   const t = text.toLowerCase();
   if (t.includes('%')) return { payBasis: '% of line haul', rate: n };
-  if (/\/\s*(mi|mile)/.test(t) || t.includes('cpm')) return { payBasis: 'Per mile', rate: n };
+  // '58 cpm' is cents per mile.
+  if (t.includes('cpm') || /cents?\s*(\/|per|a)\s*mi/.test(t)) return { payBasis: 'Per mile', rate: Math.round(n) / 100 };
+  if (/\/\s*(mi|mile)/.test(t) || /per\s+mile/.test(t)) return { payBasis: 'Per mile', rate: n };
   if (/\/\s*(hr|hour)/.test(t)) return { payBasis: 'Hourly', rate: n };
   if (/\/\s*load/.test(t)) return { payBasis: 'Flat per load', rate: n };
   if (/\/\s*(yr|year)/.test(t) || n >= 10000) return { payBasis: 'Salary', rate: n };
@@ -406,18 +415,27 @@ export function checklistFor(role: string, workerType: string): Step[] {
 
 export const stepId = () => `S-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 
-// Where a hire is: the first stage with a required step still open.
+// The next required step still open: the earliest stage first, then the
+// order within it (steps added by hand sit at the end of the list, whatever
+// their stage).
+export function nextStepOf(o: Pick<OnboardingRecord, 'steps'>): Step | undefined {
+  const order = STAGES as readonly string[];
+  return o.steps
+    .map((s, i) => ({ s, i }))
+    .filter(({ s }) => s.required && !s.done)
+    .sort((a, b) => order.indexOf(a.s.stage) - order.indexOf(b.s.stage) || a.i - b.i)[0]?.s;
+}
+
+// Where a hire is: the earliest stage with a required step still open.
 export function stageOf(o: OnboardingRecord): string {
   if (o.status !== 'In progress') return o.status;
-  const open = o.steps.find((s) => s.required && !s.done);
-  return open ? open.stage : 'Ready to hire';
+  return nextStepOf(o)?.stage ?? 'Ready to hire';
 }
 export function progressOf(o: OnboardingRecord): { done: number; total: number; pct: number } {
   const req = o.steps.filter((s) => s.required);
   const done = req.filter((s) => s.done).length;
   return { done, total: req.length, pct: req.length ? Math.round((done / req.length) * 100) : 100 };
 }
-export const nextStepOf = (o: OnboardingRecord) => o.steps.find((s) => s.required && !s.done);
 export const ONBOARDING_TAG: Record<string, string> = {
   'Ready to hire': 'tag-green', Hired: 'tag-green', 'Not hired': 'tag-neutral', Withdrawn: 'tag-neutral',
 };

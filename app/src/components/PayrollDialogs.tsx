@@ -7,13 +7,13 @@ import { deliveryIso, isDelivered, lineHaulOf } from '../data/loads';
 import { USER, type Load } from '../data/mock';
 import {
   ARCHIVE_REASONS, COMMON_ADDITIONS, COMMON_DEDUCTIONS, DRIVER_ROLES, EMPLOYEE_ROLES, ITEM_KINDS, PAY_BASES, PAY_FREQUENCIES, PAYOUT_METHODS, WORKER_TYPES,
-  blankEmployeeForm, defaultPeriod, earns, employeeFromForm, employeeToForm, itemId, lineFor, nextEmployeeId, nextRunId, payLabel, settle, unitLabel, unitsText,
+  addDays, blankEmployeeForm, defaultPeriod, earns, employeeFromForm, employeeToForm, itemId, lastRunEnd, lineFor, nextEmployeeId, nextRunId, payLabel, settle, unitLabel, unitsText,
   type DeliveredLoad, type Employee, type ItemKind, type PayFrequency, type PayItem, type PayLine, type PayRun,
 } from '../data/payroll';
 import { todayIso } from '../lib/clock';
 import { PHONE, STATE, ZIP } from '../lib/rules';
 import { BillDocuments } from './BillDialogs';
-import { Field, useModal } from './FormBits';
+import { Field, useModal, useTracked } from './FormBits';
 import { RecordDialog, type SectionSpec } from './RecordDialog';
 
 const val = (v: FormValues, k: string) => (typeof v[k] === 'string' ? (v[k] as string).trim() : '');
@@ -131,8 +131,8 @@ function employeeSections(drivers: string[], taken: string[]): SectionSpec[] {
 export function EmployeeDialog({ employee, prefill, onSaved, onClose }: { employee?: Employee; prefill?: FormValues; onSaved?: (id: string) => void; onClose: () => void }) {
   const { employees, saveEmployee, deleteEmployee, drivers, payRuns } = useAppShell();
   const [id] = useState(() => employee?.id ?? nextEmployeeId(employees));
-  const [recurring, setRecurring] = useState<PayItem[]>(employee?.recurring ?? []);
-  const [docs, setDocs] = useState<BillDocument[]>(employee?.documents ?? []);
+  const [recurring, setRecurring, recurringChanged] = useTracked<PayItem[]>(employee?.recurring ?? []);
+  const [docs, setDocs, docsChanged] = useTracked<BillDocument[]>(employee?.documents ?? []);
   const [initial] = useState<FormValues>(() => (employee ? employeeToForm(employee) : { ...blankEmployeeForm(todayIso()), ...prefill }));
   const [archiving, setArchiving] = useState(false);
   const taken = employees.filter((e) => e.id !== id).map((e) => e.name.toLowerCase());
@@ -160,6 +160,7 @@ export function EmployeeDialog({ employee, prefill, onSaved, onClose }: { employ
           'Every pay': <ItemsEditor items={recurring} onChange={setRecurring} />,
           'Documents & notes': <BillDocuments docs={docs} onChange={setDocs} owner={employee?.name ?? 'New employee'} hint="W-4 or W-9, direct deposit form, contract, CDL" />,
         }}
+        extraDirty={recurringChanged || docsChanged}
         footerExtra={
           employee && (employee.status === 'Active'
             ? <button type="button" className="ui-btn ui-btn-danger" onClick={() => setArchiving(true)}>Archive</button>
@@ -227,13 +228,21 @@ export function PayRunDialog({ onClose, onCreated }: { onClose: () => void; onCr
   // By default, everyone in the group who earned something in the period.
   const earners = (f: PayFrequency, p: { start: string; end: string }) =>
     active.filter((e) => e.frequency === f).filter((e) => earns(lineFor(e, f, p.start, p.end, delivered))).map((e) => e.id);
+  // The period carries on from the group's last run, so no days are skipped.
+  const periodFor = (f: PayFrequency) => defaultPeriod(f, todayIso(), lastRunEnd(payRuns, f));
   const [frequency, setFrequency] = useState<PayFrequency>(firstFreq);
-  const [period, setPeriodState] = useState(() => defaultPeriod(firstFreq));
-  const [picked, setPicked] = useState<string[]>(() => earners(firstFreq, defaultPeriod(firstFreq)));
+  const [period, setPeriodState] = useState(() => periodFor(firstFreq));
+  const [picked, setPicked] = useState<string[]>(() => earners(firstFreq, periodFor(firstFreq)));
   const setPeriod = (p: typeof period) => {
+    // Who is ticked follows the period; changing only the pay date keeps the ticks.
+    const moved = p.start !== period.start || p.end !== period.end;
     setPeriodState(p);
-    if (p.start && p.end) setPicked(earners(frequency, p));
+    if (moved && p.start && p.end) setPicked(earners(frequency, p));
   };
+  const today = todayIso();
+  const lastEnd = lastRunEnd(payRuns, frequency);
+  // Days between the last run and this one that no run covers.
+  const gap = lastEnd && period.start > addDays(lastEnd, 1) ? { from: addDays(lastEnd, 1), to: addDays(period.start, -1) } : null;
   const loadsInPeriod = delivered.filter((l) => l.delivered >= period.start && l.delivered <= period.end).length;
   const group = active.filter((e) => e.frequency === frequency);
   const preview = group.map((e) => lineFor(e, frequency, period.start, period.end, delivered));
@@ -242,7 +251,7 @@ export function PayRunDialog({ onClose, onCreated }: { onClose: () => void; onCr
   const bad = !period.start || !period.end || period.end < period.start || !period.payDate || chosen.length === 0;
 
   const pickFrequency = (f: PayFrequency) => {
-    const p = defaultPeriod(f);
+    const p = periodFor(f);
     setFrequency(f);
     setPeriodState(p);
     setPicked(earners(f, p));
@@ -280,6 +289,8 @@ export function PayRunDialog({ onClose, onCreated }: { onClose: () => void; onCr
             <Field label="Pay date"><input className="ui-input" type="date" value={period.payDate} onChange={(e) => setPeriod({ ...period, payDate: e.target.value })} /></Field>
           </div>
           {period.payDate && period.end && period.payDate < period.end && <div className="ui-note">The pay date is before the period ends ({fmtDate(period.end)}). Pay in arrears: pick a date after the period.</div>}
+          {period.end >= today && <div className="ui-note">This period is not over until {fmtDate(period.end)}: loads delivered after today are not in it yet.</div>}
+          {gap && <div className="ui-note">{fmtDate(gap.from)} – {fmtDate(gap.to)} is not in any {frequency.toLowerCase()} run. Start this period on {fmtDate(gap.from)} to include those days.</div>}
           {overlap && <div className="ui-note">{overlap.id} ({overlap.status.toLowerCase()}) already covers {fmtDate(overlap.start)} – {fmtDate(overlap.end)} for this group.</div>}
           <div className="ui-table-wrap">
             <table className="ui-table">

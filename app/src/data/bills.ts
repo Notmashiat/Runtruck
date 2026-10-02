@@ -2,6 +2,7 @@
 // insurance, leases, permits…), one-time or recurring, with the documents
 // that came with each bill. Stored per company (runtruck-<id>-bills).
 import { nextSerial } from '../lib/ids';
+import { addDaysIso, addMonthsIso } from '../lib/isoDates';
 import { reviveList } from '../lib/persist';
 import { IS_DEMO } from '../lib/account';
 import { shiftIso, todayIso } from '../lib/clock';
@@ -55,6 +56,10 @@ export interface BillRecord {
   endsOn?: string;
   // Bills made from the same recurring bill share it (the first bill's id).
   seriesId?: string;
+  // The days of the month the series' bill date and due date fall on (monthly
+  // and longer). Each bill is worked out from these, so a bill due on the
+  // 31st is due Feb 28, then Mar 31 again, not the 28th from then on.
+  anchor?: { issued: number; due: number };
   truck: string;
   trailer: string;
   driver: string;
@@ -84,7 +89,9 @@ export const BILL_TAG: Record<BillStatus, string> = {
 export function billStatus(b: BillRecord, today = todayIso()): BillStatus {
   if (b.void) return 'Void';
   if (b.paid) return 'Paid';
-  if (b.scheduledFor || b.autopay) return 'Scheduled';
+  // Scheduled until the day it should have gone out; after that it is
+  // overdue until someone records the payment.
+  if (b.scheduledFor || b.autopay) return (b.scheduledFor ?? b.due) >= today ? 'Scheduled' : 'Overdue';
   return b.due < today ? 'Overdue' : 'Due';
 }
 
@@ -92,30 +99,30 @@ export const isOpen = (b: BillRecord) => !b.void && !b.paid;
 
 // — dates —
 
-function addMonths(iso: string, n: number): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  const target = new Date(Date.UTC(y, m - 1 + n, 1));
-  const last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
-  target.setUTCDate(Math.min(d, last));
-  return target.toISOString().slice(0, 10);
-}
+// Date arithmetic lives in lib/isoDates.ts (safe on blank or mistyped dates).
+const addMonths = addMonthsIso;
+export { addDaysIso };
 
-export function addDaysIso(iso: string, n: number): string {
-  const d = new Date(`${iso}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
-
-// The date one period later.
-export function nextDate(iso: string, f: Frequency): string {
+// The date one period later. `day` keeps a monthly (or longer) series on
+// its day of the month.
+export function nextDate(iso: string, f: Frequency, day?: number): string {
   switch (f) {
     case 'Weekly': return addDaysIso(iso, 7);
     case 'Every 2 weeks': return addDaysIso(iso, 14);
-    case 'Monthly': return addMonths(iso, 1);
-    case 'Quarterly': return addMonths(iso, 3);
-    case 'Twice a year': return addMonths(iso, 6);
-    default: return addMonths(iso, 12);
+    case 'Monthly': return addMonths(iso, 1, day);
+    case 'Quarterly': return addMonths(iso, 3, day);
+    case 'Twice a year': return addMonths(iso, 6, day);
+    default: return addMonths(iso, 12, day);
   }
+}
+
+// The series a bill belongs to (its own id when it started one).
+export const seriesOf = (b: BillRecord): string => b.seriesId ?? b.id;
+
+// Whether the series already has a bill due on or after a date (so the next
+// one is not made twice, e.g. after a payment is undone and recorded again).
+export function seriesHasBillFrom(bills: BillRecord[], b: BillRecord, due: string): boolean {
+  return bills.some((x) => x.id !== b.id && seriesOf(x) === seriesOf(b) && !x.void && x.due >= due);
 }
 
 // What a recurring bill costs a month on average.
@@ -133,14 +140,17 @@ export function dueFrom(issued: string, terms: string): string {
 // The bill that follows a recurring one, or null when the series has ended.
 export function nextInSeries(b: BillRecord, id: string): BillRecord | null {
   if (!b.frequency) return null;
-  const due = nextDate(b.due, b.frequency);
-  if (b.endsOn && due > b.endsOn) return null;
+  const anchor = b.anchor ?? { issued: Number(b.issued.slice(8, 10)) || 1, due: Number(b.due.slice(8, 10)) || 1 };
+  const due = nextDate(b.due, b.frequency, anchor.due);
+  // No next bill when the series has ended, or this bill has no usable due date.
+  if (!due || (b.endsOn && due > b.endsOn)) return null;
   return {
     ...b,
     id,
-    seriesId: b.seriesId ?? b.id,
+    seriesId: seriesOf(b),
+    anchor,
     billNumber: '',
-    issued: nextDate(b.issued, b.frequency),
+    issued: nextDate(b.issued, b.frequency, anchor.issued),
     due,
     scheduledFor: b.autopay ? due : undefined,
     paid: undefined,
@@ -184,8 +194,12 @@ export function billToForm(b: BillRecord): FormValues {
 export function billFromForm(v: FormValues, id: string, documents: BillDocument[], prev?: BillRecord): BillRecord {
   const recurring = str(v, 'kind') === 'Recurring';
   const amount = Math.round((Number(str(v, 'amount').replace(/[$,]/g, '')) || 0) * 100) / 100;
+  // A payment already recorded keeps what was actually paid and how; only
+  // its date and reference are edited here.
   const paid = str(v, 'paidAlready') === 'Yes'
-    ? { date: str(v, 'paidDate'), amount: prev?.paid?.amount ?? amount, method: str(v, 'method'), reference: str(v, 'paidRef') }
+    ? prev?.paid
+      ? { ...prev.paid, date: str(v, 'paidDate') || prev.paid.date, reference: str(v, 'paidRef') }
+      : { date: str(v, 'paidDate'), amount, method: str(v, 'method'), reference: str(v, 'paidRef') }
     : undefined;
   return {
     id,
@@ -200,6 +214,8 @@ export function billFromForm(v: FormValues, id: string, documents: BillDocument[
     frequency: recurring ? (str(v, 'frequency') as Frequency) : undefined,
     endsOn: recurring && str(v, 'ends') === 'On a date' ? str(v, 'endsOn') : undefined,
     seriesId: prev?.seriesId,
+    // The series keeps its day of the month unless the dates were changed here.
+    anchor: recurring && prev?.anchor && prev.issued === str(v, 'issued') && prev.due === str(v, 'due') ? prev.anchor : undefined,
     truck: str(v, 'truck'),
     trailer: str(v, 'trailer'),
     driver: str(v, 'driver'),

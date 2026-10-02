@@ -10,7 +10,7 @@ import { fmtDate, usd, usd0 } from '../../../data/invoicing';
 import { USER } from '../../../data/mock';
 import { addDays } from '../../../data/payroll';
 import { MAINTENANCE, money, type WorkOrder as LegacyWorkOrder } from '../../../data/safety';
-import { SERVICE_TYPES, WO_STATES, WO_TAG, daysBetween, woCost, woState, type WorkOrder } from '../../../data/safetyRecords';
+import { SERVICE_TYPES, WO_STATES, WO_TAG, daysBetween, unitStatusPatch, woCost, woState, type WorkOrder } from '../../../data/safetyRecords';
 import { isoDateAt, todayIso } from '../../../lib/clock';
 import { isLive } from '../../../lib/releases';
 import { matchesQuery } from '../../../lib/search';
@@ -96,8 +96,15 @@ function WorkOrders() {
   // Most urgent first until a column is sorted.
   const rows = sort.key ? sort.rows : [...sort.rows].sort((a, b) => WO_STATES.indexOf(stateOf(a)) - WO_STATES.indexOf(stateOf(b)));
 
-  const log = (w: WorkOrder, action: string, note: string, patch: Partial<WorkOrder> = {}) =>
-    saveWorkOrder({ ...w, ...patch, updated: new Date().toISOString(), log: [...w.log, { at: new Date().toISOString(), by: USER.name, action, note }] });
+  // Save a change to a work order, and bring its unit's status in Fleet into
+  // line with its work orders as they are after the change (in the shop, out
+  // of service, or back in service when nothing keeps it out any more).
+  const log = (w: WorkOrder, action: string, note: string, patch: Partial<WorkOrder> = {}) => {
+    const next: WorkOrder = { ...w, ...patch, updated: new Date().toISOString(), log: [...w.log, { at: new Date().toISOString(), by: USER.name, action, note }] };
+    saveWorkOrder(next);
+    const after = workOrders.map((x) => (x.id === w.id ? next : x));
+    updateUnit(w.unit, (dt) => unitStatusPatch(after, w.unit, String(dt.status), w.unitKind));
+  };
 
   const dueText = (w: WorkOrder) => {
     const parts: string[] = [];
@@ -172,7 +179,7 @@ function WorkOrders() {
                                 log(w, 'Cancelled', why.trim(), { status: 'Cancelled' });
                               }}>Cancel</button>
                             )}
-                            {w.status === 'Scheduled' && <button type="button" className="ui-btn ui-btn-sm" onClick={() => { log(w, 'In shop', w.shop, { status: 'In shop' }); updateUnit(w.unit, () => ({ status: w.outOfService ? 'Out of service' : 'In shop' })); }}>Start work</button>}
+                            {w.status === 'Scheduled' && <button type="button" className="ui-btn ui-btn-sm" onClick={() => log(w, 'In shop', w.shop, { status: 'In shop' })}>Start work</button>}
                             {w.status === 'In shop' && <button type="button" className="ui-btn ui-btn-sm" onClick={() => { const n = window.prompt('Waiting on which parts?', ''); if (n !== null) log(w, 'Waiting on parts', n.trim(), { status: 'Waiting on parts' }); }}>Waiting on parts</button>}
                             {w.status === 'Waiting on parts' && <button type="button" className="ui-btn ui-btn-sm" onClick={() => log(w, 'Parts in', '', { status: 'In shop' })}>Parts in</button>}
                             {live && <button type="button" className="ui-btn ui-btn-sm ui-btn-primary" onClick={() => setCompleting(w)}>Complete…</button>}

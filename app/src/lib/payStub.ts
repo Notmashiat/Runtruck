@@ -60,7 +60,7 @@ function statement(p: PdfDoc, run: PayRun, line: PayLine, e: Employee | undefine
   p.text(M + 14, y + 27, 'Net pay', { size: 13, bold: true });
   p.text(right - 14, y + 28, usd(line.net), { size: 18, bold: true, align: 'right' });
   y += 70;
-  p.text(M, y, 'Year to date', { size: 10, bold: true });
+  p.text(M, y, `Year to date (${run.payDate.slice(0, 4)}, through this pay)`, { size: 10, bold: true });
   y += 16;
   row('Gross pay', usd(ytd.gross));
   row('Net pay (RunTruck pay runs)', usd(ytd.net));
@@ -73,11 +73,13 @@ function statement(p: PdfDoc, run: PayRun, line: PayLine, e: Employee | undefine
 }
 
 // One person's statement, or the whole run (one page each).
-export function payStubDoc(run: PayRun, lines: PayLine[], employees: Employee[], ytdOf: (employeeId: string) => { gross: number; net: number }): PdfDoc {
+// `ytdOf` gives the year-to-date figures to print for a line (as of this run).
+export function payStubDoc(run: PayRun, lines: PayLine[], employees: Employee[], ytdOf: (line: PayLine, e: Employee | undefined) => { gross: number; net: number }): PdfDoc {
   const p = new PdfDoc(lines.length === 1 ? `Pay statement ${lines[0].name} ${run.id}` : `Pay statements ${run.id}`);
   lines.forEach((l, i) => {
     if (i) p.addPage();
-    statement(p, run, l, employees.find((e) => e.id === l.employeeId), ytdOf(l.employeeId));
+    const e = employees.find((x) => x.id === l.employeeId);
+    statement(p, run, l, e, ytdOf(l, e));
   });
   return p;
 }

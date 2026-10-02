@@ -127,8 +127,10 @@ function CustomerManager() {
   );
   const rows = sort.rows;
 
-  const reactivate = (c: CustomerRecord) => {
-    if (!window.confirm(`Reactivate ${c.name}? It goes back to the customer list and pickers.`)) return;
+  const reactivate = (row: CustomerRecord) => {
+    // The saved record, not the table row (which also carries worked-out columns).
+    const c = customers.find((x) => x.id === row.id);
+    if (!c || !window.confirm(`Reactivate ${c.name}? It goes back to the customer list and pickers.`)) return;
     const now = new Date().toISOString();
     saveCustomer({ ...c, status: 'Active', updated: now, log: [...c.log, { at: now, by: USER.name, action: 'Reactivated', reason: 'Reactivated by a user' }] });
   };

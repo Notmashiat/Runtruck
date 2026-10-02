@@ -7,15 +7,15 @@ import { USER } from '../data/mock';
 import {
   BASICS, CLAIM_TYPES, CLEAN, DOC_FIELDS, DOC_NAMES, HARM, INSPECTION_LEVELS, PAID_BY, PRIORITIES, REQUEST_VIA, RESOLUTIONS, SERVICE_TYPES, WO_SOURCES,
   blankClaimForm, blankViolationForm, blankWorkOrderForm, claimFromForm, claimToForm, isAccident, isCargo, nextClaimId, nextRequestId,
-  nextViolationId, nextWorkOrderId, repeatFor, violationFromForm, violationToForm, workOrderFromForm, workOrderToForm,
+  nextViolationId, nextWorkOrderId, repeatFor, unitStatusPatch, violationFromForm, violationToForm, workOrderFromForm, workOrderToForm,
   type ClaimRecord, type DocRequest, type SafetyLog, type ViolationRecord, type WorkOrder,
 } from '../data/safetyRecords';
 import { addDays } from '../data/payroll';
 import { todayIso } from '../lib/clock';
 import { STATE } from '../lib/rules';
 import { BillDocuments } from './BillDialogs';
-import { Field } from './FormBits';
-import { SmallDialog } from './HrDialogs';
+import { Field, useTracked } from './FormBits';
+import { SmallDialog } from './SmallDialog';
 import { RecordDialog, type SectionSpec } from './RecordDialog';
 
 const val = (v: FormValues, k: string) => (typeof v[k] === 'string' ? (v[k] as string).trim() : '');
@@ -82,7 +82,7 @@ export function WorkOrderDialog({ order, prefill, link, onSaved, onClose }: { or
   const { workOrders, saveWorkOrder, deleteWorkOrder, trucks, trailers, facilities, drivers } = useAppShell();
   const updateUnit = useUnitUpdate();
   const [id] = useState(() => order?.id ?? nextWorkOrderId(workOrders));
-  const [docs, setDocs] = useState<BillDocument[]>(order?.documents ?? []);
+  const [docs, setDocs, docsChanged] = useTracked<BillDocument[]>(order?.documents ?? []);
   const truckUnits = trucks.filter((t) => !t.archived).map((t) => t.unit);
   const units = [...truckUnits, ...trailers.filter((t) => !t.archived).map((t) => t.unit)];
   const isTruck = (u: string) => truckUnits.includes(u) || /^T-/.test(u);
@@ -122,14 +122,24 @@ export function WorkOrderDialog({ order, prefill, link, onSaved, onClose }: { or
       deleteNote="Removed for good, with its documents. To keep the record, cancel it instead."
       adjust={adjust}
       extras={{ 'Documents & notes': <BillDocuments docs={docs} onChange={setDocs} owner={order?.id ?? 'New work order'} hint="Estimate, shop invoice, inspection report, photos" /> }}
+      extraDirty={docsChanged}
       onSave={(v) => {
         const unit = val(v, 'unit');
         const w = workOrderFromForm(v, id, isTruck(unit) ? 'Truck' : 'Trailer', docs, USER.name, order, order ? {} : link);
         saveWorkOrder(w);
-        if (w.outOfService && w.status !== 'Done' && w.status !== 'Cancelled') updateUnit(unit, () => ({ status: 'Out of service' }));
+        // The unit's status follows its work orders as they now stand: out of
+        // service if this one says so, and back in service for a unit this
+        // order was moved away from (or no longer takes out of service).
+        const after = [...workOrders.filter((x) => x.id !== id), w];
+        updateUnit(unit, (dt) => unitStatusPatch(after, unit, String(dt.status), w.unitKind));
+        if (order && order.unit !== unit) updateUnit(order.unit, (dt) => unitStatusPatch(after, order.unit, String(dt.status), order.unitKind));
         onSaved?.(id);
       }}
-      onDelete={order ? () => deleteWorkOrder(order.id) : undefined}
+      onDelete={order ? () => {
+        deleteWorkOrder(order.id);
+        const after = workOrders.filter((x) => x.id !== order.id);
+        updateUnit(order.unit, (dt) => unitStatusPatch(after, order.unit, String(dt.status), order.unitKind));
+      } : undefined}
       onClose={onClose}
     />
   );
@@ -166,24 +176,31 @@ export function CompleteWorkOrderDialog({ order, onClose }: { order: WorkOrder; 
       }, billId, []));
     }
     const nextId = again ? nextWorkOrderId(workOrders) : '';
-    saveWorkOrder({
+    const finished: WorkOrder = {
       ...order, status: 'Done', completed, billId, updated: new Date().toISOString(),
       log: [...order.log, entry('Completed', [usd(total), invoice.trim(), billId && `bill ${billId}`, nextId && `next ${nextId}`].filter(Boolean).join(' · '))],
-    });
-    // The unit's record: service dates, odometer, next PM; back in service if nothing else keeps it out.
-    const stillOut = workOrders.some((w) => w.id !== order.id && w.unit === order.unit && w.status !== 'Done' && w.status !== 'Cancelled' && (w.outOfService || w.status === 'In shop'));
+    };
+    saveWorkOrder(finished);
+    // The unit's record: service dates, odometer, next PM; back in service
+    // unless another open work order still keeps it in the shop or out of service.
+    const after = workOrders.map((w) => (w.id === order.id ? finished : w));
     updateUnit(order.unit, (dt) => ({
       lastServiceDate: date,
       ...(odo && odo > (Number(String(dt.odometer ?? '').replace(/\D/g, '')) || 0) ? { odometer: String(odo) } : {}),
       ...(order.type === 'DOT annual inspection' ? { dotInspection: date } : {}),
       ...(order.type.startsWith('Preventive') && odo ? { nextService: String(odo + (Number(dt.pmInterval) || order.repeatMiles || 25000)) } : {}),
       ...(order.type === 'Tires' ? { lastTireCheck: date } : {}),
-      ...(!stillOut && ['In shop', 'Out of service', 'Service due', 'Inspection'].includes(String(dt.status)) ? { status: order.unitKind === 'Truck' ? 'In service' : 'Empty' } : {}),
+      ...unitStatusPatch(after, order.unit, String(dt.status), order.unitKind, ['Service due', 'Inspection']),
     }));
     if (again) {
+      // Mileage repeats count from the odometer entered here, or the unit's
+      // last known reading, or where this one was due. With no reading at
+      // all the next one is due in 90 days, so it cannot be forgotten.
+      const from = odo || odoNow || order.dueOdometer || 0;
       saveWorkOrder({
         ...order, id: nextId, status: 'Scheduled', completed: undefined, billId: '', violationId: '', outOfService: false, priority: 'Routine', source: 'PM schedule', documents: [], notes: '',
-        dueDate: order.repeatDays ? addDays(date, order.repeatDays) : '', dueOdometer: order.repeatMiles && odo ? odo + order.repeatMiles : 0,
+        dueDate: order.repeatDays ? addDays(date, order.repeatDays) : order.repeatMiles && !from ? addDays(date, 90) : '',
+        dueOdometer: order.repeatMiles && from ? from + order.repeatMiles : 0,
         created: new Date().toISOString(), updated: undefined, log: [entry('Opened', `Scheduled after ${order.id}`)],
       });
     }
@@ -205,7 +222,7 @@ export function CompleteWorkOrderDialog({ order, onClose }: { order: WorkOrder; 
       {repeats && (
         <label className="ui-check">
           <input type="checkbox" checked={again} onChange={(e) => setAgain(e.target.checked)} /> Book the next one
-          {order.repeatDays ? ` · due ${fmtDate(addDays(date, order.repeatDays))}` : ''}{order.repeatMiles && odo ? ` · at ${(odo + order.repeatMiles).toLocaleString('en-US')} mi` : ''}
+          {order.repeatDays ? ` · due ${fmtDate(addDays(date, order.repeatDays))}` : ''}{order.repeatMiles && (odo || odoNow || order.dueOdometer) ? ` · at ${((odo || odoNow || order.dueOdometer) + order.repeatMiles).toLocaleString('en-US')} mi` : ''}
         </label>
       )}
     </SmallDialog>
@@ -256,7 +273,7 @@ function violationSections(drivers: string[], trucks: string[], trailers: string
 export function ViolationDialog({ record, onClose }: { record?: ViolationRecord; onClose: () => void }) {
   const { violations, saveViolation, deleteViolation, drivers, trucks, trailers } = useAppShell();
   const [id] = useState(() => record?.id ?? nextViolationId(violations));
-  const [docs, setDocs] = useState<BillDocument[]>(record?.documents ?? []);
+  const [docs, setDocs, docsChanged] = useTracked<BillDocument[]>(record?.documents ?? []);
   const [initial] = useState<FormValues>(() => (record ? violationToForm(record) : blankViolationForm(todayIso())));
   const adjust = (_prev: FormValues, next: FormValues, key: string): FormValues => {
     if (key !== 'driver') return next;
@@ -275,6 +292,7 @@ export function ViolationDialog({ record, onClose }: { record?: ViolationRecord;
       deleteNote="Removed for good. Inspections stay on your FMCSA record for 24 months whether or not they are here; delete only a mistake."
       adjust={adjust}
       extras={{ 'Documents & notes': <BillDocuments docs={docs} onChange={setDocs} owner={record?.id ?? 'Inspection'} hint="Inspection report, citation, photos, repair receipt" /> }}
+      extraDirty={docsChanged}
       onSave={(v) => saveViolation(violationFromForm(v, id, docs, USER.name, record))}
       onDelete={record ? () => deleteViolation(record.id) : undefined}
       onClose={onClose}
@@ -388,7 +406,7 @@ function claimSections(loads: string[], drivers: string[], trucks: string[], tra
 export function ClaimDialog({ record, onClose }: { record?: ClaimRecord; onClose: () => void }) {
   const { claims, saveClaim, deleteClaim, loads, drivers, trucks, trailers } = useAppShell();
   const [id] = useState(() => record?.id ?? nextClaimId(claims));
-  const [docs, setDocs] = useState<BillDocument[]>(record?.documents ?? []);
+  const [docs, setDocs, docsChanged] = useTracked<BillDocument[]>(record?.documents ?? []);
   const last = [...claims].reverse().find((c) => c.insurer);
   const [initial] = useState<FormValues>(() => (record ? claimToForm(record) : blankClaimForm(todayIso(), { insurer: last?.insurer ?? '', policyNumber: last?.policyNumber ?? '', deductible: last?.deductible ? String(last.deductible) : '' })));
   const loadLabel = (l: { id: string; customer: string }) => `${l.id} · ${l.customer}`;
@@ -422,6 +440,7 @@ export function ClaimDialog({ record, onClose }: { record?: ClaimRecord; onClose
       deleteNote="Removed for good, with its documents. To keep the record, deny or withdraw it instead."
       adjust={adjust}
       extras={{ 'Documents & notes': <BillDocuments docs={docs} onChange={setDocs} owner={record?.id ?? 'New claim'} hint="Photos, BOL / POD, police report, estimates, invoice" /> }}
+      extraDirty={docsChanged}
       onSave={(v) => {
         const loadId = (val(v, 'load').split(' · ')[0] ?? '').trim();
         saveClaim(claimFromForm({ ...v, load: loadId }, id, docs, USER.name, record));

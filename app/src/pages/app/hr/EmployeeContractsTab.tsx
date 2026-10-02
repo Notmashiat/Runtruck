@@ -167,7 +167,11 @@ function Contracts() {
                             {due && <button type="button" className="ui-btn ui-btn-sm" onClick={() => { if (window.confirm(`Record ${c.person}'s introductory-period review as done today?`)) log(c, 'Reviewed', `Introductory-period review (${c.probationDays} days)`); }}>Review done</button>}
                             {c.status === 'Active' && c.termType === 'Fixed term' && <button type="button" className="ui-btn ui-btn-sm ui-btn-primary" onClick={() => setAction({ kind: 'renew', c })}>Renew…</button>}
                             {c.status !== 'Ended' && c.status !== 'Draft' && <button type="button" className="ui-btn ui-btn-sm ui-btn-danger" onClick={() => setAction({ kind: 'end', c })}>End…</button>}
-                            {c.status === 'Ended' && <button type="button" className="ui-btn ui-btn-sm" onClick={() => { if (window.confirm(`Reopen ${c.id}? It goes back to active.`)) log(c, 'Reopened', '', { status: 'Active', endedOn: '', endReason: '' }); }}>Reopen</button>}
+                            {c.status === 'Ended' && <button type="button" className="ui-btn ui-btn-sm" onClick={() => {
+                              // Back to where it stood: active only if both sides had signed.
+                              const status = c.personSigned && c.companySigned ? 'Active' : c.sentOn ? 'Sent for signature' : 'Draft';
+                              if (window.confirm(`Reopen ${c.id}? It goes back to ${status.toLowerCase()}.`)) log(c, 'Reopened', '', { status, endedOn: '', endReason: '' });
+                            }}>Reopen</button>}
                           </div>
                           {c.status === 'Ended' && <div className="ui-note" style={{ marginBottom: 12 }}>Ended {fmtDate(c.endedOn)} · {c.endReason}</div>}
                           {state === 'Expired' && <div className="ui-errors" style={{ marginBottom: 12 }}>The term ended {fmtDate(end)} with no renewal on file. Renew it or end it.</div>}
@@ -183,9 +187,14 @@ function Contracts() {
                             <Fact k="Clauses">{c.clauses.join(', ')}</Fact>
                             <Fact k="Signs for the company">{[c.companySigner, c.signerTitle].filter(Boolean).join(', ')}</Fact>
                             <Fact k="Payroll">
-                              {emp ? `${emp.name} · ${emp.id}${emp.status === 'Archived' ? ' (archived)' : ''}` : (
-                                c.status !== 'Ended' ? <button type="button" className="ui-link" onClick={() => setToPayroll(c)}>+ Add to payroll</button> : 'Not on payroll'
-                              )}
+                              {emp ? `${emp.name} · ${emp.id}${emp.status === 'Archived' ? ' (archived)' : ''}` : (() => {
+                                if (c.status === 'Ended') return 'Not on payroll';
+                                // Already on payroll under the same name: link to that record rather than adding a second one.
+                                const match = employees.find((e) => e.name.trim().toLowerCase() === c.person.trim().toLowerCase());
+                                return match
+                                  ? <button type="button" className="ui-link" onClick={() => log(c, 'Linked to payroll', match.id, { employeeId: match.id })}>Link to {match.name} · {match.id}</button>
+                                  : <button type="button" className="ui-link" onClick={() => setToPayroll(c)}>+ Add to payroll</button>;
+                              })()}
                             </Fact>
                             {c.onboardingId && <Fact k="Onboarding">{c.onboardingId}</Fact>}
                             {c.notes && <Fact k="Other terms">{c.notes}</Fact>}

@@ -1,4 +1,4 @@
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BillDocuments } from '../../../components/BillDialogs';
 import { Card } from '../../../components/Card';
@@ -11,7 +11,7 @@ import { fmtDate, TODAY, usd, usd0 } from '../../../data/invoicing';
 import { mondayOf } from '../../../data/metrics';
 import { SETTLE_TAG, SETTLEMENTS, USER } from '../../../data/mock';
 import {
-  DRIVER_ROLES, EMPLOYEE_ROLES, PAY_BASES, PAY_FREQUENCIES, RUN_TAG, payLabel, runTotals, unitsText,
+  DRIVER_ROLES, EMPLOYEE_ROLES, PAY_BASES, PAY_FREQUENCIES, RUN_TAG, paidDay, paidSummary, payLabel, runTotals, unitsText, ytdAsOf,
   type Employee, type PayLine, type PayRun,
 } from '../../../data/payroll';
 import { isoDateAt, shortDate, todayIso } from '../../../lib/clock';
@@ -50,16 +50,12 @@ function Payroll() {
   const today = todayIso();
   const year = today.slice(0, 4);
 
-  // Year to date: before RunTruck, plus paid runs this year (held pay is not paid).
-  const paidLines = (id: string) => payRuns.filter((r) => r.status === 'Paid' && r.payDate.startsWith(year)).flatMap((r) => r.lines.filter((l) => l.employeeId === id && !l.hold).map((l) => ({ run: r, line: l })));
-  const ytdOf = (id: string) => {
-    const e = employees.find((x) => x.id === id);
-    const lines = paidLines(id);
-    const gross = (e?.ytdBefore ?? 0) + lines.reduce((s, x) => s + x.line.gross, 0);
-    const net = lines.reduce((s, x) => s + x.line.net, 0);
-    return { gross, net };
-  };
-  const lastPaid = (id: string) => payRuns.filter((r) => r.status === 'Paid' && r.lines.some((l) => l.employeeId === id && !l.hold)).map((r) => r.payDate).sort().pop() ?? '';
+  // Year to date and last paid for everyone, worked out once per change to
+  // the pay runs (not once per table row): paid runs this year, held pay left
+  // out, plus what was paid before RunTruck when that was this year.
+  const paid = useMemo(() => paidSummary(payRuns, employees, year), [payRuns, employees, year]);
+  const ytdOf = (id: string) => paid.get(id) ?? { gross: 0, net: 0, lastPaid: '' };
+  const lastPaid = (id: string) => paid.get(id)?.lastPaid ?? '';
 
   const active = employees.filter((e) => e.status === 'Active');
   const archived = employees.filter((e) => e.status === 'Archived');
@@ -67,6 +63,8 @@ function Payroll() {
   const next = upcoming[0];
   const month = today.slice(0, 7);
   const paidMonth = payRuns.filter((r) => r.status === 'Paid' && r.payDate.startsWith(month));
+  // Net paid in the month, by the day each pay actually went out (held pay released later counts then).
+  const netThisMonth = payRuns.filter((r) => r.status === 'Paid').reduce((s, r) => s + r.lines.reduce((n, l) => n + (!l.hold && paidDay(r, l).startsWith(month) ? l.net : 0), 0), 0);
   const ytdTotal = employees.reduce((s, e) => s + ytdOf(e.id).gross, 0);
   const drivers = active.filter((e) => DRIVER_ROLES.includes(e.role));
 
@@ -78,7 +76,7 @@ function Payroll() {
     : [
         { label: 'Next payday', value: next ? fmtDate(next.payDate) : '—', note: next ? `${next.id} · ${usd0(runTotals(next).net)} net · ${next.status.toLowerCase()}` : 'No run waiting' },
         { label: 'On payroll', value: String(active.length), note: `${drivers.length} drivers · ${active.length - drivers.length} staff` },
-        { label: 'Paid this month', value: usd0(paidMonth.reduce((s, r) => s + runTotals(r).net, 0)), note: `${paidMonth.length} run${paidMonth.length === 1 ? '' : 's'} net` },
+        { label: 'Paid this month', value: usd0(netThisMonth), note: `${paidMonth.length} run${paidMonth.length === 1 ? '' : 's'} net` },
         { label: 'Payroll YTD', value: usd0(ytdTotal), note: 'Gross, all employees' },
       ];
 
@@ -87,19 +85,25 @@ function Payroll() {
     const now = new Date().toISOString();
     savePayRun({
       ...r, status,
-      ...(status === 'Approved' ? { approvedAt: now, approvedBy: USER.name } : {}),
+      // Approving stamps who approved. Undoing a payment goes back to the
+      // approval already on record and clears the payment stamp.
+      ...(status === 'Approved' ? (r.status === 'Paid' ? { paidAt: undefined, paidBy: undefined } : { approvedAt: now, approvedBy: USER.name }) : {}),
       ...(status === 'Paid' ? { paidAt: now, paidBy: USER.name } : {}),
       ...(status === 'Draft' ? { approvedAt: undefined, approvedBy: undefined, paidAt: undefined, paidBy: undefined } : {}),
     });
   };
-  const stubs = (r: PayRun, lines: PayLine[]) => downloadPdf(payStubDoc(r, lines, employees, ytdOf), lines.length === 1 ? `Pay statement ${lines[0].name} ${r.id}.pdf` : `Pay statements ${r.id}.pdf`);
+  // Each statement prints year to date as of its own run (not as of today).
+  const stubs = (r: PayRun, lines: PayLine[]) =>
+    downloadPdf(payStubDoc(r, lines, employees, (l, e) => ytdAsOf(payRuns, e, r, l)), lines.length === 1 ? `Pay statement ${lines[0].name} ${r.id}.pdf` : `Pay statements ${r.id}.pdf`);
 
   // Held pay stays on its run; releasing it pays it as part of that run (off-cycle).
   const releaseHeld = (r: PayRun, l: PayLine) => {
     if (l.net < 0) { window.alert(`${l.name}: deductions are more than pay, so there is nothing to release.`); return; }
     if (!window.confirm(`Release ${l.name}'s held pay of ${usd(l.net)} from ${r.id}${r.status === 'Paid' ? ' and record it as paid today' : ''}?`)) return;
     const stamp = `Held pay released ${fmtDate(todayIso())} by ${USER.name}.`;
-    savePayRun({ ...r, lines: r.lines.map((x) => (x.employeeId === l.employeeId ? { ...x, hold: false, note: [x.note, stamp].filter(Boolean).join(' ') } : x)) });
+    // Released after the run was paid: it counts as paid today (this month, this year), not on the run's pay date.
+    const paidOn = r.status === 'Paid' && todayIso() > r.payDate ? todayIso() : undefined;
+    savePayRun({ ...r, lines: r.lines.map((x) => (x.employeeId === l.employeeId ? { ...x, hold: false, paidOn, note: [x.note, stamp].filter(Boolean).join(' ') } : x)) });
   };
 
   // Newest pay date first until a column is sorted.
@@ -247,7 +251,8 @@ function Payroll() {
             {people.map((e) => {
               const isOpen = openEmp === e.id;
               const out = [...e.log].reverse().find((l) => l.action === 'Archived');
-              const history = payRuns.flatMap((r) => r.lines.filter((l) => l.employeeId === e.id).map((l) => ({ r, l }))).sort((a, b) => (a.r.payDate < b.r.payDate ? 1 : -1));
+              // Only the open row needs its pay history.
+              const history = isOpen ? payRuns.flatMap((r) => r.lines.filter((l) => l.employeeId === e.id).map((l) => ({ r, l }))).sort((a, b) => (a.r.payDate < b.r.payDate ? 1 : -1)) : [];
               return (
                 <Fragment key={e.id}>
                   <tr className={`is-clickable${isOpen ? ' is-open' : ''}`} onClick={() => setOpenEmp(isOpen ? null : e.id)} aria-expanded={isOpen}>

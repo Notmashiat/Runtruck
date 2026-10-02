@@ -4,7 +4,7 @@ import { InvoiceDialog } from '../../../components/InvoiceDialog';
 import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
-import { TODAY, daysFrom, fmtDate, invoiceTotal, usd, usd0, type InvoiceRecord } from '../../../data/invoicing';
+import { FACTORING, TODAY, daysFrom, fmtDate, invoiceTotal, usd, usd0, type InvoiceRecord } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 
@@ -15,7 +15,7 @@ export function PaidTab() {
   // Paid invoices, most recently paid first.
   const paid = invoices
     .filter((i) => i.paid)
-    .map((i) => ({ inv: i, date: i.paid?.date ?? '', via: i.paid?.via ?? '—', days: i.paid ? daysFrom(i.issued, i.paid.date) : 0 }))
+    .map((i) => ({ inv: i, date: i.paid?.date ?? '', via: i.paid?.via ?? '—', days: i.paid && i.issued && i.paid.date ? Math.max(0, daysFrom(i.issued, i.paid.date)) : 0 }))
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
   const thisMonth = paid.filter((p) => p.date.startsWith(TODAY.slice(0, 7)));
@@ -25,7 +25,7 @@ export function PaidTab() {
     { label: 'Paid this month', value: String(thisMonth.length), note: monthName },
     { label: 'Amount', value: usd0(thisMonth.reduce((s, p) => s + invoiceTotal(p.inv), 0)), note: 'Collected this month' },
     { label: 'Avg days to pay', value: String(Math.round(paid.reduce((s, p) => s + p.days, 0) / Math.max(paid.length, 1))), note: 'Issued to paid' },
-    { label: 'Paid via factoring', value: String(factored.length), note: `TriPoint Capital · ${usd0(factored.reduce((s, p) => s + invoiceTotal(p.inv), 0))}` },
+    { label: 'Paid via factoring', value: String(factored.length), note: `${(FACTORING[0] ?? '').replace(' (factoring)', '') || 'Factoring company'} · ${usd0(factored.reduce((s, p) => s + invoiceTotal(p.inv), 0))}` },
   ];
   type PaidRow = (typeof paid)[number];
   const filters: FilterDef<PaidRow>[] = [

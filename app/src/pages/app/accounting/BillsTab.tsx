@@ -6,7 +6,7 @@ import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
 import { BILLS, daysBetween, dollars, money, TODAY, type Bill } from '../../../data/accounting';
 import {
-  BILL_CATEGORIES, BILL_STATUSES, BILL_TAG, addDaysIso, billStatus, isOpen, monthlyCost, nextDate, type BillRecord,
+  BILL_CATEGORIES, BILL_STATUSES, BILL_TAG, addDaysIso, billStatus, isOpen, monthlyCost, nextDate, seriesOf, type BillRecord,
 } from '../../../data/bills';
 import { fmtDate, usd, usd0 } from '../../../data/invoicing';
 import { isoDateAt, todayIso } from '../../../lib/clock';
@@ -139,7 +139,14 @@ function BillManager() {
                                 {b.void ? 'Restore' : 'Void'}
                               </button>
                             )}
-                            {b.frequency && <button type="button" className="ui-btn ui-btn-sm" onClick={() => { if (window.confirm(`Stop repeating ${b.vendor}? This bill stays; no more bills are made.`)) saveBill({ ...b, frequency: undefined, endsOn: undefined, updated: new Date().toISOString() }); }}>Stop repeating</button>}
+                            {b.frequency && (
+                              <button type="button" className="ui-btn ui-btn-sm" onClick={() => {
+                                if (!window.confirm(`Stop repeating ${b.vendor}? The bills already made stay; no more are made.`)) return;
+                                // The whole series stops, not just this bill: a later bill would otherwise keep making new ones.
+                                const now = new Date().toISOString();
+                                for (const x of bills) if (x.frequency && seriesOf(x) === seriesOf(b)) saveBill({ ...x, frequency: undefined, endsOn: undefined, anchor: undefined, updated: now });
+                              }}>Stop repeating</button>
+                            )}
                             <button type="button" className="ui-btn ui-btn-sm" onClick={() => setEditing(b)}>Edit bill</button>
                           </div>
                           <div className="ui-kv-grid dev-facts">
@@ -153,7 +160,7 @@ function BillManager() {
                             <Fact k="Charged to">{chargedTo(b)}</Fact>
                             <Fact k="Repeats">
                               {b.frequency ? `${b.frequency}${b.endsOn ? ` until ${fmtDate(b.endsOn)}` : ''}` : 'One-time'}
-                              {b.frequency && !b.paid && <div className="ui-stop-meta">Next bill ({fmtDate(nextDate(b.due, b.frequency))}) is made when this one is paid</div>}
+                              {b.frequency && !b.paid && <div className="ui-stop-meta">Next bill ({fmtDate(nextDate(b.due, b.frequency, b.anchor?.due))}) is made when this one is paid</div>}
                             </Fact>
                             <Fact k="Payment">
                               {b.paid

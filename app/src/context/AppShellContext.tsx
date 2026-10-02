@@ -252,7 +252,8 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
         if (c.status !== 'Active') return c;
         const u = usageOf(c, loads, invoices, today.slice(0, 4));
         const due = addDays(u.lastUsed, AUTO_INACTIVE_DAYS);
-        if (due >= today) return c;
+        // No usable "last used" date: leave the customer alone.
+        if (!due || due >= today) return c;
         changed = true;
         const last = new Date(`${u.lastUsed}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
         return {

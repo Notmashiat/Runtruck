@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import type { BillDocument } from '../data/bills';
 import { CDL_CLASSES, ENDORSEMENTS, TERMINALS, type FormValues } from '../data/fleet';
@@ -14,8 +14,9 @@ import { EMPLOYEE_ROLES, PAY_BASES, PAY_FREQUENCIES, WORKER_TYPES, type Employee
 import { todayIso } from '../lib/clock';
 import { PHONE, STATE } from '../lib/rules';
 import { BillDocuments } from './BillDialogs';
-import { Field, useModal } from './FormBits';
+import { Field, useTracked } from './FormBits';
 import { RecordDialog, type SectionSpec } from './RecordDialog';
+import { SmallDialog } from './SmallDialog';
 
 const val = (v: FormValues, k: string) => (typeof v[k] === 'string' ? (v[k] as string).trim() : '');
 const months = (t: string) => (Number(t.split(' ')[0]) || 0) * (t.includes('year') ? 12 : 1);
@@ -120,7 +121,7 @@ export function ContractDialog({ contract, prefill, onboardingId, onSaved, onClo
 }) {
   const { contracts, saveContract, deleteContract, employees, trucks } = useAppShell();
   const [id] = useState(() => contract?.id ?? nextContractId(contracts));
-  const [docs, setDocs] = useState<BillDocument[]>(contract?.documents ?? []);
+  const [docs, setDocs, docsChanged] = useTracked<BillDocument[]>(contract?.documents ?? []);
   const [ending, setEnding] = useState(false);
   const people = employees.filter((e) => e.status === 'Active' || e.id === contract?.employeeId);
   const [initial] = useState<FormValues>(() => {
@@ -139,6 +140,9 @@ export function ContractDialog({ contract, prefill, onboardingId, onSaved, onClo
     if (key === 'employee') {
       const e = people.find((x) => employeeLabel(x) === val(v, 'employee'));
       if (!e) return { ...v, employeeId: '' };
+      // On an existing contract this only links it to the person on payroll:
+      // the agreed (perhaps signed) terms are not replaced by payroll's.
+      if (contract) return { ...v, employeeId: e.id };
       const pre = contractPrefillFromEmployee(e);
       v = { ...v, ...agreementDefaults(val(pre, 'agreement'), e.role), ...pre };
     }
@@ -172,6 +176,7 @@ export function ContractDialog({ contract, prefill, onboardingId, onSaved, onClo
         noun="contract"
         deleteNote="Removed for good, with its documents. Only drafts can be deleted; signed contracts are ended instead, so the record stays."
         adjust={adjust}
+        extraDirty={docsChanged}
         banner={contract ? <div className="ui-stop-meta" style={{ marginTop: 0 }}>{contract.id} · {contract.status}{contract.status === 'Active' && contract.personSigned ? ` · signed ${fmtDate(contract.personSigned)}` : ''}</div> : undefined}
         extras={{
           Signatures: (v: FormValues) => (
@@ -193,41 +198,6 @@ export function ContractDialog({ contract, prefill, onboardingId, onSaved, onClo
       />
       {ending && contract && <EndContractDialog contract={contract} onClose={() => setEnding(false)} onDone={onClose} />}
     </>
-  );
-}
-
-// A small confirm-style popup with a few fields.
-export function SmallDialog({ label, title, intro, children, confirm, danger, disabled, onConfirm, onClose }: {
-  label: string;
-  title: string;
-  intro?: string;
-  children?: ReactNode;
-  confirm: string;
-  danger?: boolean;
-  disabled?: boolean;
-  onConfirm: () => void;
-  onClose: () => void;
-}) {
-  const { ref, closeNow, ownEvent } = useModal(onClose);
-  return (
-    <dialog ref={ref} className="ui-dialog is-compact" aria-label={`${label}: ${title}`} onClose={(e) => { if (ownEvent(e)) onClose(); }} onCancel={(e) => ownEvent(e)}>
-      <div className="ui-dialog-main">
-        <section className="ui-dialog-body">
-          <button type="button" className="ui-dialog-close" onClick={closeNow} aria-label="Close">×</button>
-          <div>
-            <div className="ui-label">{label}</div>
-            <h2 className="ui-h2" style={{ margin: '2px 0 0' }}>{title}</h2>
-            {intro && <p className="ui-p" style={{ marginTop: 4 }}>{intro}</p>}
-          </div>
-          {children}
-        </section>
-        <footer className="ui-dialog-foot">
-          <div style={{ flex: 1 }} />
-          <button type="button" className="ui-btn" onClick={closeNow}>Cancel</button>
-          <button type="button" className={`ui-btn ${danger ? 'ui-btn-danger-solid' : 'ui-btn-primary'}`} disabled={disabled} onClick={() => { onConfirm(); closeNow(); }}>{confirm}</button>
-        </footer>
-      </div>
-    </dialog>
   );
 }
 
@@ -404,10 +374,17 @@ function rebuild(prev: Step[], role: string, workerType: string): Step[] {
 export function OnboardingDialog({ onboarding, onClose }: { onboarding?: OnboardingRecord; onClose: () => void }) {
   const { onboardings, saveOnboarding, deleteOnboarding, employees } = useAppShell();
   const [id] = useState(() => onboarding?.id ?? nextOnboardingId(onboardings));
-  const [docs, setDocs] = useState<BillDocument[]>(onboarding?.documents ?? []);
+  const [docs, setDocs, docsChanged] = useTracked<BillDocument[]>(onboarding?.documents ?? []);
   const [initial] = useState<FormValues>(() => (onboarding ? onboardingToForm(onboarding) : blankOnboardingForm(todayIso(), USER.name)));
   const managers = [...new Set([USER.name, ...employees.filter((e) => e.status === 'Active' && !isDriverRole(e.role)).map((e) => e.name)])];
-  const stepsFor = (v: FormValues) => (onboarding ? rebuild(onboarding.steps, val(v, 'role'), val(v, 'workerType')) : checklistFor(val(v, 'role'), val(v, 'workerType')));
+  // A new hire gets the checklist for their role. An existing one keeps its
+  // checklist exactly as it is (steps removed or added by hand included)
+  // unless the role or worker type changed, which rebuilds it.
+  const stepsFor = (v: FormValues) => {
+    if (!onboarding) return checklistFor(val(v, 'role'), val(v, 'workerType'));
+    const same = val(v, 'role') === onboarding.role && val(v, 'workerType') === onboarding.workerType;
+    return same ? onboarding.steps : rebuild(onboarding.steps, val(v, 'role'), val(v, 'workerType'));
+  };
 
   const adjust = (_prev: FormValues, next: FormValues, key: string): FormValues => {
     if (key !== 'role') return next;
@@ -426,6 +403,7 @@ export function OnboardingDialog({ onboarding, onClose }: { onboarding?: Onboard
       noun="onboarding"
       deleteNote="Removed for good, with its checklist and documents. To keep a record of a candidate who did not join, use Not hired / withdrawn instead."
       adjust={adjust}
+      extraDirty={docsChanged}
       extras={{
         Checklist: (v: FormValues) => {
           const steps = stepsFor(v);

@@ -4,6 +4,7 @@
 // inactive when someone moves it there, or by itself after a year with no
 // loads or invoices; every move is logged with when, why and by whom.
 import { nextSerial } from '../lib/ids';
+import { addDaysIso } from '../lib/isoDates';
 import { reviveList } from '../lib/persist';
 import { IS_DEMO } from '../lib/account';
 import { isoDateAt, shiftIso } from '../lib/clock';
@@ -119,11 +120,7 @@ export function usageOf(c: CustomerRecord, loads: { customer: string; pickup: st
   return { lastUsed: best[0], why: best[1] };
 }
 
-export function addDays(iso: string, n: number): string {
-  const d = new Date(`${iso}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
+export const addDays = addDaysIso;
 
 // The latest move to inactive (for the Inactive list).
 export const lastInactive = (c: CustomerRecord) => [...c.log].reverse().find((e) => e.action === 'Moved to inactive');

@@ -3,6 +3,7 @@
 // accident claims. Stored per company (runtruck-<id>-workorders,
 // -violations, -claims, -docrequests, -driverfiles).
 import { nextSerial } from '../lib/ids';
+import { daysBetweenIso, isIsoDate } from '../lib/isoDates';
 import { reviveList } from '../lib/persist';
 import { IS_DEMO } from '../lib/account';
 import { shiftIso, todayIso } from '../lib/clock';
@@ -20,7 +21,8 @@ export interface SafetyLog {
 const str = (v: FormValues, k: string) => (typeof v[k] === 'string' ? (v[k] as string).trim() : '');
 const num = (v: FormValues, k: string) => Number(str(v, k).replace(/[$,]/g, '')) || 0;
 const made = (iso: string) => `${iso}T12:00:00.000Z`;
-export const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86_400_000);
+// Date arithmetic lives in lib/isoDates.ts (safe on blank or mistyped dates).
+export const daysBetween = daysBetweenIso;
 const nextNum = (prefix: string, ids: string[], start = 1000) => `${prefix}-${nextSerial(prefix, ids, start)}`;
 const logNow = (by: string, action: string, note = ''): SafetyLog => ({ at: new Date().toISOString(), by, action, note });
 
@@ -87,6 +89,27 @@ export function woState(w: WorkOrder, odometer: number | undefined, today = toda
 }
 
 export const nextWorkOrderId = (list: { id: string }[]) => nextNum('WO', list.map((w) => w.id));
+
+// What a unit's open work orders say its status is: 'Out of service' while
+// one takes it out of service, 'In shop' while one is being worked on (or
+// waiting on parts), null when none of them keeps it off the road.
+export function statusFromOrders(orders: WorkOrder[], unit: string): 'Out of service' | 'In shop' | null {
+  const open = orders.filter((w) => w.unit === unit && w.status !== 'Done' && w.status !== 'Cancelled');
+  if (open.some((w) => w.outOfService)) return 'Out of service';
+  if (open.some((w) => w.status === 'In shop' || w.status === 'Waiting on parts')) return 'In shop';
+  return null;
+}
+
+// The change to make to a unit's status so it matches its work orders (given
+// the orders as they are after whatever just happened). With nothing open
+// keeping it out, a unit that work orders put in the shop or out of service
+// goes back in service; `alsoClears` adds statuses a finished job clears
+// ('Service due', 'Inspection').
+export function unitStatusPatch(orders: WorkOrder[], unit: string, current: string, kind: 'Truck' | 'Trailer', alsoClears: string[] = []): { status?: string } {
+  const want = statusFromOrders(orders, unit);
+  if (want) return current === want ? {} : { status: want };
+  return ['In shop', 'Out of service', ...alsoClears].includes(current) ? { status: kind === 'Truck' ? 'In service' : 'Empty' } : {};
+}
 
 // The usual repeat for a service type (days, miles).
 export function repeatFor(type: string, unitKind: string): { days: number; miles: number } {
@@ -217,8 +240,16 @@ export function timeWeight(date: string, today = todayIso()): number {
   const days = daysBetween(date, today);
   return days < 0 ? 3 : days <= 182 ? 3 : days <= 365 ? 2 : days <= 730 ? 1 : 0;
 }
+// A violation that was taken off the record: removed after a DataQs
+// challenge, or dismissed in court. It stays on file here but no longer
+// counts against the carrier or the driver.
+export const isRemoved = (v: Pick<ViolationRecord, 'status' | 'resolution'>) =>
+  v.status === 'Closed' && (v.resolution === 'Removed through DataQs' || v.resolution === 'Dismissed in court');
+// Whether an inspection counts as a violation (not clean, not removed).
+export const countsAgainst = (v: ViolationRecord) => !isClean(v) && !isRemoved(v);
 // Severity with the out-of-service bump (+2), times the time weight.
-export const weightedPoints = (v: ViolationRecord, today = todayIso()) => (isClean(v) ? 0 : (Math.min(10, v.severity) + (v.oos ? 2 : 0)) * timeWeight(v.date, today));
+export const weightedPoints = (v: ViolationRecord, today = todayIso()) =>
+  (countsAgainst(v) ? (Math.min(10, v.severity) + (v.oos ? 2 : 0)) * timeWeight(v.date, today) : 0);
 export const nextViolationId = (list: { id: string }[]) => nextNum('INS', list.map((v) => v.id));
 
 export function blankViolationForm(today: string, prefill: FormValues = {}): FormValues {
@@ -241,7 +272,9 @@ export function violationFromForm(v: FormValues, id: string, documents: BillDocu
     id, date: str(v, 'date'), driver: str(v, 'driver'), truck: str(v, 'truck'), trailer: str(v, 'trailer'), state: str(v, 'state').toUpperCase(), location: str(v, 'location'),
     reportNumber: str(v, 'reportNumber'), level: str(v, 'level'), basic: str(v, 'basic'), code: clean ? '' : str(v, 'code'), description: clean ? '' : str(v, 'description'),
     severity: clean ? 0 : Math.min(10, num(v, 'severity')), oos: !clean && str(v, 'oos') === 'Yes', fine: clean ? 0 : num(v, 'fine'), finePaidBy: str(v, 'finePaidBy'),
-    status: clean ? 'Closed' : prev?.status ?? 'Open', dataQs: prev?.dataQs ?? '', resolution: clean ? 'Clean inspection' : prev?.resolution ?? '', coached: prev?.coached ?? '',
+    // An inspection edited from clean to a violation is open again, not "Closed · clean".
+    status: clean ? 'Closed' : prev && !isClean(prev) ? prev.status : 'Open', dataQs: prev?.dataQs ?? '',
+    resolution: clean ? 'Clean inspection' : prev && !isClean(prev) ? prev.resolution : '', coached: prev?.coached ?? '',
     workOrderId: prev?.workOrderId ?? '', documents, notes: str(v, 'notes'),
     log: prev ? [...prev.log, logNow(by, 'Edited')] : [logNow(by, clean ? 'Clean inspection logged' : 'Logged', [str(v, 'level'), str(v, 'reportNumber')].filter(Boolean).join(' · '))],
     created: prev?.created ?? now, updated: prev ? now : undefined,
@@ -313,7 +346,7 @@ export const netCost = (c: ClaimRecord) => paidOf(c, 'Company') - c.recovered;
 
 // Cargo claims (49 CFR 370.5, 370.9): acknowledge within 30 days of receipt; pay, decline or offer within 120 days.
 export function cargoDeadlines(c: ClaimRecord, today = todayIso()): { ack?: { due: string; late: boolean }; resolve?: { due: string; late: boolean } } {
-  if (!isCargo(c.type) || !c.received) return {};
+  if (!isCargo(c.type) || !isIsoDate(c.received)) return {};
   const open = c.status === 'Open' || c.status === 'Under review';
   const ackDue = addDays(c.received, 30);
   const resolveDue = addDays(c.received, 120);
