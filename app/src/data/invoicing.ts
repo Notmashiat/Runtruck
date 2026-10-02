@@ -422,14 +422,33 @@ export type BatchStatus = 'Ready' | 'Sent' | 'Settled';
 export const BATCH_TAG: Record<BatchStatus, string> = { Ready: 'tag-outline', Sent: 'tag-accent', Settled: 'tag-green' };
 export const BATCH_METHODS = ['Email to customer', 'Factoring portal upload', 'Customer AP portal', 'Mail'];
 
+// Invoices by id, built once per invoice list (the list is replaced, never
+// changed in place, whenever an invoice is saved), so looking up a batch's
+// invoices does not walk every invoice for every batch.
+const BY_ID = new WeakMap<InvoiceRecord[], Map<string, InvoiceRecord>>();
+export function invoicesById(invoices: InvoiceRecord[]): Map<string, InvoiceRecord> {
+  let map = BY_ID.get(invoices);
+  if (!map) {
+    map = new Map(invoices.map((i) => [i.id, i]));
+    BY_ID.set(invoices, map);
+  }
+  return map;
+}
+
+// A batch's invoices that still exist.
+export function batchInvoices(b: Batch, invoices: InvoiceRecord[]): InvoiceRecord[] {
+  const byId = invoicesById(invoices);
+  return b.invoiceIds.flatMap((id) => byId.get(id) ?? []);
+}
+
 export function batchStatus(b: Batch, invoices: InvoiceRecord[]): BatchStatus {
-  const members = invoices.filter((i) => b.invoiceIds.includes(i.id));
+  const members = batchInvoices(b, invoices);
   if (members.length > 0 && members.every((i) => i.paid)) return 'Settled';
   return b.sentOn ? 'Sent' : 'Ready';
 }
 
 export function batchTotal(b: Batch, invoices: InvoiceRecord[]): number {
-  return round2(invoices.filter((i) => b.invoiceIds.includes(i.id)).reduce((s, i) => s + invoiceTotal(i), 0));
+  return round2(batchInvoices(b, invoices).reduce((s, i) => s + invoiceTotal(i), 0));
 }
 
 export function nextBatchId(batches: Batch[]): string {

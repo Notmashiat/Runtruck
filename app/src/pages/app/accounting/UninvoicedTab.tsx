@@ -8,6 +8,7 @@ import { useAppShell } from '../../../context/AppShellContext';
 import { TODAY, billableLoads, daysFrom, fmtDate, usd, usd0, type BillableLoad } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 export function UninvoicedTab() {
   const { query, loads, invoices } = useAppShell();
@@ -24,6 +25,8 @@ export function UninvoicedTab() {
   ];
   const sort = useSort(usePageFilters(queue.filter((l) => matchesQuery(l, query)), filters));
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   const waiting = queue.reduce((sum, l) => sum + l.amount, 0);
   const oldest = queue.reduce<(typeof queue)[number] | null>((best, l) => (!best || l.delivered < best.delivered ? l : best), null);
@@ -46,7 +49,7 @@ export function UninvoicedTab() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((l) => (
+            {paged.rows.map((l) => (
               <tr key={l.id}>
                 <td className="strong">
                   <button type="button" className="ui-id-btn" onClick={() => setViewing(l)} aria-label={`Show load ${l.id}`}>{l.id}</button>
@@ -63,6 +66,7 @@ export function UninvoicedTab() {
             ))}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{queue.length ? 'Nothing matches the search or filters.' : 'Every delivered load has an invoice.'}</div>}
       </Card>
 

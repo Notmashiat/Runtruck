@@ -36,18 +36,43 @@ const EXTRA: Record<string, [number, number, number]> = {
   '×': [0xd7, 584, 584], 'é': [0xe9, 556, 556], 'ñ': [0xf1, 556, 611], '©': [0xa9, 737, 737],
 };
 
-// Replace what the fonts cannot show, so screen and PDF print the same text.
-export function sanitize(s: string): string {
-  return s
-    .replace(/→/g, 'to')
-    .replace(/[^\x20-\x7e·—–’‘“”•°…×éñ©]/g, (c) => (c === '\t' || c === '\n' ? ' ' : '?'));
+const MARKS = /[\u0300-\u036f]/g;
+// A letter without its accent ('é' gives 'e'); '' when it has no plain form.
+const plain = (c: string) => c.normalize('NFD').replace(MARKS, '');
+
+// One character as the fonts can print it.
+function printable(c: string): string {
+  const code = c.charCodeAt(0);
+  if (code >= 32 && code <= 126) return c;
+  if (c === '\t' || c === '\n' || code === 0xa0) return ' ';
+  if (EXTRA[c]) return c;
+  // Western European letters and signs (À–ÿ, ¡ ¿ £ § and so on) print as they are.
+  if (c.length === 1 && code >= 0xa1 && code <= 0xff) return c;
+  // Other accented letters (Š, ł, ő) print without the accent rather than as '?'.
+  const base = plain(c);
+  return base && /^[\x20-\x7e]+$/.test(base) ? base : '?';
 }
 
+// Replace what the fonts cannot show, so screen and PDF print the same text.
+export function sanitize(s: string): string {
+  let out = '';
+  for (const c of s.replace(/→/g, 'to').normalize('NFC')) out += printable(c);
+  return out;
+}
+
+// Widths of the few Western European characters that are not a plain letter with an accent.
+const WIDE: Record<string, number> = { 'Æ': 1000, 'æ': 889, 'Ø': 778, 'ø': 611, 'ß': 611, 'Þ': 667, 'þ': 556, 'Ð': 722, 'ð': 556 };
+
 function charWidth(c: string, bold: boolean): number {
+  const widths = bold ? HELV_BOLD : HELV;
   const code = c.charCodeAt(0);
-  if (code >= 32 && code <= 126) return (bold ? HELV_BOLD : HELV)[code - 32];
+  if (code >= 32 && code <= 126) return widths[code - 32];
   const e = EXTRA[c];
-  return e ? (bold ? e[2] : e[1]) : 556;
+  if (e) return bold ? e[2] : e[1];
+  if (WIDE[c]) return WIDE[c];
+  // An accented letter is as wide as the letter under the accent.
+  const base = plain(c).charCodeAt(0);
+  return base >= 32 && base <= 126 ? widths[base - 32] : 556;
 }
 
 export function textWidth(s: string, size: number, bold = false): number {

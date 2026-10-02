@@ -7,6 +7,7 @@ import { useAppShell } from '../../../context/AppShellContext';
 import { FACTORING, TODAY, daysFrom, fmtDate, invoiceTotal, usd, usd0, type InvoiceRecord } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 export function PaidTab() {
   const { query, invoices } = useAppShell();
@@ -40,6 +41,8 @@ export function PaidTab() {
     paid: (p) => p.date, amount: (p) => invoiceTotal(p.inv),
   });
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   return (
     <>
@@ -54,7 +57,7 @@ export function PaidTab() {
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ inv, date, via, days }) => (
+            {paged.rows.map(({ inv, date, via, days }) => (
               <tr key={inv.id} className="is-clickable" onClick={() => setViewing(inv)}>
                 <td className="strong">{inv.id}</td>
                 <td>{inv.customer}</td>
@@ -68,6 +71,7 @@ export function PaidTab() {
             ))}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{paid.length ? 'Nothing matches the search or filters.' : 'No paid invoices yet.'}</div>}
       </Card>
 

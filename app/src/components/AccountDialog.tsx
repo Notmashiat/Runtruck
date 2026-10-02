@@ -5,6 +5,8 @@ import {
 } from '../data/accounts';
 import type { FormValues } from '../data/fleet';
 import { fmtDate } from '../data/invoicing';
+import { reportError } from '../lib/errorLog';
+import { dayOf } from '../lib/format';
 import { OWNER_COMPANY_ID, OWNER_COMPANY_NAME } from '../lib/account';
 import { USER } from '../data/mock';
 import { companyVersionId } from '../lib/deactivate';
@@ -123,7 +125,7 @@ export function AccountDialog({ account, companyId, onClose }: { account?: Accou
         },
   );
 
-  const when = (iso?: string) => (iso ? fmtDate(iso.slice(0, 10)) : 'never');
+  const when = (iso?: string) => (iso ? fmtDate(dayOf(iso)) : 'never');
   const banner = (
     <div className="ui-note co-banner">
       <div><span className="ui-label">Account ID</span><strong className="co-id">{id}</strong></div>
@@ -183,7 +185,13 @@ export function AccountDialog({ account, companyId, onClose }: { account?: Accou
       deleteNote={`${account?.name ?? 'They'} can no longer log in. Account ID ${id} stays retired and is never given to anyone else.`}
       banner={banner}
       adjust={adjust}
-      onSave={(v) => { void save(v); }}
+      onSave={(v) => {
+        // Hashing the password can fail (e.g. the page is not on https): say so instead of saving nothing in silence.
+        save(v).catch((e: unknown) => {
+          reportError(e, { kind: 'promise', where: 'Account' });
+          window.alert('The account could not be saved. Nothing was changed. Try again.');
+        });
+      }}
       onDelete={account && !self ? () => deleteAccount(account.accountId) : undefined}
       onClose={onClose}
     />

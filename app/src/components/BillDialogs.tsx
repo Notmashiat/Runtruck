@@ -211,7 +211,7 @@ export function PayBillDialog({ bill, onClose, onPaid }: { bill: BillRecord; onC
             <p className="ui-p" style={{ marginTop: 4 }}>{bill.description || bill.category} · due {fmtDate(bill.due)}</p>
           </div>
           <div className="ui-form-grid">
-            <Field label="Paid on" required><input className="ui-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
+            <Field label="Paid on" required><input className="ui-input" type="date" max="9999-12-31" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
             <Field label="Amount paid ($)" required error={!(Number(amount.replace(/[$,]/g, '')) > 0) ? 'More than 0' : undefined}>
               <input className="ui-input" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
             </Field>

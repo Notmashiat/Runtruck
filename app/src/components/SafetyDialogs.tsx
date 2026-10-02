@@ -210,7 +210,7 @@ export function CompleteWorkOrderDialog({ order, onClose }: { order: WorkOrder; 
     <SmallDialog label={`Complete ${order.id}`} title={`${order.unit} · ${order.type}`} confirm="Mark done" disabled={!date} onConfirm={done} onClose={onClose}
       intro="What it cost and the odometer. The unit's record is updated (service date, inspection date, next PM) and it goes back in service.">
       <div className="ui-form-grid">
-        <Field label="Done on" required><input className="ui-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
+        <Field label="Done on" required><input className="ui-input" type="date" max="9999-12-31" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
         {order.unitKind === 'Truck' && <Field label="Odometer (mi)"><input className="ui-input num" inputMode="numeric" value={odometer} onChange={(e) => setOdometer(e.target.value)} /></Field>}
         <Field label="Parts ($)"><input className="ui-input num" inputMode="decimal" value={parts} onChange={(e) => setParts(e.target.value)} /></Field>
         <Field label="Labor ($)"><input className="ui-input num" inputMode="decimal" value={labor} onChange={(e) => setLabor(e.target.value)} /></Field>
@@ -336,7 +336,7 @@ export function ViolationActionDialog({ record, kind, onClose }: { record: Viola
   return (
     <SmallDialog label={`Coach ${record.driver}`} title={record.description || record.basic} confirm="Record coaching" onConfirm={save} onClose={onClose} intro="Record the conversation or training with the driver about this violation.">
       <div className="ui-form-grid">
-        <Field label="Date" required><input className="ui-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
+        <Field label="Date" required><input className="ui-input" type="date" max="9999-12-31" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
         <Field label="What was covered" wide><textarea className="ui-input" value={note} onChange={(e) => setNote(e.target.value)} /></Field>
       </div>
     </SmallDialog>
@@ -472,7 +472,7 @@ export function ClaimActionDialog({ record, kind, onClose }: { record: ClaimReco
           log: [...record.log, entry('Payment', `${usd(amount(amt))} by ${by}${ref.trim() ? ` · ${ref.trim()}` : ''}`), ...(settles ? [entry('Settled', 'Paid')] : [])],
         })}>
         <div className="ui-form-grid">
-          <Field label="Date" required><input className="ui-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
+          <Field label="Date" required><input className="ui-input" type="date" max="9999-12-31" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
           <Field label="Amount ($)" required><input className="ui-input num" inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} /></Field>
           <Field label="Paid by"><select className="ui-input" value={by} onChange={(e) => setBy(e.target.value)}>{PAID_BY.map((p) => <option key={p}>{p}</option>)}</select></Field>
           <Field label="Reference"><input className="ui-input" value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Check #, ACH, insurer settlement" /></Field>
@@ -532,7 +532,7 @@ export function UpdateDocDialog({ driver, document, onClose }: { driver: FleetDr
     <SmallDialog label={`${driver.name} · ${document}`} title={f.kind === 'expires' ? 'Renew' : 'Record'} confirm="Save" disabled={!date} onConfirm={save} onClose={onClose}
       intro={`${f.rule}. The date goes on ${driver.name.split(' ')[0]}'s driver record; attach the copy for the qualification file.`}>
       <div className="ui-form-grid">
-        <Field label={f.kind === 'expires' ? 'Expires' : 'Done on'} required><input className="ui-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
+        <Field label={f.kind === 'expires' ? 'Expires' : 'Done on'} required><input className="ui-input" type="date" max="9999-12-31" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
         <Field label="Note"><input className="ui-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Reviewed by Daniel Soto, no violations" /></Field>
       </div>
       <BillDocuments docs={files} onChange={setFiles} owner={`${driver.name} · ${document}`} hint="The new copy" />
@@ -563,7 +563,7 @@ export function RequestDocDialog({ driverId, documents, onClose }: { driverId?: 
         <Field label="Driver" required>
           <select className="ui-input" value={who} onChange={(e) => setWho(e.target.value)}>{active.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select>
         </Field>
-        <Field label="Due" required><input className="ui-input" type="date" value={due} onChange={(e) => setDue(e.target.value)} /></Field>
+        <Field label="Due" required><input className="ui-input" type="date" max="9999-12-31" value={due} onChange={(e) => setDue(e.target.value)} /></Field>
         <Field label="How" ><select className="ui-input" value={via} onChange={(e) => setVia(e.target.value)}>{REQUEST_VIA.map((x) => <option key={x}>{x}</option>)}</select></Field>
       </div>
       <div className="ui-field is-wide" role="group" aria-label="Documents">

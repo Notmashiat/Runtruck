@@ -10,6 +10,7 @@ import { useCompanies } from '../../../lib/companyStore';
 import { companyReleaseIndex, useReleaseState, versionAt, versions } from '../../../lib/releases';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 const FILTERS: FilterDef<ClientCompany>[] = [
   { key: 'status', label: 'Subscription', type: 'select', get: (c) => c.status, options: STATUSES },
@@ -44,6 +45,8 @@ export function ClientsTab() {
     version: (c) => versionOf(c), price: (c) => monthlyPrice(c), last: (c) => billingDates(c, today).last, next: (c) => billingDates(c, today).next,
   });
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   return (
     <>
@@ -60,7 +63,7 @@ export function ClientsTab() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((c) => {
+            {paged.rows.map((c) => {
               const price = monthlyPrice(c);
               const dates = billingDates(c, today);
               const per = PLANS[c.plan].perTruck;
@@ -92,6 +95,7 @@ export function ClientsTab() {
             })}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && (
           <div className="ui-empty">
             {companies.length === 0 ? 'No client companies yet. + Create company adds the first one.' : 'Nothing matches the search or filters.'}

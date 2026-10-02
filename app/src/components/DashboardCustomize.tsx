@@ -35,7 +35,8 @@ export function DashboardCustomize({ layout, onChange, onClose }: { layout: Dash
     onChange({ ...layout, items: layout.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) });
   const setOpt = <K extends keyof DashOptions>(k: K, v: DashOptions[K]) => onChange({ ...layout, options: { ...o, [k]: v } });
   const move = (id: WidgetId, dir: -1 | 1) => {
-    const visible = layout.items.filter((i) => !i.hidden);
+    // Swap with the next widget this account can see (not one hidden from it by permissions).
+    const visible = layout.items.filter((i) => !i.hidden && can(WIDGET_NEEDS[i.id]));
     const at = visible.findIndex((i) => i.id === id);
     const other = visible[at + dir];
     if (!other) return;

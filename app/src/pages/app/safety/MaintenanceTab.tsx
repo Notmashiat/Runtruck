@@ -15,6 +15,7 @@ import { isoDateAt, todayIso } from '../../../lib/clock';
 import { isLive } from '../../../lib/releases';
 import { matchesQuery } from '../../../lib/search';
 import { isoOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 // Release 1.8 (data/releases.ts) brings managed work orders; companies that
 // have not received it keep the read-only list.
@@ -95,6 +96,8 @@ function WorkOrders() {
   );
   // Most urgent first until a column is sorted.
   const rows = sort.key ? sort.rows : [...sort.rows].sort((a, b) => WO_STATES.indexOf(stateOf(a)) - WO_STATES.indexOf(stateOf(b)));
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows, { key: open, of: (r) => r.id });
 
   // Save a change to a work order, and bring its unit's status in Fleet into
   // line with its work orders as they are after the change (in the shop, out
@@ -147,7 +150,7 @@ function WorkOrders() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((w) => {
+            {paged.rows.map((w) => {
               const state = stateOf(w);
               const isExpanded = open === w.id;
               const live = isOpen(w);
@@ -218,6 +221,7 @@ function WorkOrders() {
             })}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{workOrders.length ? 'Nothing matches the search or filters.' : 'No work orders yet. + Log Service opens the first one.'}</div>}
       </Card>
 
@@ -254,6 +258,8 @@ function LegacyMaintenance() {
   const { query } = useAppShell();
   const sort = useSort(usePageFilters(MAINTENANCE.filter((w) => matchesQuery(w, query)), FILTERS));
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   return (
     <>
@@ -267,7 +273,7 @@ function LegacyMaintenance() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((w) => (
+            {paged.rows.map((w) => (
               <tr key={`${w.unit} ${w.item}`}>
                 <td className="strong">{w.unit}</td>
                 <td>{w.item}</td>
@@ -279,6 +285,7 @@ function LegacyMaintenance() {
             ))}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">Nothing matches the search or filters.</div>}
       </Card>
     </>

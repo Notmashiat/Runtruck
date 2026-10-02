@@ -5,6 +5,7 @@ import {
 } from '../data/companies';
 import type { FormValues } from '../data/fleet';
 import { fmtDate } from '../data/invoicing';
+import { dayOf } from '../lib/format';
 import { useAccounts } from '../lib/accountStore';
 import { deleteCompany, isIssued, newCompanyId, saveCompany, useCompanies } from '../lib/companyStore';
 import { NON_NEGATIVE, PHONE, POSITIVE, STATE, ZIP } from '../lib/rules';
@@ -132,7 +133,7 @@ export function CompanyDialog({ company, onClose }: { company?: ClientCompany; o
       <div><span className="ui-label">Company ID</span><strong className="co-id">{id}</strong></div>
       <div className="ui-stop-meta" style={{ marginTop: 0 }}>
         {company
-          ? `Created ${fmtDate(company.created.slice(0, 10))} · ${logins} login account${logins === 1 ? '' : 's'}${logins ? ' (delete them before the company can be deleted)' : ''}`
+          ? `Created ${fmtDate(dayOf(company.created))} · ${logins} login account${logins === 1 ? '' : 's'}${logins ? ' (delete them before the company can be deleted)' : ''}`
           : 'Random and never issued before; it is the company’s for good. Creating the company creates no login accounts — they are assigned to it later.'}
       </div>
     </div>

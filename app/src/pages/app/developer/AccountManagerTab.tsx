@@ -7,12 +7,14 @@ import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
 import { BUSINESS_TYPES, STATUS_TAG, STATUSES, isPaying, monthlyPrice, type ClientCompany } from '../../../data/companies';
 import { fmtDate, usd0 } from '../../../data/invoicing';
+import { dayOf } from '../../../lib/format';
 import { useAccounts } from '../../../lib/accountStore';
 import { useCompanies } from '../../../lib/companyStore';
 import { deactivateCompany, reactivateCompany } from '../../../lib/deactivate';
 import { USER } from '../../../data/mock';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 const when = (iso?: string) => (iso ? new Date(iso).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'Never');
 
@@ -22,7 +24,7 @@ const FILTERS: FilterDef<ClientCompany>[] = [
   { key: 'type', label: 'Business type', type: 'select', get: (c) => c.businessType, options: BUSINESS_TYPES },
   { key: 'state', label: 'State', type: 'select', get: (c) => c.state },
   { key: 'trucks', label: 'Trucks', type: 'range', get: (c) => c.trucks },
-  { key: 'created', label: 'Created', type: 'dates', get: (c) => c.created.slice(0, 10) },
+  { key: 'created', label: 'Created', type: 'dates', get: (c) => dayOf(c.created) },
 ];
 
 function Fact({ k, children }: { k: string; children: ReactNode }) {
@@ -60,6 +62,8 @@ export function AccountManagerTab() {
     { accounts: (c) => accountsOf(c.companyId).length, mrr: (c) => monthlyPrice(c), location: (c) => `${c.state} ${c.city}` },
   );
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   return (
     <>
@@ -75,7 +79,7 @@ export function AccountManagerTab() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((c) => {
+            {paged.rows.map((c) => {
               const open = openId === c.companyId;
               const price = monthlyPrice(c);
               return (
@@ -163,6 +167,7 @@ export function AccountManagerTab() {
             })}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && (
           <div className="ui-empty">
             {companies.length === 0 ? 'No client companies yet. + Create company adds the first one.' : 'Nothing matches the search or filters.'}

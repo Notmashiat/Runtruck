@@ -104,7 +104,7 @@ export function FilterPanel({ page, title, onClose }: { page: string; title: str
                       <label key={edge} className="ui-field">
                         <span className="ui-field-help">{edge === 'from' ? 'From' : 'To'}</span>
                         <input
-                          className="ui-input" type="date"
+                          className="ui-input" type="date" max="9999-12-31"
                           value={((v as DatesValue | undefined) ?? {})[edge] ?? ''}
                           onChange={(e) => setFilter(page, m.key, { ...((v as DatesValue | undefined) ?? {}), [edge]: e.target.value })}
                         />

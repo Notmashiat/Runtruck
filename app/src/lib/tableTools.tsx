@@ -64,11 +64,15 @@ export function sortValue(value: unknown): Key {
   return s.toLowerCase();
 }
 
+// Built once: making a comparer for every pair of rows is what makes sorting
+// a long table slow.
+const COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
 function compareKeys(a: Key, b: Key): number {
   if (typeof a === 'number' && typeof b === 'number') return a - b;
   if (typeof a === 'number') return -1;
   if (typeof b === 'number') return 1;
-  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+  return COLLATOR.compare(String(a), String(b));
 }
 
 // — sorting —

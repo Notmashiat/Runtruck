@@ -20,6 +20,7 @@ import { payStubDoc } from '../../../lib/payStub';
 import { isLive } from '../../../lib/releases';
 import { matchesQuery } from '../../../lib/search';
 import { numberOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 // Release 1.5 (data/releases.ts) brings full payroll; companies that have not
 // received it keep the driver settlements list.
@@ -111,6 +112,8 @@ function Payroll() {
     net: (r) => runTotals(r).net, gross: (r) => runTotals(r).gross, people: (r) => r.lines.length,
   });
   const runs = runSort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const pagedRuns = usePaged(runs, { key: openRun, of: (r) => r.id });
 
   // — employees —
   const list = archivedView ? archived : active;
@@ -127,6 +130,7 @@ function Payroll() {
     { pay: (e) => e.rate, ytd: (e) => ytdOf(e.id).gross, lastPaid: (e) => lastPaid(e.id), archivedAt: (e) => [...e.log].reverse().find((l) => l.action === 'Archived')?.at ?? '' },
   );
   const people = empSort.rows;
+  const pagedPeople = usePaged(people, { key: openEmp, of: (e) => e.id });
 
   const lineCells = (r: PayRun, l: PayLine) => {
     const plus = l.items.filter((i) => i.kind !== 'Deduction').reduce((s, i) => s + i.amount, 0);
@@ -165,7 +169,7 @@ function Payroll() {
               </tr>
             </thead>
             <tbody>
-              {runs.map((r) => {
+              {pagedRuns.rows.map((r) => {
                 const t = runTotals(r);
                 const isOpen = openRun === r.id;
                 return (
@@ -227,6 +231,7 @@ function Payroll() {
               })}
             </tbody>
           </table>
+          {pagedRuns.pager}
           {runs.length === 0 && <div className="ui-empty">{payRuns.length ? 'Nothing matches the search or filters.' : 'No pay runs yet. + New pay run works out the first one.'}</div>}
         </Card>
       )}
@@ -248,7 +253,7 @@ function Payroll() {
             )}
           </thead>
           <tbody>
-            {people.map((e) => {
+            {pagedPeople.rows.map((e) => {
               const isOpen = openEmp === e.id;
               const out = [...e.log].reverse().find((l) => l.action === 'Archived');
               // Only the open row needs its pay history.
@@ -343,6 +348,7 @@ function Payroll() {
             })}
           </tbody>
         </table>
+        {pagedPeople.pager}
         {people.length === 0 && (
           <div className="ui-empty">
             {list.length ? 'Nothing matches the search.' : archivedView ? 'No archived employees.' : 'No one on payroll yet. + Add employee adds the first person.'}
@@ -384,6 +390,8 @@ function Settlements() {
   const net = settlementRows.reduce((sum, x) => sum + dollars(x.net), 0);
   const sort = useSort(usePageFilters(settlementRows.filter((s) => matchesQuery(s, query)), FILTERS));
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   const kpis = [
     { label: 'Drivers', value: String(settlementRows.length), note: approved ? 'Approved for payment' : `${ready} ready to approve` },
@@ -409,7 +417,7 @@ function Settlements() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((s) => (
+            {paged.rows.map((s) => (
               <tr key={s.name}>
                 <td className="strong">{s.name}</td>
                 <td className="muted">{s.basis}</td>
@@ -423,6 +431,7 @@ function Settlements() {
             ))}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">Nothing matches the search or filters.</div>}
         <div className="ui-total">Net payable this week <strong>{money(net)}</strong></div>
       </Card>

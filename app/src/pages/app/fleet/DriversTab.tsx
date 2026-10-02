@@ -11,6 +11,7 @@ import type { FleetDriver } from '../../../data/fleet';
 import { fmtDate } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 const TABS: DriverTab[] = ['All', 'On duty', 'Available'];
 
@@ -62,6 +63,8 @@ export function DriversTab() {
     (d) => (driverTab === 'All' || d.status === driverTab) && matchesQuery({ ...d, ...d.details }, query),
   ), filters), { unit: (d) => (d.unit === '—' ? null : d.unit), cdl: (d) => dv(d, 'cdlExpiry') });
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   const action = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -94,7 +97,7 @@ export function DriversTab() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((d) => (
+            {paged.rows.map((d) => (
               <tr key={d.id} className={d.archived ? 'is-archived' : ''}>
                 <td className="strong">{d.name}</td>
                 <td>{d.archived ? <Tag label="Archived" tagClass="tag-neutral" /> : <Tag label={d.status} tagClass={d.tagClass} />}</td>
@@ -108,6 +111,7 @@ export function DriversTab() {
             ))}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{query || rows.length < active.length ? 'Nothing matches the search or filters.' : 'No drivers in this view.'}</div>}
       </Card>
 

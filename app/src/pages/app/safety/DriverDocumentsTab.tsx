@@ -13,6 +13,7 @@ import { todayIso } from '../../../lib/clock';
 import { isLive } from '../../../lib/releases';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 // Release 1.8 (data/releases.ts) brings the per-driver file with updates and
 // requests; companies that have not received it keep the flat list.
@@ -73,6 +74,8 @@ function QualificationFiles() {
     { name: (r) => r.driver.name, status: (r) => FILE_STATUSES.indexOf(r.status), next: (r) => r.next?.date ?? '9999', problems: (r) => r.problems.length },
   );
   const rows = sort.key ? sort.rows : [...sort.rows].sort((a, b) => FILE_STATUSES.indexOf(a.status) - FILE_STATUSES.indexOf(b.status));
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   const mailto = (driverId: string, docs: string[], message: string) => {
     const email = String(drivers.find((d) => d.id === driverId)?.details.email ?? '');
@@ -121,7 +124,7 @@ function QualificationFiles() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => {
+            {paged.rows.map((r) => {
               const isOpen = open === r.driver.id;
               return (
                 <Fragment key={r.driver.id}>
@@ -178,6 +181,7 @@ function QualificationFiles() {
             })}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{rowsAll.length ? 'Nothing matches the search or filters.' : 'No active drivers. Add them in Fleet › Drivers.'}</div>}
       </Card>
 
@@ -214,6 +218,8 @@ function LegacyDriverDocuments() {
   ];
   const sort = useSort(usePageFilters(docs.filter((d) => matchesQuery(d, query)), FILTERS), { status: (d) => STATUS_ORDER.indexOf(d.status), date: (d) => (d.onFile ? '' : d.date) });
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   return (
     <>
@@ -227,7 +233,7 @@ function LegacyDriverDocuments() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((d) => (
+            {paged.rows.map((d) => (
               <tr key={`${d.driverId} ${d.document}`}>
                 <td className="strong">{d.driver}</td>
                 <td>{d.document}</td>
@@ -237,6 +243,7 @@ function LegacyDriverDocuments() {
             ))}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{docs.length ? 'Nothing matches the search or filters.' : 'No active drivers.'}</div>}
       </Card>
     </>

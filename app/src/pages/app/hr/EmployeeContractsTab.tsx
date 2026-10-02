@@ -21,6 +21,7 @@ import { downloadPdf } from '../../../lib/pdf';
 import { isLive } from '../../../lib/releases';
 import { matchesQuery } from '../../../lib/search';
 import { isoOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 // Release 1.7 (data/releases.ts) brings managed contracts; companies that have
 // not received it keep the read-only list.
@@ -89,6 +90,8 @@ function Contracts() {
     { end: (c) => currentEnd(c, today) || '9999', state: (c) => CONTRACT_STATES.indexOf(stateOf(c)), pay: (c) => c.rate },
   );
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows, { key: open, of: (r) => r.id });
 
   const log = (c: ContractRecord, action: string, note: string, patch: Partial<ContractRecord> = {}) =>
     saveContract({ ...c, ...patch, updated: new Date().toISOString(), log: [...c.log, { at: new Date().toISOString(), by: USER.name, action, note }] });
@@ -129,7 +132,7 @@ function Contracts() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((c) => {
+            {paged.rows.map((c) => {
               const state = stateOf(c);
               const end = currentEnd(c, today);
               const isOpen = open === c.id;
@@ -217,6 +220,7 @@ function Contracts() {
             })}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{contracts.length ? 'Nothing matches the search or filters.' : 'No contracts yet. + New Contract drafts the first one.'}</div>}
       </Card>
 
@@ -271,6 +275,8 @@ function LegacyContracts() {
   const { query } = useAppShell();
   const sort = useSort(usePageFilters(CONTRACTS.filter((c) => matchesQuery(c, query)), FILTERS), { renews: (c) => iso(c.renews) });
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   return (
     <>
@@ -284,7 +290,7 @@ function LegacyContracts() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((c) => (
+            {paged.rows.map((c) => (
               <tr key={c.employee}>
                 <td className="strong">{c.employee}</td>
                 <td>{c.role}</td>
@@ -297,6 +303,7 @@ function LegacyContracts() {
             ))}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">Nothing matches the search or filters.</div>}
       </Card>
     </>

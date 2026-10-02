@@ -8,6 +8,7 @@ import { useAppShell, type LoadTab } from '../../context/AppShellContext';
 import { ACTIVE_STATUSES, stopsOf, type Load } from '../../data/mock';
 import { matchesQuery } from '../../lib/search';
 import { isoOf, numberOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../lib/tableTools';
+import { usePaged } from '../../lib/paging';
 
 const TABS: LoadTab[] = ['Active', 'Needs POD', 'Delivered', 'All'];
 
@@ -42,6 +43,8 @@ export function LoadsPage() {
   const sort = useSort(usePageFilters(base, filters), { unit: (l) => (l.unit === '—' ? null : l.unit) });
   const rows = sort.rows;
   const [openId, setOpenId] = useState<string | null>(firstId(rows));
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows, { key: openId, of: (r) => r.id });
   const [editing, setEditing] = useState<Load | null>(null);
 
   const countOf = (status: string) => String(loads.filter((l) => l.status === status).length);
@@ -82,7 +85,7 @@ export function LoadsPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((l) => {
+            {paged.rows.map((l) => {
               const open = openId === l.id;
               const unassigned = l.unit === '—';
               const stops = stopsOf(l);
@@ -182,6 +185,7 @@ export function LoadsPage() {
             })}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && (
           <div className="ui-empty">{base.length ? 'Nothing matches the search or filters.' : searching ? `Nothing matches “${query}”.` : 'No loads in this view.'}</div>
         )}

@@ -222,7 +222,7 @@ export function EndContractDialog({ contract, onClose, onDone }: { contract: Con
     >
       <div className="ui-form-grid">
         <Field label="Why" required><select className="ui-input" value={reason} onChange={(e) => setReason(e.target.value)}>{END_REASONS.map((r) => <option key={r}>{r}</option>)}</select></Field>
-        <Field label="Last day" required><input className="ui-input" type="date" value={on} onChange={(e) => setOn(e.target.value)} /></Field>
+        <Field label="Last day" required><input className="ui-input" type="date" max="9999-12-31" value={on} onChange={(e) => setOn(e.target.value)} /></Field>
         <Field label="Note" wide help="Optional: final pay, equipment returned, escrow refund date…"><textarea className="ui-input" value={note} onChange={(e) => setNote(e.target.value)} /></Field>
       </div>
     </SmallDialog>
@@ -248,8 +248,8 @@ export function SignaturesDialog({ contract, onClose }: { contract: ContractReco
       onClose={onClose}
     >
       <div className="ui-form-grid">
-        <Field label={`${contract.person} signed`}><input className="ui-input" type="date" value={person} onChange={(e) => setPerson(e.target.value)} /></Field>
-        <Field label={`${contract.companySigner || 'Company'} signed`}><input className="ui-input" type="date" value={company} onChange={(e) => setCompany(e.target.value)} /></Field>
+        <Field label={`${contract.person} signed`}><input className="ui-input" type="date" max="9999-12-31" value={person} onChange={(e) => setPerson(e.target.value)} /></Field>
+        <Field label={`${contract.companySigner || 'Company'} signed`}><input className="ui-input" type="date" max="9999-12-31" value={company} onChange={(e) => setCompany(e.target.value)} /></Field>
       </div>
     </SmallDialog>
   );
@@ -274,7 +274,7 @@ export function RenewDialog({ contract, onClose }: { contract: ContractRecord; o
       onClose={onClose}
     >
       <div className="ui-form-grid">
-        <Field label="New end date" required><input className="ui-input" type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
+        <Field label="New end date" required><input className="ui-input" type="date" max="9999-12-31" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
         <Field label={`Rate (${contract.payBasis.toLowerCase()})`}><input className="ui-input num" inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} /></Field>
       </div>
     </SmallDialog>

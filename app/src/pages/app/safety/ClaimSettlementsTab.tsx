@@ -15,6 +15,7 @@ import { isoDateAt, todayIso } from '../../../lib/clock';
 import { isLive } from '../../../lib/releases';
 import { matchesQuery } from '../../../lib/search';
 import { isoOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 // Release 1.8 (data/releases.ts) brings managed claims with the cargo-claim
 // clock and the accident register; companies that have not received it keep the list.
@@ -78,6 +79,8 @@ function Claims() {
     { paid: (c) => paidOf(c), status: (c) => CLAIM_STATUSES.indexOf(c.status) },
   );
   const rows = sort.key ? sort.rows : [...sort.rows].sort((a, b) => b.incidentDate.localeCompare(a.incidentDate));
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows, { key: open, of: (r) => r.id });
 
   const log = (c: ClaimRecord, act: string, note: string, patch: Partial<ClaimRecord> = {}) =>
     saveClaim({ ...c, ...patch, updated: new Date().toISOString(), log: [...c.log, { at: new Date().toISOString(), by: USER.name, action: act, note }] });
@@ -99,7 +102,7 @@ function Claims() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((c) => {
+            {paged.rows.map((c) => {
               const isOpen = open === c.id;
               const dl = cargoDeadlines(c, today);
               const live = isOpenClaim(c);
@@ -165,6 +168,7 @@ function Claims() {
             })}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{claims.length ? 'Nothing matches the search or filters.' : 'No claims. + New Claim opens one.'}</div>}
       </Card>
 
@@ -219,6 +223,8 @@ function LegacyClaims() {
   const { query } = useAppShell();
   const sort = useSort(usePageFilters(CLAIMS.filter((c) => matchesQuery(c, query)), FILTERS));
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   return (
     <>
@@ -233,7 +239,7 @@ function LegacyClaims() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((c) => (
+            {paged.rows.map((c) => (
               <tr key={c.id}>
                 <td className="strong">{c.id}</td>
                 <td>{c.date}</td>
@@ -248,6 +254,7 @@ function LegacyClaims() {
             ))}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">Nothing matches the search or filters.</div>}
       </Card>
     </>

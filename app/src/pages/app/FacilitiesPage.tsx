@@ -16,6 +16,7 @@ import { MAINTENANCE } from '../../data/safety';
 import { isLive } from '../../lib/releases';
 import { matchesQuery } from '../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../lib/tableTools';
+import { usePaged } from '../../lib/paging';
 
 type Group = 'All' | 'Customer sites' | 'Yards & shops' | 'On the road';
 const GROUPS: Group[] = ['All', 'Customer sites', 'Yards & shops', 'On the road'];
@@ -102,6 +103,8 @@ export function FacilitiesPage() {
     loads: (f) => (isCustomerSite(f.type) ? stopsUsing(loads, f.name).length : null),
   });
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows, { key: openId, of: (r) => r.id });
 
   const action = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -292,7 +295,7 @@ export function FacilitiesPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((f) => {
+            {paged.rows.map((f) => {
               const open = openId === f.id;
               const stops = isCustomerSite(f.type) ? stopsUsing(loads, f.name) : [];
               const live = stops.filter((s) => ACTIVE_STATUSES.includes(s.load.status)).length;
@@ -319,6 +322,7 @@ export function FacilitiesPage() {
             })}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{base.length ? 'Nothing matches the search or filters.' : 'No facilities in this view.'}</div>}
       </Card>
 

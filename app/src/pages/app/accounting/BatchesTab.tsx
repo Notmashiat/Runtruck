@@ -13,6 +13,7 @@ import { combinedDoc, invoiceDoc, invoiceFileName } from '../../../lib/invoicePd
 import { downloadPdf } from '../../../lib/pdf';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 export function BatchesTab() {
   const { query, batches, invoices, saveBatch, deleteBatch } = useAppShell();
@@ -40,6 +41,8 @@ export function BatchesTab() {
     count: (b) => b.invoiceIds.length, total: (b) => batchTotal(b, invoices), status: (b) => batchStatus(b, invoices),
   });
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows, { key: openId, of: (r) => r.id });
   const members = (b: Batch) => invoices.filter((i) => b.invoiceIds.includes(i.id));
 
   return (
@@ -55,7 +58,7 @@ export function BatchesTab() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((b) => {
+            {paged.rows.map((b) => {
               const isOpen = openId === b.id;
               const st = batchStatus(b, invoices);
               const list = members(b);
@@ -123,6 +126,7 @@ export function BatchesTab() {
             })}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{batches.length ? 'Nothing matches the search or filters.' : 'No batches yet.'}</div>}
       </Card>
 

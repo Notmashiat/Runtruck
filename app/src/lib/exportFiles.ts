@@ -1,6 +1,7 @@
 // Writes an export as a real PDF, Word (.docx), Excel (.xlsx) or CSV file,
 // with no outside libraries: .docx and .xlsx are zip packages of XML, put
 // together by the small zip writer below.
+import { csvText } from './csv';
 import { PdfDoc, textWidth } from './pdf';
 
 export interface ExportTable {
@@ -230,11 +231,19 @@ function capWidths(natural: number[], avail: number): number[] {
   return natural;
 }
 
-function fit(s: string, width: number, size: number, bold = false): string {
+// The text, shortened with '…' when it is wider than `width`. Finds the cut
+// by halving, so a very long note costs a handful of measurements, not one
+// per character.
+export function fit(s: string, width: number, size: number, bold = false): string {
   if (textWidth(s, size, bold) <= width) return s;
-  let cut = s;
-  while (cut.length > 1 && textWidth(`${cut}…`, size, bold) > width) cut = cut.slice(0, -1);
-  return `${cut}…`;
+  let lo = 1;
+  let hi = s.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (textWidth(`${s.slice(0, mid)}…`, size, bold) <= width) lo = mid;
+    else hi = mid - 1;
+  }
+  return `${s.slice(0, lo)}…`;
 }
 
 export function pdf(doc: ExportDoc): PdfDoc {
@@ -310,8 +319,7 @@ export function pdf(doc: ExportDoc): PdfDoc {
 // — CSV —
 
 export function csv(t: ExportTable): string {
-  const cell = (v: string) => (/[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-  return '﻿' + [t.columns, ...t.rows].map((r) => r.map((v) => cell(v ?? '')).join(',')).join('\r\n');
+  return csvText([t.columns, ...t.rows]);
 }
 
 // — saving —

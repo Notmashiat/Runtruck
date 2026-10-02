@@ -9,6 +9,7 @@ import {
 } from '../../../data/invoicing';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 type View = 'All' | 'Draft' | 'Unsent' | 'Sent';
 const VIEWS: View[] = ['All', 'Draft', 'Unsent', 'Sent'];
@@ -44,6 +45,8 @@ export function InvoicedTab() {
     loads: (i) => i.loads.join(', '), issued: (i) => (i.draft ? '' : i.issued), amount: (i) => invoiceTotal(i), status: (i) => statusOf(i),
   });
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows, { key: openId, of: (r) => r.id });
 
   const filter = (
     <div className="ui-filter">
@@ -66,7 +69,7 @@ export function InvoicedTab() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((i) => {
+            {paged.rows.map((i) => {
               const st = statusOf(i);
               const isOpen = openId === i.id;
               return (
@@ -93,6 +96,7 @@ export function InvoicedTab() {
             })}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{base.length ? 'Nothing matches the search or filters.' : 'No open invoices in this view.'}</div>}
       </Card>
 

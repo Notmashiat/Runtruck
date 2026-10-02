@@ -14,6 +14,7 @@ import { isoDateAt, todayIso } from '../../../lib/clock';
 import { isLive } from '../../../lib/releases';
 import { matchesQuery } from '../../../lib/search';
 import { isoOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 // Release 1.8 (data/releases.ts) brings logged inspections with BASIC points,
 // challenges and coaching; companies that have not received it keep the list.
@@ -81,6 +82,8 @@ function Inspections() {
     { points: (v) => weightedPoints(v, today), status: (v) => STATUSES.indexOf(statusOf(v)) },
   );
   const rows = sort.key ? sort.rows : [...sort.rows].sort((a, b) => b.date.localeCompare(a.date));
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows, { key: open, of: (r) => r.id });
 
   const log = (v: ViolationRecord, act: string, note: string, patch: Partial<ViolationRecord> = {}) =>
     saveViolation({ ...v, ...patch, updated: new Date().toISOString(), log: [...v.log, { at: new Date().toISOString(), by: USER.name, action: act, note }] });
@@ -134,7 +137,7 @@ function Inspections() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((v) => {
+            {paged.rows.map((v) => {
               const st = statusOf(v);
               const isOpen = open === v.id;
               const clean = isClean(v);
@@ -196,6 +199,7 @@ function Inspections() {
             })}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{violations.length ? 'Nothing matches the search or filters.' : 'No inspections yet. + Log Violation records the first one, clean inspections too.'}</div>}
       </Card>
 
@@ -233,6 +237,8 @@ function LegacyViolations() {
   const { query } = useAppShell();
   const sort = useSort(usePageFilters(VIOLATIONS.filter((v) => matchesQuery(v, query)), FILTERS));
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   return (
     <>
@@ -246,7 +252,7 @@ function LegacyViolations() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((v) => (
+            {paged.rows.map((v) => (
               <tr key={`${v.date} ${v.driver} ${v.type}`}>
                 <td>{v.date}</td>
                 <td className="strong">{v.driver}</td>
@@ -259,6 +265,7 @@ function LegacyViolations() {
             ))}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">Nothing matches the search or filters.</div>}
       </Card>
     </>

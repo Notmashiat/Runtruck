@@ -147,6 +147,7 @@ function plannerEvents(): PlannerEvent[] {
 
 export function buildExportSets(s: ExportSources): ExportSet[] {
   const { loads, drivers, trucks, trailers, facilities, invoices, batches, bills, customers, employees, payRuns, contracts, onboardings, workOrders, violations, claims } = s;
+  const loadById = new Map(loads.map((l) => [l.id, l]));
   return [
     makeSet({ key: 'loads', label: 'Loads', group: 'Loads', perm: 'loads', dateLabel: 'pickup date' }, loads, [
       ['id', 'Load', (l) => l.id], ['status', 'Status', (l) => l.status], ['customer', 'Customer', (l) => l.customer], ['ref', 'Reference', (l) => l.ref],
@@ -192,7 +193,7 @@ export function buildExportSets(s: ExportSources): ExportSet[] {
       ['id', 'Load', (l) => l.id], ['customer', 'Customer', (l) => l.customer], ['route', 'Route', (l) => l.route], ['pickup', 'Picked up', (l) => l.pickup],
       ['delivered', 'Delivered', (l) => l.delivered], ['pod', 'POD', (l) => l.pod], ['amount', 'Amount', (l) => money(l.amount)], ['ref', 'Reference', (l) => l.ref],
       ['commodity', 'Commodity', (l) => l.commodity], ['weight', 'Weight', (l) => l.weight], ['miles', 'Miles', (l) => l.miles], ['equipment', 'Equipment', (l) => l.equipment],
-    ], (l) => ({ date: l.delivered, customer: l.customer, drivers: [loads.find((x) => x.id === l.id)?.driver ?? ''], trucks: units(loads.find((x) => x.id === l.id)?.unit ?? '') })),
+    ], (l) => ({ date: l.delivered, customer: l.customer, drivers: [loadById.get(l.id)?.driver ?? ''], trucks: units(loadById.get(l.id)?.unit ?? '') })),
 
     makeSet({ key: 'invoices', label: 'Invoices', group: 'Accounting', perm: 'accounting/invoiced', dateLabel: 'issue date' }, invoices, [
       ['id', 'Invoice', (i) => i.id], ['status', 'Status', (i) => statusOf(i)], ['customer', 'Customer', (i) => i.customer], ['loads', 'Loads', (i) => i.loads],

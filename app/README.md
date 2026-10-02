@@ -391,11 +391,18 @@ npm install
 npm run dev
 ```
 
-## Build
+How the code is organised, how errors are caught and logged, and how to track
+down a problem a user reports: see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Check and build
 
 ```
-npm run build
+npm run verify   # typecheck + tests + production build
 ```
+
+`npm test` runs the tests alone and `npm run lint` the linter. Vercel and the
+GitHub check (`.github/workflows/ci.yml`) both run `npm run verify`, so a type
+error or a failing test stops a deploy.
 
 ## Deploy (Vercel)
 
@@ -406,8 +413,8 @@ To deploy:
 
 1. Go to [vercel.com/new](https://vercel.com/new) and import the `Notmashiat/Runtruck` GitHub repo.
 2. Set **Root Directory** to `app` (the repo root is the Claude Design handoff bundle, not the app).
-3. Framework preset should auto-detect as **Vite** — build command `npm run build`, output
-   directory `dist`. Leave as-is.
+3. Framework preset should auto-detect as **Vite**. The build command (`npm run verify`), output
+   directory (`dist`), caching and security headers come from `vercel.json`. Leave as-is.
 4. Deploy. Every push to `main` will redeploy automatically after this.
 
 Or from the CLI, from inside `app/`:

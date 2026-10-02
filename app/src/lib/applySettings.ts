@@ -30,7 +30,8 @@ function apply(s: Settings) {
   // The factoring company batches can be sent to.
   if (inv.factoringName.trim()) {
     const key = `${inv.factoringName.trim()} (factoring)`;
-    const previous = BILLING[FACTORING[0]] ?? { name: '', attn: '', street: '', city: '', state: '', zip: '', email: '', phone: '' };
+    // A renamed factoring company is a different company: it does not inherit the old one's address.
+    const previous = BILLING[key] ?? { name: '', attn: '', street: '', city: '', state: '', zip: '', email: '', phone: '' };
     BILLING[key] = { ...previous, name: inv.factoringName.trim(), email: inv.factoringEmail.trim() || previous.email };
     replaceAll(FACTORING, [key]);
   }

@@ -13,6 +13,7 @@ import { isoDateAt, todayIso } from '../../../lib/clock';
 import { isLive } from '../../../lib/releases';
 import { matchesQuery } from '../../../lib/search';
 import { isoOf, numberOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 // Release 1.3 (data/releases.ts) brings the bill manager; companies that have
 // not received it keep the read-only list below.
@@ -80,6 +81,8 @@ function BillManager() {
     { status: (b) => BILL_STATUSES.indexOf(billStatus(b, today)), charged: (b) => chargedTo(b), repeats: (b) => b.frequency ?? '', docs: (b) => b.documents.length },
   );
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows, { key: openId, of: (r) => r.id });
 
   return (
     <>
@@ -96,7 +99,7 @@ function BillManager() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((b) => {
+            {paged.rows.map((b) => {
               const isOpenRow = openId === b.id;
               const st = billStatus(b, today);
               return (
@@ -124,7 +127,7 @@ function BillManager() {
                             {isOpen(b) && !b.autopay && (
                               scheduling?.id === b.id ? (
                                 <span className="bill-schedule">
-                                  <input className="ui-input" type="date" value={scheduling.date} min={today} onChange={(e) => setScheduling({ id: b.id, date: e.target.value })} aria-label="Pay on" />
+                                  <input className="ui-input" type="date" max="9999-12-31" value={scheduling.date} min={today} onChange={(e) => setScheduling({ id: b.id, date: e.target.value })} aria-label="Pay on" />
                                   <button type="button" className="ui-btn ui-btn-sm" disabled={!scheduling.date} onClick={() => { saveBill({ ...b, scheduledFor: scheduling.date, updated: new Date().toISOString() }); setScheduling(null); }}>Schedule</button>
                                   <button type="button" className="ui-link" onClick={() => setScheduling(null)}>Cancel</button>
                                 </span>
@@ -181,6 +184,7 @@ function BillManager() {
             })}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{bills.length === 0 ? 'No bills yet. + Add Bill records the first one.' : 'Nothing matches the search or filters.'}</div>}
       </Card>
 
@@ -218,6 +222,8 @@ function BillList() {
   const { query } = useAppShell();
   const sort = useSort(usePageFilters(BILLS.filter((b) => matchesQuery(b, query)), LIST_FILTERS));
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   return (
     <>
@@ -231,7 +237,7 @@ function BillList() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((b) => (
+            {paged.rows.map((b) => (
               <tr key={b.vendor}>
                 <td className="strong">{b.vendor}</td>
                 <td className="muted">{b.category}</td>
@@ -242,6 +248,7 @@ function BillList() {
             ))}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">Nothing matches the search or filters.</div>}
       </Card>
     </>

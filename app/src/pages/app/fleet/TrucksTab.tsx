@@ -7,6 +7,7 @@ import { useAppShell } from '../../../context/AppShellContext';
 import type { FleetTruck } from '../../../data/fleet';
 import { matchesQuery } from '../../../lib/search';
 import { numberOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 // Odometer and service readings are display strings: '528,900' → 528900.
 const miles = (s: string) => Number(s.replace(/,/g, '')) || 0;
@@ -49,6 +50,8 @@ export function TrucksTab() {
     driver: (t) => (t.driver === 'Unassigned' ? null : t.driver),
   });
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   const action = archivedCount > 0 && (
     <label className="ui-check">
@@ -70,7 +73,7 @@ export function TrucksTab() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((t) => (
+            {paged.rows.map((t) => (
               <tr key={t.id} className={t.archived ? 'is-archived' : ''}>
                 <td className="strong">{t.unit}</td>
                 <td>{t.make}</td>
@@ -84,6 +87,7 @@ export function TrucksTab() {
             ))}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{trucks.length ? 'Nothing matches the search or filters.' : 'No units yet.'}</div>}
       </Card>
 

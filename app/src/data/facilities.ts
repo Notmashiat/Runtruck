@@ -60,8 +60,25 @@ export const list = (v: FormValues, k: string) => (Array.isArray(v[k]) ? (v[k] a
 // Stop and facility names are matched ignoring case and extra spaces.
 export const sameName = (a: string, b: string) => a.trim().replace(/\s+/g, ' ').toLowerCase() === b.trim().replace(/\s+/g, ' ').toLowerCase();
 
+const nameKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
+
+// Facilities by name, built once per facility list (the list is replaced,
+// never changed in place, whenever a facility is saved), so matching every
+// stop of every load to its facility does not walk the whole register each time.
+const BY_NAME = new WeakMap<Facility[], Map<string, Facility>>();
+function byName(facilities: Facility[]): Map<string, Facility> {
+  let map = BY_NAME.get(facilities);
+  if (!map) {
+    map = new Map();
+    // The first facility with a name wins, as a search from the top would.
+    for (const f of facilities) if (!map.has(nameKey(f.name))) map.set(nameKey(f.name), f);
+    BY_NAME.set(facilities, map);
+  }
+  return map;
+}
+
 export function facilityFor(facilities: Facility[], name: string): Facility | undefined {
-  return name.trim() ? facilities.find((f) => sameName(f.name, name)) : undefined;
+  return name.trim() ? byName(facilities).get(nameKey(name)) : undefined;
 }
 
 // 0 = Sunday … 6 = Saturday.

@@ -10,6 +10,7 @@ import {
 import { CUSTOMERS } from '../../../data/mock';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 export function PastDueTab() {
   const { query, invoices } = useAppShell();
@@ -27,19 +28,21 @@ export function PastDueTab() {
     { label: 'Accounts affected', value: String(new Set(overdue.map((i) => i.customer)).size), note: `of ${CUSTOMERS.length} accounts` },
   ];
 
-  const lastReminder = (id: string) => [...(invoices.find((i) => i.id === id)?.history ?? [])].reverse().find((h) => h.text.startsWith('Reminder'));
+  const lastReminder = (i: InvoiceRecord) => (i.history ?? []).findLast((h) => h.text.startsWith('Reminder'));
   const filters: FilterDef<InvoiceRecord>[] = [
     { key: 'customer', label: 'Customer', type: 'select', get: (i) => i.customer },
     { key: 'late', label: 'Days late', type: 'range', get: (i) => daysPastDue(i), suffix: ' d' },
     { key: 'balance', label: 'Balance', type: 'range', get: (i) => invoiceTotal(i), prefix: '$' },
     { key: 'due', label: 'Was due', type: 'dates', get: (i) => i.due },
     { key: 'fee', label: 'Late fee', type: 'toggle', get: (i) => lateFees(i) > 0, hint: 'Only invoices with a late fee added' },
-    { key: 'never', label: 'Not reminded', type: 'toggle', get: (i) => !lastReminder(i.id), hint: 'Only invoices never reminded' },
+    { key: 'never', label: 'Not reminded', type: 'toggle', get: (i) => !lastReminder(i), hint: 'Only invoices never reminded' },
   ];
   const sort = useSort(usePageFilters(overdue.filter((i) => matchesQuery({ ...i, ...i.billTo, loads: i.loads.join(' ') }, query)), filters), {
-    loads: (i) => i.loads.join(', '), late: (i) => daysPastDue(i), reminder: (i) => lastReminder(i.id)?.date ?? '', balance: (i) => invoiceTotal(i),
+    loads: (i) => i.loads.join(', '), late: (i) => daysPastDue(i), reminder: (i) => lastReminder(i)?.date ?? '', balance: (i) => invoiceTotal(i),
   });
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows, { key: openId, of: (r) => r.id });
 
   return (
     <>
@@ -54,9 +57,9 @@ export function PastDueTab() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((i) => {
+            {paged.rows.map((i) => {
               const isOpen = openId === i.id;
-              const reminder = lastReminder(i.id);
+              const reminder = lastReminder(i);
               return (
                 <Fragment key={i.id}>
                   <tr className={`is-clickable${isOpen ? ' is-open' : ''}`} onClick={() => setOpenId(isOpen ? null : i.id)}>
@@ -84,6 +87,7 @@ export function PastDueTab() {
             })}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{overdue.length ? 'Nothing matches the search or filters.' : 'Nothing is past due.'}</div>}
       </Card>
 

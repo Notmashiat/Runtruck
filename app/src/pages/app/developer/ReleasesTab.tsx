@@ -82,7 +82,13 @@ function DeployDialog({ version, onClose }: { version: Version; onClose: () => v
         <>
           <div style={{ flex: 1 }} />
           <button type="button" className="ui-btn" onClick={close}>Cancel</button>
-          <button type="button" className="ui-btn ui-btn-primary" onClick={() => { deployVersion(version, chosen.map((c) => c.companyId), forNew, by(), USER.name); close(); }}>
+          <button
+            type="button" className="ui-btn ui-btn-primary"
+            // Nothing to deploy to: no company ticked and not the version for new companies.
+            disabled={chosen.length === 0 && !forNew}
+            title={chosen.length === 0 && !forNew ? 'Tick at least one company' : undefined}
+            onClick={() => { deployVersion(version, chosen.map((c) => c.companyId), forNew, by(), USER.name); close(); }}
+          >
             Deploy {version.id} to {plural(chosen.length, 'company', 'companies')}
           </button>
         </>

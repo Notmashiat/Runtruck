@@ -1,4 +1,4 @@
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { downloadDocument, openDocument } from '../../components/BillDialogs';
 import { Card } from '../../components/Card';
@@ -19,6 +19,7 @@ import { todayIso } from '../../lib/clock';
 import { isLive } from '../../lib/releases';
 import { matchesQuery } from '../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../lib/tableTools';
+import { usePaged } from '../../lib/paging';
 
 // '$412K' → 412000; '96%' → 96.
 const amount = (s: string) => (Number(s.replace(/[^\d.]/g, '')) || 0) * (/K$/i.test(s) ? 1000 : /M$/i.test(s) ? 1_000_000 : 1);
@@ -65,26 +66,41 @@ function CustomerManager() {
   const today = todayIso();
   const year = today.slice(0, 4);
 
-  const open = invoices.filter((i) => !i.draft && !i.paid);
-  const arOf = (name: string) => open.filter((i) => i.customer === name).reduce((s, i) => s + invoiceTotal(i), 0);
-  const pastDueOf = (name: string) => open.filter((i) => i.customer === name && statusOf(i) === 'Overdue').length;
-  // Loads and revenue: history from before RunTruck plus loads added here since.
-  const newLoads = (c: CustomerRecord) => loads.filter((l) => l.customer === c.name && l.createdAt && l.createdAt > c.created);
-  const rows0 = customers.map((c) => {
-    const added = newLoads(c);
-    const usage = usageOf(c, loads, invoices, year);
-    return {
-      ...c,
-      loadsYtd: (c.history?.loads ?? 0) + added.length,
-      revenueYtd: (c.history?.revenue ?? 0) + added.reduce((s, l) => s + (Number(l.rate.replace(/[$,]/g, '')) || 0), 0),
-      onTimePct: c.history?.onTime ?? null,
-      arValue: arOf(c.name),
-      pastDue: pastDueOf(c.name),
-      lastUsed: usage.lastUsed,
-      lastWhy: usage.why,
-      inactiveEntry: lastInactive(c),
+  // Each customer's figures, worked out only when customers, loads or
+  // invoices change. Loads and invoices are sorted into one pile per customer
+  // first, so a thousand customers do not each read every load.
+  const rows0 = useMemo(() => {
+    const pile = <T extends { customer: string }>(list: T[]) => {
+      const by = new Map<string, T[]>();
+      for (const x of list) {
+        const at = by.get(x.customer);
+        if (at) at.push(x);
+        else by.set(x.customer, [x]);
+      }
+      return by;
     };
-  });
+    const loadsOf = pile(loads);
+    const invoicesOf = pile(invoices);
+    return customers.map((c) => {
+      const theirLoads = loadsOf.get(c.name) ?? [];
+      const theirInvoices = invoicesOf.get(c.name) ?? [];
+      const unpaid = theirInvoices.filter((i) => !i.draft && !i.paid);
+      // Loads and revenue: history from before RunTruck plus loads added here since.
+      const added = theirLoads.filter((l) => l.createdAt && l.createdAt > c.created);
+      const usage = usageOf(c, theirLoads, theirInvoices, year);
+      return {
+        ...c,
+        loadsYtd: (c.history?.loads ?? 0) + added.length,
+        revenueYtd: (c.history?.revenue ?? 0) + added.reduce((s, l) => s + (Number(l.rate.replace(/[$,]/g, '')) || 0), 0),
+        onTimePct: c.history?.onTime ?? null,
+        arValue: unpaid.reduce((s, i) => s + invoiceTotal(i), 0),
+        pastDue: unpaid.filter((i) => statusOf(i) === 'Overdue').length,
+        lastUsed: usage.lastUsed,
+        lastWhy: usage.why,
+        inactiveEntry: lastInactive(c),
+      };
+    });
+  }, [customers, loads, invoices, year]);
   type Row = (typeof rows0)[number];
   const active = rows0.filter((c) => c.status === 'Active');
   const inactive = rows0.filter((c) => c.status === 'Inactive');
@@ -126,6 +142,8 @@ function CustomerManager() {
     { loads: (c) => c.loadsYtd, revenue: (c) => c.revenueYtd, onTime: (c) => c.onTimePct, ar: (c) => c.arValue, tier: (c) => STANDINGS.indexOf(c.standing), moved: (c) => c.inactiveEntry?.at ?? '' },
   );
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows, { key: openId, of: (r) => r.id });
 
   const reactivate = (row: CustomerRecord) => {
     // The saved record, not the table row (which also carries worked-out columns).
@@ -247,7 +265,7 @@ function CustomerManager() {
             )}
           </thead>
           <tbody>
-            {rows.map((c) => {
+            {paged.rows.map((c) => {
               const isOpen = openId === c.id;
               const cols = showInactive ? 7 : 8;
               return (
@@ -284,6 +302,7 @@ function CustomerManager() {
             })}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && (
           <div className="ui-empty">
             {list.length > 0 ? 'Nothing matches the search or filters.' : showInactive ? 'No inactive customers. Customers move here when someone moves them, or after a year without loads or invoices.' : 'No customers yet. + Add Customer adds the first one.'}
@@ -330,6 +349,8 @@ function CustomerList() {
   ];
   const sort = useSort(usePageFilters(accounts.filter((c) => matchesQuery(c, query)), filters), { ar: (c) => c.arValue });
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   return (
     <>
@@ -362,7 +383,7 @@ function CustomerList() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((c) => (
+            {paged.rows.map((c) => (
               <tr key={c.name}>
                 <td className="strong">{c.name}</td>
                 <td className="muted">{c.contact}</td>
@@ -376,6 +397,7 @@ function CustomerList() {
             ))}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">Nothing matches the search or filters.</div>}
       </Card>
     </>

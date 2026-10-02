@@ -260,7 +260,7 @@ export function ExportPanel() {
           </label>
           <label className="ui-field">
             <span className="ui-field-label">To</span>
-            <input className="ui-input" type="date" value={f.to} min={f.from || undefined} onChange={(e) => set('to', e.target.value)} />
+            <input className="ui-input" type="date" max="9999-12-31" value={f.to} min={f.from || undefined} onChange={(e) => set('to', e.target.value)} />
           </label>
           <div className="exp-links exp-quick">
             <button type="button" className="ui-link" onClick={() => setF((p) => ({ ...p, from: `${today.slice(0, 8)}01`, to: today }))}>This month</button>

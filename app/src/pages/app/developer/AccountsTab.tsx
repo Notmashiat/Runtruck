@@ -15,6 +15,7 @@ import { USER } from '../../../data/mock';
 import { matchesQuery } from '../../../lib/search';
 import { getSettings } from '../../../lib/settingsStore';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 const when = (iso?: string) => (iso ? new Date(iso).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'Never');
 
@@ -89,6 +90,8 @@ export function AccountsTab() {
 
   const sort = useSort(usePageFilters(all.filter((r) => matchesQuery({ ...r, account: undefined }, query)), FILTERS), {});
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   return (
     <>
@@ -104,7 +107,7 @@ export function AccountsTab() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => {
+            {paged.rows.map((r) => {
               const open = openId === r.accountId;
               const perms = r.account?.perms ?? [];
               const full = r.type === 'Super admin';
@@ -169,6 +172,7 @@ export function AccountsTab() {
             })}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">Nothing matches the search or filters.</div>}
       </Card>
       {editing && <AccountDialog account={editing} onClose={() => setEditing(null)} />}

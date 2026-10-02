@@ -20,10 +20,23 @@ export function timeZone(): string | undefined {
   return ZONES[getSettings().profile.timeZone];
 }
 
+// Date formatters are costly to build and todayIso() is called for every row
+// of every table, so each one is built once and kept (one per time zone).
+const FORMATTERS = new Map<string, Intl.DateTimeFormat>();
+function formatter(locale: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = `${locale}|${JSON.stringify(options)}`;
+  let f = FORMATTERS.get(key);
+  if (!f) {
+    f = new Intl.DateTimeFormat(locale, options);
+    FORMATTERS.set(key, f);
+  }
+  return f;
+}
+
 // 'YYYY-MM-DD' for a moment, in the chosen time zone.
 export function isoDateAt(at: Date): string {
   try {
-    return new Intl.DateTimeFormat('en-CA', { timeZone: timeZone(), year: 'numeric', month: '2-digit', day: '2-digit' }).format(at);
+    return formatter('en-CA', { timeZone: timeZone(), year: 'numeric', month: '2-digit', day: '2-digit' }).format(at);
   } catch {
     return `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`;
   }
@@ -39,9 +52,9 @@ export function currentYear(): number {
 
 export function formatNow(at: Date, options: Intl.DateTimeFormatOptions): string {
   try {
-    return new Intl.DateTimeFormat('en-US', { timeZone: timeZone(), ...options }).format(at);
+    return formatter('en-US', { timeZone: timeZone(), ...options }).format(at);
   } catch {
-    return new Intl.DateTimeFormat('en-US', options).format(at);
+    return formatter('en-US', options).format(at);
   }
 }
 

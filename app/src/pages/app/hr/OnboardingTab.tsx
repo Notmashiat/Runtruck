@@ -20,6 +20,7 @@ import { isoDateAt, shortDate, todayIso } from '../../../lib/clock';
 import { isLive } from '../../../lib/releases';
 import { matchesQuery } from '../../../lib/search';
 import { isoOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 // Release 1.7 (data/releases.ts) brings managed onboarding; companies that
 // have not received it keep the read-only list.
@@ -101,6 +102,8 @@ function OnboardingBoard() {
     { stage: (o) => STAGE_ORDER.indexOf(stageOf(o)), progress: (o) => progressOf(o).pct, next: (o) => nextStepOf(o)?.label ?? '' },
   );
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows, { key: open, of: (r) => r.id });
 
   const save = (o: OnboardingRecord, patch: Partial<OnboardingRecord>, action?: string, note = '') =>
     saveOnboarding({ ...o, ...patch, updated: new Date().toISOString(), log: action ? [...o.log, { at: new Date().toISOString(), by: USER.name, action, note }] : o.log });
@@ -181,7 +184,7 @@ function OnboardingBoard() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((o) => {
+            {paged.rows.map((o) => {
               const stage = stageOf(o);
               const next = nextStepOf(o);
               const isOpen = open === o.id;
@@ -300,6 +303,7 @@ function OnboardingBoard() {
             })}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{onboardings.length ? 'Nothing matches the search or filters.' : 'No one onboarding. + Start Onboarding adds the first new hire.'}</div>}
       </Card>
 
@@ -345,6 +349,8 @@ function LegacyOnboarding() {
   const { query } = useAppShell();
   const sort = useSort(usePageFilters(ONBOARDING.filter((o) => matchesQuery(o, query)), FILTERS), { stage: (o) => LEGACY_STAGES.indexOf(o.stage) });
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   return (
     <>
@@ -358,7 +364,7 @@ function LegacyOnboarding() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((o) => (
+            {paged.rows.map((o) => (
               <tr key={o.candidate}>
                 <td className="strong">{o.candidate}</td>
                 <td>{o.role}</td>
@@ -378,6 +384,7 @@ function LegacyOnboarding() {
             ))}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">Nothing matches the search or filters.</div>}
       </Card>
     </>

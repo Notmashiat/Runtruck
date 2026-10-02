@@ -7,6 +7,7 @@ import { useAppShell } from '../../../context/AppShellContext';
 import type { FleetTrailer } from '../../../data/fleet';
 import { matchesQuery } from '../../../lib/search';
 import { numberOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
+import { usePaged } from '../../../lib/paging';
 
 export function TrailersTab() {
   const { query, trailers } = useAppShell();
@@ -43,6 +44,8 @@ export function TrailersTab() {
     make: (t) => [lv(t, 'make'), lv(t, 'year')].filter(Boolean).join(' '), plate: (t) => [lv(t, 'plateState'), lv(t, 'plateNumber')].filter(Boolean).join(' '),
   });
   const rows = sort.rows;
+  // Long lists are drawn a page at a time (lib/paging.tsx).
+  const paged = usePaged(rows);
 
   const action = archivedCount > 0 && (
     <label className="ui-check">
@@ -63,7 +66,7 @@ export function TrailersTab() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((t) => (
+            {paged.rows.map((t) => (
               <tr key={t.id} className={t.archived ? 'is-archived' : ''}>
                 <td className="strong">{t.unit}</td>
                 <td>{t.kind}</td>
@@ -76,6 +79,7 @@ export function TrailersTab() {
             ))}
           </tbody>
         </table>
+        {paged.pager}
         {rows.length === 0 && <div className="ui-empty">{trailers.length ? 'Nothing matches the search or filters.' : 'No trailers yet.'}</div>}
       </Card>
 

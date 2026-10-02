@@ -94,10 +94,10 @@ export function BatchDialog({ batch, onClose }: { batch?: Batch; onClose: () => 
               </select>
             </Field>
             <Field label="Batch date" required>
-              <input className="ui-input" type="date" value={b.created} onChange={(e) => setB((p) => ({ ...p, created: e.target.value }))} />
+              <input className="ui-input" type="date" max="9999-12-31" value={b.created} onChange={(e) => setB((p) => ({ ...p, created: e.target.value }))} />
             </Field>
             <Field label="Sent on" help="Leave blank while the batch is still being put together.">
-              <input className="ui-input" type="date" value={b.sentOn ?? ''} onChange={(e) => setB((p) => ({ ...p, sentOn: e.target.value || undefined }))} />
+              <input className="ui-input" type="date" max="9999-12-31" value={b.sentOn ?? ''} onChange={(e) => setB((p) => ({ ...p, sentOn: e.target.value || undefined }))} />
             </Field>
           </div>
 

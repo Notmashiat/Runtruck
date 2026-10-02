@@ -511,7 +511,7 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
                 <input className="ui-input" value={s.zip} inputMode="numeric" onChange={(e) => setStop(i, { zip: e.target.value })} />
               </Field>
               <Field label="Date" required invalid={showErrors && !s.date}>
-                <input className="ui-input" type="date" value={s.date} onChange={(e) => setStop(i, { date: e.target.value })} />
+                <input className="ui-input" type="date" max="9999-12-31" value={s.date} onChange={(e) => setStop(i, { date: e.target.value })} />
               </Field>
               <Field label="Window opens">
                 <input className="ui-input" type="time" value={s.from} onChange={(e) => setStop(i, { from: e.target.value })} />

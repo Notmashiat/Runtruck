@@ -70,7 +70,7 @@ export function EventDialog({ event, categories, isNew, onSave, onDelete, onClos
             </label>
             <label className={`ui-field${tried && badDate ? ' is-invalid' : ''}`}>
               <span className="ui-field-label">Date <span className="ui-req">*</span></span>
-              <input className="ui-input" type="date" value={e.date} onChange={(x) => set('date', x.target.value)} />
+              <input className="ui-input" type="date" max="9999-12-31" value={e.date} onChange={(x) => set('date', x.target.value)} />
             </label>
             <div className="ui-field is-wide">
               <label className="ui-check">
@@ -81,7 +81,7 @@ export function EventDialog({ event, categories, isNew, onSave, onDelete, onClos
             {allDay ? (
               <label className={`ui-field${tried && badEnd ? ' is-invalid' : ''}`}>
                 <span className="ui-field-label">Until (optional)</span>
-                <input className="ui-input" type="date" value={e.endDate ?? ''} min={e.date} onChange={(x) => set('endDate', x.target.value || undefined)} />
+                <input className="ui-input" type="date" max="9999-12-31" value={e.endDate ?? ''} min={e.date} onChange={(x) => set('endDate', x.target.value || undefined)} />
                 {tried && badEnd && <span className="ui-field-error">Must be on or after the start date</span>}
               </label>
             ) : (

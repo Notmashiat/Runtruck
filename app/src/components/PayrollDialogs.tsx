@@ -284,9 +284,9 @@ export function PayRunDialog({ onClose, onCreated }: { onClose: () => void; onCr
                 {PAY_FREQUENCIES.map((f) => <option key={f} value={f}>{f} · {active.filter((e) => e.frequency === f).length} people</option>)}
               </select>
             </Field>
-            <Field label="Period from"><input className="ui-input" type="date" value={period.start} onChange={(e) => setPeriod({ ...period, start: e.target.value })} /></Field>
-            <Field label="Period to"><input className="ui-input" type="date" value={period.end} onChange={(e) => setPeriod({ ...period, end: e.target.value })} /></Field>
-            <Field label="Pay date"><input className="ui-input" type="date" value={period.payDate} onChange={(e) => setPeriod({ ...period, payDate: e.target.value })} /></Field>
+            <Field label="Period from"><input className="ui-input" type="date" max="9999-12-31" value={period.start} onChange={(e) => setPeriod({ ...period, start: e.target.value })} /></Field>
+            <Field label="Period to"><input className="ui-input" type="date" max="9999-12-31" value={period.end} onChange={(e) => setPeriod({ ...period, end: e.target.value })} /></Field>
+            <Field label="Pay date"><input className="ui-input" type="date" max="9999-12-31" value={period.payDate} onChange={(e) => setPeriod({ ...period, payDate: e.target.value })} /></Field>
           </div>
           {period.payDate && period.end && period.payDate < period.end && <div className="ui-note">The pay date is before the period ends ({fmtDate(period.end)}). Pay in arrears: pick a date after the period.</div>}
           {period.end >= today && <div className="ui-note">This period is not over until {fmtDate(period.end)}: loads delivered after today are not in it yet.</div>}

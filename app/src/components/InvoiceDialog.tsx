@@ -222,10 +222,10 @@ export function InvoiceDialog({ invoice, loadIds, onClose }: { invoice?: Invoice
           </select>
         </Field>
         <Field label="Invoice date" required error={err('Invoice', 'issued')}>
-          <input className="ui-input" type="date" value={d.issued} onChange={(e) => setD((p) => withTerms(p, p.terms, e.target.value))} />
+          <input className="ui-input" type="date" max="9999-12-31" value={d.issued} onChange={(e) => setD((p) => withTerms(p, p.terms, e.target.value))} />
         </Field>
         <Field label="Due date" required error={err('Invoice', 'due')}>
-          <input className="ui-input" type="date" value={d.due} onChange={(e) => setD((p) => ({ ...p, due: e.target.value }))} />
+          <input className="ui-input" type="date" max="9999-12-31" value={d.due} onChange={(e) => setD((p) => ({ ...p, due: e.target.value }))} />
         </Field>
         <Field label="Customer reference / PO" wide>
           <input className="ui-input" value={d.ref} onChange={(e) => setD((p) => ({ ...p, ref: e.target.value }))} placeholder="Printed so their AP can match it" />
@@ -241,10 +241,10 @@ export function InvoiceDialog({ invoice, loadIds, onClose }: { invoice?: Invoice
           <input className="ui-input" value={d.route} onChange={(e) => setD((p) => ({ ...p, route: e.target.value }))} placeholder="Fresno, CA → Reno, NV" />
         </Field>
         <Field label="Picked up">
-          <input className="ui-input" type="date" value={d.pickup} onChange={(e) => setD((p) => ({ ...p, pickup: e.target.value }))} />
+          <input className="ui-input" type="date" max="9999-12-31" value={d.pickup} onChange={(e) => setD((p) => ({ ...p, pickup: e.target.value }))} />
         </Field>
         <Field label="Delivered">
-          <input className="ui-input" type="date" value={d.delivery} onChange={(e) => setD((p) => ({ ...p, delivery: e.target.value }))} />
+          <input className="ui-input" type="date" max="9999-12-31" value={d.delivery} onChange={(e) => setD((p) => ({ ...p, delivery: e.target.value }))} />
         </Field>
         <Field label="Equipment">
           <input className="ui-input" value={d.equipment} onChange={(e) => setD((p) => ({ ...p, equipment: e.target.value }))} />
@@ -487,7 +487,7 @@ export function PaymentDialog({ invoice, onClose }: { invoice: InvoiceRecord; on
           <p className="ui-p" style={{ marginTop: 0 }}>{invoice.id} · {invoice.customer} · {usd(invoiceTotal(invoice))}</p>
           <div className="ui-form-grid">
             <Field label="Paid on" required>
-              <input className="ui-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <input className="ui-input" type="date" max="9999-12-31" value={date} onChange={(e) => setDate(e.target.value)} />
             </Field>
             <Field label="Method" required>
               <select className="ui-input" value={via} onChange={(e) => setVia(e.target.value)}>

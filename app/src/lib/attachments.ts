@@ -28,29 +28,57 @@ async function blobOf(d: BillDocument): Promise<Blob | null> {
   return d.data ? (await fetch(d.data)).blob() : null;
 }
 
-// Open an attached file in a new tab (PDFs and images show in the browser).
+// The only kinds of file shown inside the browser. Anything else is
+// downloaded instead: a web page or an SVG picture can carry a script, and
+// opened in a tab it would run as RunTruck, with this company's records.
+const SHOWN_IN_TAB = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp']);
+export const opensInTab = (d: Pick<BillDocument, 'type'>) => SHOWN_IN_TAB.has((d.type || '').toLowerCase().split(';')[0].trim());
+
+const missing = (d: BillDocument) => window.alert(`${d.name} is not saved in this browser. Attach it again.`);
+
+async function safeBlob(d: BillDocument): Promise<Blob | null> {
+  try {
+    return await blobOf(d);
+  } catch {
+    return null;
+  }
+}
+
+// Open an attached file in a new tab (PDFs and images show in the browser;
+// every other kind of file is downloaded).
 export async function openDocument(d: BillDocument) {
+  if (!opensInTab(d)) return downloadDocument(d);
+  const type = d.type.toLowerCase().split(';')[0].trim();
   // Open the tab first, while the click still counts, then fill it.
   const tab = window.open('', '_blank');
-  const blob = await blobOf(d);
+  const blob = await safeBlob(d);
   if (!blob) {
     tab?.close();
-    window.alert(`${d.name} is not saved in this browser. Attach it again.`);
+    missing(d);
     return;
   }
-  const url = URL.createObjectURL(blob.type ? blob : new Blob([blob], { type: d.type }));
-  if (tab) tab.location.href = url;
-  else window.open(url, '_blank', 'noopener');
+  // Served as the allowed type on the record, whatever the file itself claims.
+  const url = URL.createObjectURL(new Blob([blob], { type }));
+  if (tab) {
+    // The new tab gets no handle back to RunTruck.
+    try {
+      tab.opener = null;
+    } catch {
+      // Some browsers do not allow it; the type check above is the real guard.
+    }
+    tab.location.href = url;
+  } else window.open(url, '_blank', 'noopener');
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export async function downloadDocument(d: BillDocument) {
-  const blob = await blobOf(d);
+  const blob = await safeBlob(d);
   if (!blob) {
-    window.alert(`${d.name} is not saved in this browser. Attach it again.`);
+    missing(d);
     return;
   }
-  const url = URL.createObjectURL(blob);
+  // A plain "file" type, so no browser tries to show it instead of saving it.
+  const url = URL.createObjectURL(new Blob([blob], { type: 'application/octet-stream' }));
   const a = document.createElement('a');
   a.href = url;
   a.download = d.name;
