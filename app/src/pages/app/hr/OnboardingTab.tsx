@@ -63,8 +63,15 @@ function OnboardingBoard() {
   const [adding, setAdding] = useState<{ id: string; stage: Stage; label: string } | null>(null);
   const today = todayIso();
 
+  // A hire stays on the list until they are on payroll, in the fleet (drivers) and have a contract.
+  const contractOf = (o: OnboardingRecord) => contracts.find((c) => c.id === o.contractId) ?? contracts.find((c) => c.onboardingId === o.id);
+  const fleetOf = (o: OnboardingRecord) => (o.driverId ? drivers.find((d) => d.id === o.driverId) : undefined) ?? drivers.find((d) => d.name.toLowerCase() === o.name.toLowerCase());
+  const setupLeft = (o: OnboardingRecord) => o.status !== 'Hired' ? [] : [
+    ...(o.employeeId ? [] : ['payroll']), ...(isDriverRole(o.role) && !fleetOf(o) ? ['fleet'] : []), ...(contractOf(o) ? [] : ['contract']),
+  ];
   const active = onboardings.filter((o) => o.status === 'In progress');
-  const closed = onboardings.filter((o) => o.status !== 'In progress');
+  const settingUp = onboardings.filter((o) => setupLeft(o).length > 0);
+  const closed = onboardings.filter((o) => o.status !== 'In progress' && !settingUp.includes(o));
   const ready = active.filter((o) => stageOf(o) === 'Ready to hire');
   const startingSoon = active.filter((o) => o.targetStart && daysBetween(today, o.targetStart) <= 14);
   const quarterStart = `${today.slice(0, 4)}-${String(Math.floor((Number(today.slice(5, 7)) - 1) / 3) * 3 + 1).padStart(2, '0')}-01`;
@@ -89,7 +96,7 @@ function OnboardingBoard() {
     { key: 'progress', label: 'Progress', type: 'range', get: (o) => progressOf(o).pct, suffix: '%' },
   ];
   const sort = useSort(
-    usePageFilters((showClosed ? onboardings : active).filter((o) => matchesQuery({ ...o, steps: '', log: '', documents: o.documents.map((d) => d.name).join(' ') }, query)), filters),
+    usePageFilters((showClosed ? onboardings : [...active, ...settingUp]).filter((o) => matchesQuery({ ...o, steps: '', log: '', documents: o.documents.map((d) => d.name).join(' ') }, query)), filters),
     { stage: (o) => STAGE_ORDER.indexOf(stageOf(o)), progress: (o) => progressOf(o).pct, next: (o) => nextStepOf(o)?.label ?? '' },
   );
   const rows = sort.rows;
@@ -109,6 +116,11 @@ function OnboardingBoard() {
 
   // The driver's fleet record, with the qualification dates from the checklist.
   const addToFleet = (o: OnboardingRecord) => {
+    const existing = fleetOf(o);
+    if (existing) {
+      save(o, { driverId: existing.id }, 'Linked to fleet', existing.id);
+      return;
+    }
     const doneOn = (part: string) => o.steps.find((s) => s.done && s.label.includes(part))?.doneOn ?? '';
     const [firstName, ...rest] = o.name.split(' ');
     const offer = parseOffer(o.payOffer);
@@ -173,7 +185,9 @@ function OnboardingBoard() {
               const isOpen = open === o.id;
               const inProgress = o.status === 'In progress';
               const warn = credentialWarnings(o, today);
-              const contract = contracts.find((c) => c.id === o.contractId) ?? contracts.find((c) => c.onboardingId === o.id);
+              const contract = contractOf(o);
+              const inFleet = fleetOf(o);
+              const left = setupLeft(o);
               return (
                 <Fragment key={o.id}>
                   <tr className={`is-clickable${isOpen ? ' is-open' : ''}${o.status === 'Not hired' || o.status === 'Withdrawn' ? ' is-off' : ''}`} onClick={() => setOpen(isOpen ? null : o.id)} aria-expanded={isOpen}>
@@ -183,7 +197,7 @@ function OnboardingBoard() {
                     <td>{o.targetStart ? fmtDate(o.targetStart) : '—'}{inProgress && o.targetStart && <div className="ui-stop-meta">{o.targetStart < today ? 'Past' : `in ${daysBetween(today, o.targetStart)} d`}</div>}</td>
                     <td>{o.manager}</td>
                     <td><Progress o={o} /></td>
-                    <td className="muted">{inProgress ? next?.label ?? 'Mark hired' : o.status === 'Hired' ? `Started ${fmtDate(o.targetStart)}` : o.closedReason}</td>
+                    <td className="muted">{inProgress ? next?.label ?? 'Mark hired' : left.length ? `Set up: ${left.join(', ')}` : o.status === 'Hired' ? `Started ${fmtDate(o.targetStart)}` : o.closedReason}</td>
                   </tr>
                   {isOpen && (
                     <tr>
@@ -202,7 +216,7 @@ function OnboardingBoard() {
                             <div className="hr-handoff">
                               <span className="ui-label">Set them up</span>
                               {o.employeeId ? <span>✓ On payroll · {o.employeeId}</span> : <button type="button" className="ui-btn ui-btn-sm ui-btn-primary" onClick={() => setToPayroll(o)}>Add to payroll</button>}
-                              {isDriverRole(o.role) && (o.driverId ? <span>✓ In Fleet › Drivers · {o.driverId}</span> : <button type="button" className="ui-btn ui-btn-sm" onClick={() => addToFleet(o)}>Add to Fleet › Drivers</button>)}
+                              {isDriverRole(o.role) && (inFleet ? <span>✓ In Fleet › Drivers · {inFleet.id}</span> : <button type="button" className="ui-btn ui-btn-sm" onClick={() => addToFleet(o)}>Add to Fleet › Drivers</button>)}
                               {contract ? <span>✓ Contract {contract.id} · {contract.status.toLowerCase()}</span> : <button type="button" className="ui-btn ui-btn-sm" onClick={() => setToContract(o)}>Create contract</button>}
                             </div>
                           )}
