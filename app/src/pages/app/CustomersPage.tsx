@@ -4,6 +4,8 @@ import { downloadDocument, openDocument } from '../../components/BillDialogs';
 import { Card } from '../../components/Card';
 import { CustomerDialog } from '../../components/CustomerDialogs';
 import { CustomerDocsDialog } from '../../components/CustomerDocs';
+import { AttachDialog } from '../../components/AttachDialog';
+import type { BillDocument } from '../../data/bills';
 import { Kpis } from '../../components/Kpis';
 import { Tag } from '../../components/Tag';
 import { useAppShell } from '../../context/AppShellContext';
@@ -47,6 +49,19 @@ function CustomerManager() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomerRecord | null>(null);
   const [viewingDocs, setViewingDocs] = useState<CustomerRecord | null>(null);
+  const [attaching, setAttaching] = useState<CustomerRecord | null>(null);
+  // New files join the customer: a required document replaces the one it had
+  // and is marked on file; anything else is added.
+  const attachTo = (id: string, added: BillDocument[]) => {
+    const c = customers.find((x) => x.id === id);
+    if (!c || added.length === 0) return;
+    const kinds = new Set(added.map((d) => d.kind).filter(Boolean) as string[]);
+    saveCustomer({
+      ...c, updated: new Date().toISOString(),
+      documents: [...c.documents.filter((d) => !d.kind || !kinds.has(d.kind)), ...added],
+      onFile: [...new Set([...c.onFile, ...kinds])],
+    });
+  };
   const today = todayIso();
   const year = today.slice(0, 4);
 
@@ -168,9 +183,12 @@ function CustomerManager() {
             </>
           );
         })()}
-        <button type="button" className="ui-btn ui-btn-sm crm-viewall" onClick={() => setViewingDocs(customers.find((x) => x.id === c.id) ?? null)}>
-          View all documents{c.documents.length ? ` (${c.documents.length})` : ''}
-        </button>
+        <span className="crm-doc-actions">
+          <button type="button" className="ui-btn ui-btn-sm" onClick={() => setAttaching(customers.find((x) => x.id === c.id) ?? null)}>Attach document</button>
+          <button type="button" className="ui-btn ui-btn-sm crm-viewall" onClick={() => setViewingDocs(customers.find((x) => x.id === c.id) ?? null)}>
+            View all documents{c.documents.length ? ` (${c.documents.length})` : ''}
+          </button>
+        </span>
       </div>
       <div>
         <div className="ui-label" style={{ marginBottom: 6 }}>Log</div>
@@ -273,6 +291,7 @@ function CustomerManager() {
 
       {editing && <CustomerDialog customer={editing} onClose={() => setEditing(null)} />}
       {viewingDocs && <CustomerDocsDialog customer={viewingDocs} onClose={() => setViewingDocs(null)} />}
+      {attaching && <AttachDialog title={attaching.name} kinds={ON_FILE} onAttach={(docs) => attachTo(attaching.id, docs)} onClose={() => setAttaching(null)} />}
     </>
   );
 }

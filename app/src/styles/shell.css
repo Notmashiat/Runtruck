@@ -724,7 +724,20 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 .crm-chip-open { padding: 6px 4px 6px 10px; font: inherit; font-weight: 600; color: var(--ui-primary); background: none; border: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .crm-chip-dl { align-self: stretch; padding: 0 9px; font: inherit; color: var(--ui-primary); background: var(--ui-primary-soft); border: 0; cursor: pointer; }
 .crm-chip-dl:hover { background: var(--ui-primary); color: var(--ui-on-primary); }
-.crm-viewall { margin-left: auto; }
+.crm-doc-actions { display: inline-flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+
+/* Attach documents popup */
+.ui-dialog.is-compact.attach-dialog { width: min(640px, calc(100vw - 32px)); }
+.attach-drop {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 28px 16px; text-align: center; font-size: 14px;
+  color: var(--ui-muted); background: var(--ui-expand); border: 2px dashed var(--ui-border); border-radius: 14px; cursor: pointer;
+}
+.attach-drop strong { color: var(--ui-text); font-size: 15px; }
+.attach-drop:hover, .attach-drop:focus-visible, .attach-drop.is-over { border-color: var(--ui-primary); background: var(--ui-primary-soft); outline: none; }
+.attach-drop-icon { font-size: 26px; line-height: 1; color: var(--ui-primary); }
+.attach-browse { color: var(--ui-primary); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.attach-kind { width: 220px; height: 34px; }
+@media (max-width: 560px) { .attach-kind { width: 100%; } }
 .crm-doc-open { padding: 0; font: inherit; font-weight: 600; text-align: left; color: var(--ui-primary); background: none; border: 0; cursor: pointer; }
 .crm-doc-open:hover { text-decoration: underline; }
 .bill-doc-list li.is-missing { border-style: dashed; }
