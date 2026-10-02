@@ -1,6 +1,6 @@
-import { Fragment, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { downloadDocument, openDocument, readAttachment } from '../../components/BillDialogs';
+import { downloadDocument, openDocument } from '../../components/BillDialogs';
 import { Card } from '../../components/Card';
 import { CustomerDialog } from '../../components/CustomerDialogs';
 import { CustomerDocsDialog } from '../../components/CustomerDocs';
@@ -47,9 +47,6 @@ function CustomerManager() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomerRecord | null>(null);
   const [viewingDocs, setViewingDocs] = useState<CustomerRecord | null>(null);
-  // Attaching straight from an On file chip: which customer and document.
-  const fileInput = useRef<HTMLInputElement>(null);
-  const [attachFor, setAttachFor] = useState<{ id: string; kind: string } | null>(null);
   const today = todayIso();
   const year = today.slice(0, 4);
 
@@ -152,26 +149,25 @@ function CustomerManager() {
         {c.website && <Fact k="Website">{c.website}</Fact>}
         {c.notes && <Fact k="Notes">{c.notes}</Fact>}
       </div>
+      {/* Only documents with a file attached; View all (right) manages the rest. */}
       <div className="crm-onfile">
-        <span className="ui-label">On file</span>
-        {ON_FILE.map((kind) => {
-          const doc = c.documents.find((d) => d.kind === kind);
-          const on = Boolean(doc) || c.onFile.includes(kind);
-          return doc ? (
-            <span key={kind} className="acc-perm is-on crm-chip has-file">
-              <button type="button" className="crm-chip-open" title={`Open ${doc.name}`} onClick={() => { void openDocument(doc); }}>{kind}</button>
-              <button type="button" className="crm-chip-dl" title={`Download ${doc.name}`} aria-label={`Download ${doc.name}`} onClick={() => downloadDocument(doc)}>⤓</button>
-            </span>
-          ) : (
-            <button
-              key={kind} type="button" className={`acc-perm crm-chip${on ? ' is-on' : ''}`}
-              title={on ? 'Paper copy on file. Click to attach a scan.' : 'Not on file. Click to attach it.'}
-              onClick={() => { setAttachFor({ id: c.id, kind }); setTimeout(() => fileInput.current?.click(), 0); }}
-            >
-              {kind}{on ? '' : ' +'}
-            </button>
+        {(() => {
+          const files = [
+            ...ON_FILE.flatMap((kind) => c.documents.filter((d) => d.kind === kind).map((d) => ({ d, label: kind }))),
+            ...c.documents.filter((d) => !d.kind || !ON_FILE.includes(d.kind)).map((d) => ({ d, label: d.name })),
+          ];
+          return files.length > 0 && (
+            <>
+              <span className="ui-label">Documents</span>
+              {files.map(({ d, label }) => (
+                <span key={d.id} className="acc-perm is-on crm-chip has-file">
+                  <button type="button" className="crm-chip-open" title={`Open ${d.name}`} onClick={() => { void openDocument(d); }}>{label}</button>
+                  <button type="button" className="crm-chip-dl" title={`Download ${d.name}`} aria-label={`Download ${d.name}`} onClick={() => downloadDocument(d)}>⤓</button>
+                </span>
+              ))}
+            </>
           );
-        })}
+        })()}
         <button type="button" className="ui-btn ui-btn-sm crm-viewall" onClick={() => setViewingDocs(customers.find((x) => x.id === c.id) ?? null)}>
           View all documents{c.documents.length ? ` (${c.documents.length})` : ''}
         </button>
@@ -277,22 +273,6 @@ function CustomerManager() {
 
       {editing && <CustomerDialog customer={editing} onClose={() => setEditing(null)} />}
       {viewingDocs && <CustomerDocsDialog customer={viewingDocs} onClose={() => setViewingDocs(null)} />}
-      <input
-        ref={fileInput} type="file" hidden accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx,.csv,.txt"
-        onChange={async (e) => {
-          const f = e.target.files?.[0];
-          const target = attachFor && customers.find((x) => x.id === attachFor.id);
-          e.target.value = '';
-          if (!f || !target || !attachFor) return;
-          const doc = await readAttachment(f, attachFor.kind);
-          if (typeof doc === 'string') { window.alert(`${doc} is over 2 MB. Attach a smaller copy.`); return; }
-          saveCustomer({
-            ...target, updated: new Date().toISOString(),
-            documents: [...target.documents.filter((d) => d.kind !== attachFor.kind), doc],
-            onFile: target.onFile.includes(attachFor.kind) ? target.onFile : [...target.onFile, attachFor.kind],
-          });
-        }}
-      />
     </>
   );
 }
