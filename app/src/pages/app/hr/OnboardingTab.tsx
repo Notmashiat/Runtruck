@@ -140,7 +140,7 @@ function OnboardingBoard() {
     const agreement = agreementFor(o.role, o.workerType);
     return {
       person: o.name, email: o.email, role: o.role, workerType: o.workerType, agreement, employeeId: o.employeeId, start: o.targetStart || today,
-      clauses: defaultClauses(agreement), ...(offer ? { payBasis: offer.payBasis, rate: String(offer.rate) } : {}),
+      clauses: defaultClauses(agreement, o.role), ...(offer ? { payBasis: offer.payBasis, rate: String(offer.rate) } : {}),
     };
   };
 

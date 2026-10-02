@@ -5,7 +5,7 @@ import { CDL_CLASSES, ENDORSEMENTS, TERMINALS, type FormValues } from '../data/f
 import {
   AGREEMENTS, BENEFITS, CLAUSES, CLOSE_REASONS, EMPLOYMENT_TYPES, END_REASONS, EQUIPMENT, EXPERIENCE, FUEL_TERMS, INSURANCE_TERMS, RENEWALS, SOURCES, STAGES,
   TERM_LENGTHS, TERM_TYPES, addMonths, agreementFor, blankContractForm, blankOnboardingForm, checklistFor, contractFromForm, contractToForm, currentEnd,
-  defaultClauses, isDriverRole, isLease, nextContractId, nextOnboardingId, onboardingFromForm, onboardingToForm,
+  agreementDefaults, defaultClauses, isDriverRole, isLease, nextContractId, nextOnboardingId, onboardingFromForm, onboardingToForm,
   type ContractRecord, type OnboardingRecord, type Step,
 } from '../data/hrRecords';
 import { fmtDate } from '../data/invoicing';
@@ -27,7 +27,7 @@ export function contractPrefillFromEmployee(e: Employee): FormValues {
   const agreement = agreementFor(e.role, e.workerType);
   return {
     employee: employeeLabel(e), employeeId: e.id, person: e.name, email: e.email, role: e.role, agreement, workerType: e.workerType,
-    start: e.hired, payBasis: e.payBasis, rate: String(e.rate), frequency: e.frequency, clauses: defaultClauses(agreement),
+    start: e.hired, payBasis: e.payBasis, rate: String(e.rate), frequency: e.frequency, clauses: defaultClauses(agreement, e.role),
   };
 }
 
@@ -131,25 +131,32 @@ export function ContractDialog({ contract, prefill, onboardingId, onSaved, onClo
     return { employee: '', ...blankContractForm(todayIso(), USER.name, prefill) };
   });
 
-  // Picking someone fills in their details; the agreement brings its usual clauses; the term works out the end date.
-  const adjust = (prev: FormValues, next: FormValues, key: string): FormValues => {
+  // Picking someone fills in their details; the agreement and role bring their usual
+  // terms (a lease: fixed term, line-haul pay, contractor insurance); the term works out the end date.
+  const adjust = (_prev: FormValues, next: FormValues, key: string): FormValues => {
     let v = next;
+    const role = val(v, 'role');
     if (key === 'employee') {
       const e = people.find((x) => employeeLabel(x) === val(v, 'employee'));
-      v = e ? { ...v, ...contractPrefillFromEmployee(e) } : { ...v, employeeId: '' };
+      if (!e) return { ...v, employeeId: '' };
+      const pre = contractPrefillFromEmployee(e);
+      v = { ...v, ...agreementDefaults(val(pre, 'agreement'), e.role), ...pre };
     }
-    if (key === 'agreement' || (key === 'employee' && val(v, 'agreement') !== val(prev, 'agreement'))) {
+    if (key === 'agreement') v = { ...v, ...agreementDefaults(val(v, 'agreement'), role) };
+    if (key === 'role') {
       const lease = isLease(val(v, 'agreement'));
-      v = {
-        ...v, clauses: defaultClauses(val(v, 'agreement')),
-        ...(lease && val(prev, 'termType') !== 'Fixed term' ? { termType: 'Fixed term', renewal: 'Renew by hand', termLength: '1 year' } : {}),
-        ...(lease ? { equipment: val(v, 'agreement').startsWith('Lease') ? 'Leased from the company' : 'Contractor’s own truck', fuel: 'Fuel card, deducted from settlement' } : {}),
-      };
+      const agreement = role === 'Owner-operator' || role === 'Lease-purchase driver' ? agreementFor(role, '1099 contractor') : lease && !isDriverRole(role) ? AGREEMENTS[0] : val(v, 'agreement');
+      v = agreement !== val(v, 'agreement')
+        ? { ...v, agreement, ...agreementDefaults(agreement, role) }
+        : {
+            ...v, clauses: defaultClauses(agreement, role),
+            ...(isDriverRole(role) && ['Salary', 'Hourly'].includes(val(v, 'payBasis')) ? { payBasis: 'Per mile', frequency: 'Weekly' } : {}),
+            ...(!isDriverRole(role) && ['Per mile', '% of line haul', 'Flat per load'].includes(val(v, 'payBasis')) ? { payBasis: role === 'Mechanic' ? 'Hourly' : 'Salary', frequency: 'Every 2 weeks' } : {}),
+          };
     }
-    if (['start', 'termLength', 'termType', 'agreement', 'employee'].includes(key) && val(v, 'termType') === 'Fixed term' && val(v, 'start')) {
+    if (['start', 'termLength', 'termType', 'agreement', 'employee', 'role'].includes(key) && val(v, 'termType') === 'Fixed term' && val(v, 'start')) {
       v = { ...v, end: addMonths(val(v, 'start'), months(val(v, 'termLength')) || 12) };
     }
-    if (key === 'role' && !isDriverRole(val(v, 'role')) && isLease(val(v, 'agreement'))) v = { ...v, agreement: AGREEMENTS[0], clauses: defaultClauses(AGREEMENTS[0]) };
     return v;
   };
 

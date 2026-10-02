@@ -186,26 +186,42 @@ export function agreementFor(role: string, workerType: string): string {
   return workerType.startsWith('1099') ? AGREEMENTS[1] : AGREEMENTS[0];
 }
 
-export function defaultClauses(agreement: string): string[] {
-  if (isLease(agreement)) return ['Confidentiality', 'Drug & alcohol policy (49 CFR 382)', 'Damage / claim deductions authorized', 'Escrow held and refunded (49 CFR 376.12(k))', 'Equipment returned on exit'];
-  if (agreement.startsWith('Independent')) return ['Confidentiality', 'Non-solicitation'];
-  return ['At-will employment', 'Confidentiality', 'Drug & alcohol policy (49 CFR 382)', 'Employee handbook acknowledged'];
+// DOT drug and alcohol testing applies to drivers (safety-sensitive work), not office staff.
+export function defaultClauses(agreement: string, role: string): string[] {
+  const dot = isDriverRole(role) ? ['Drug & alcohol policy (49 CFR 382)'] : [];
+  if (isLease(agreement)) return ['Confidentiality', ...dot, 'Damage / claim deductions authorized', 'Escrow held and refunded (49 CFR 376.12(k))', 'Equipment returned on exit'];
+  if (agreement.startsWith('Independent')) return ['Confidentiality', 'Non-solicitation', ...dot];
+  return ['At-will employment', 'Confidentiality', ...dot, 'Employee handbook acknowledged'];
+}
+
+// The usual terms for an agreement and role: a lease is a fixed term paid on line haul
+// with the contractor's insurance and no benefits; employment is at-will with benefits.
+export function agreementDefaults(agreement: string, role: string): FormValues {
+  const lease = isLease(agreement);
+  const contractor = lease || agreement.startsWith('Independent');
+  const driver = isDriverRole(role);
+  return {
+    termType: lease ? 'Fixed term' : 'Ongoing (at-will)', termLength: '1 year', renewal: lease ? 'Renew by hand' : 'Renews automatically',
+    noticeDays: lease ? '30' : '14', probationDays: contractor ? '' : '90',
+    payBasis: lease ? '% of line haul' : driver ? 'Per mile' : role === 'Mechanic' ? 'Hourly' : 'Salary', frequency: driver ? 'Weekly' : 'Every 2 weeks',
+    benefits: contractor ? [] : ['Health insurance', 'Paid time off', 'Paid holidays'], ptoDays: contractor ? '' : '10',
+    equipment: lease ? (agreement.startsWith('Lease') ? 'Leased from the company' : 'Contractor’s own truck') : 'Company truck',
+    fuel: lease ? 'Fuel card, deducted from settlement' : 'Company pays fuel',
+    insurance: lease
+      ? ['Company: auto liability & cargo', 'Contractor: bobtail / non-trucking liability', 'Contractor: occupational accident']
+      : ['Company: auto liability & cargo', ...(contractor ? [] : ['Company: workers’ comp'])],
+    clauses: defaultClauses(agreement, role),
+  };
 }
 
 export function blankContractForm(today: string, signer: string, prefill: FormValues = {}): FormValues {
   const role = str(prefill, 'role') || 'Company driver';
   const agreement = str(prefill, 'agreement') || agreementFor(role, str(prefill, 'workerType') || 'W-2 employee');
-  const lease = isLease(agreement);
+  const defaults = agreementDefaults(agreement, role);
   return {
-    person: '', employeeId: '', email: '', role, agreement, employment: 'Full-time',
-    start: today, termType: lease ? 'Fixed term' : 'Ongoing (at-will)', termLength: '1 year', end: lease ? addMonths(today, 12) : '', renewal: lease ? 'Renew by hand' : 'Renews automatically',
-    noticeDays: lease ? '30' : '14', probationDays: lease ? '' : '90',
-    payBasis: lease ? '% of line haul' : isDriverRole(role) ? 'Per mile' : 'Salary', rate: '', frequency: isDriverRole(role) ? 'Weekly' : 'Every 2 weeks',
-    signOnBonus: '', benefits: lease ? [] : ['Health insurance', 'Paid time off', 'Paid holidays'], ptoDays: lease ? '' : '10',
-    equipment: lease ? (agreement.startsWith('Lease') ? 'Leased from the company' : 'Contractor’s own truck') : 'Company truck', truck: '',
-    leasePayment: '', escrow: '', fuel: lease ? 'Fuel card, deducted from settlement' : 'Company pays fuel',
-    insurance: lease ? ['Company: auto liability & cargo', 'Contractor: bobtail / non-trucking liability', 'Contractor: occupational accident'] : ['Company: auto liability & cargo', 'Company: workers’ comp'],
-    homeTime: '', region: '', clauses: defaultClauses(agreement), companySigner: signer, signerTitle: 'Operations manager', notes: '',
+    person: '', employeeId: '', email: '', role, agreement, employment: 'Full-time', start: today, ...defaults,
+    end: defaults.termType === 'Fixed term' ? addMonths(str(prefill, 'start') || today, 12) : '', rate: '', signOnBonus: '', truck: '', leasePayment: '', escrow: '',
+    homeTime: '', region: '', companySigner: signer, signerTitle: 'Operations manager', notes: '',
     ...prefill,
   };
 }
@@ -475,7 +491,7 @@ function contract(p: Partial<ContractRecord> & Pick<ContractRecord, 'id' | 'pers
   return {
     employeeId: '', email: '', employment: 'Full-time', termType: 'Ongoing (at-will)', termLength: '', end: '', renewal: '', noticeDays: 14, probationDays: 90,
     signOnBonus: 0, benefits: ['Health insurance', 'Paid time off', 'Paid holidays'], ptoDays: 10, equipment: '', truck: '', leasePayment: 0, escrow: 0,
-    fuel: '', insurance: [], homeTime: '', region: '', clauses: defaultClauses(p.agreement), companySigner: 'Rosa Medina', signerTitle: 'Operations manager',
+    fuel: '', insurance: [], homeTime: '', region: '', clauses: defaultClauses(p.agreement, p.role), companySigner: 'Rosa Medina', signerTitle: 'Operations manager',
     sentOn: p.start, personSigned: signed ? p.start : '', companySigned: signed ? p.start : '', status: 'Active', endedOn: '', endReason: '', onboardingId: '',
     documents: [], notes: '', created: made(p.start),
     log: [
@@ -497,18 +513,18 @@ const DEMO_CONTRACTS = (): ContractRecord[] => {
     contract({ id: 'CT-1001', person: 'Marcus Hale', employeeId: 'EMP-1001', role: 'Company driver', agreement: AGREEMENTS[0], start: '2022-03-14', payBasis: 'Per mile', rate: 0.62, frequency: 'Weekly', ...driverTerms('T-114'), signOnBonus: 2500 }),
     contract({ id: 'CT-1002', person: 'Dara Whitfield', employeeId: 'EMP-1002', role: 'Company driver', agreement: AGREEMENTS[0], start: '2021-08-02', payBasis: 'Per mile', rate: 0.6, frequency: 'Weekly', ...driverTerms('T-107') }),
     // Fixed term, renewed by hand: comes up for renewal this month.
-    contract({ id: 'CT-1003', person: 'Ellis Nakamura', employeeId: 'EMP-1003', role: 'Company driver', agreement: AGREEMENTS[0], start: '2023-10-01', termType: 'Fixed term', termLength: '1 year', end: addDays(today, 24), renewal: 'Renew by hand', payBasis: '% of line haul', rate: 25, frequency: 'Weekly', ...driverTerms('T-121') }),
-    contract({ id: 'CT-1004', person: 'Priya Raman', employeeId: 'EMP-1004', role: 'Company driver', agreement: AGREEMENTS[0], start: '2024-09-20', termType: 'Fixed term', termLength: '1 year', end: addDays(today, 41), renewal: 'Renew by hand', payBasis: 'Per mile', rate: 0.58, frequency: 'Weekly', ...driverTerms('T-103') }),
+    contract({ id: 'CT-1003', person: 'Ellis Nakamura', employeeId: 'EMP-1003', role: 'Company driver', agreement: AGREEMENTS[0], start: addMonths(addDays(today, 24), -12), termType: 'Fixed term', termLength: '1 year', end: addDays(today, 24), renewal: 'Renew by hand', payBasis: '% of line haul', rate: 25, frequency: 'Weekly', ...driverTerms('T-121') }),
+    contract({ id: 'CT-1004', person: 'Priya Raman', employeeId: 'EMP-1004', role: 'Company driver', agreement: AGREEMENTS[0], start: addMonths(addDays(today, 41), -12), termType: 'Fixed term', termLength: '1 year', end: addDays(today, 41), renewal: 'Renew by hand', payBasis: 'Per mile', rate: 0.58, frequency: 'Weekly', ...driverTerms('T-103') }),
     contract({ id: 'CT-1005', person: 'Ana Cortez', employeeId: 'EMP-1005', role: 'Company driver', agreement: AGREEMENTS[0], start: d('2026-01-12'), payBasis: 'Per mile', rate: 0.58, frequency: 'Weekly', ...driverTerms('T-109'), signOnBonus: 1500 }),
     contract({
-      id: 'CT-1006', person: 'Tobias Frey', employeeId: 'EMP-1006', role: 'Lease-purchase driver', agreement: AGREEMENTS[3], start: '2023-11-15', termType: 'Fixed term', termLength: '3 years',
+      id: 'CT-1006', person: 'Tobias Frey', employeeId: 'EMP-1006', role: 'Lease-purchase driver', agreement: AGREEMENTS[3], start: addMonths(addDays(today, 52), -36), termType: 'Fixed term', termLength: '3 years',
       end: addDays(today, 52), renewal: 'Ends at term', noticeDays: 30, probationDays: 0, payBasis: '% of line haul', rate: 72, frequency: 'Weekly', benefits: [], ptoDays: 0,
       equipment: 'Leased from the company', truck: 'T-118', leasePayment: 450, escrow: 2500, fuel: 'Fuel card, deducted from settlement',
       insurance: ['Company: auto liability & cargo', 'Contractor: bobtail / non-trucking liability', 'Contractor: occupational accident', 'Contractor: physical damage on the truck'],
       homeTime: 'Driver’s choice', region: 'Western states', notes: 'Truck title transfers when the last lease payment clears.',
     }),
     contract({ id: 'CT-1007', person: 'Rosa Medina', employeeId: 'EMP-1008', email: 'rosa.medina@sunridgefreight.com', role: 'Dispatcher', agreement: AGREEMENTS[0], start: '2020-06-06', payBasis: 'Salary', rate: 68000, frequency: 'Every 2 weeks', benefits: ['Health insurance', 'Dental & vision', '401(k) match', 'Paid time off', 'Paid holidays'], ptoDays: 15, companySigner: 'Owner', signerTitle: 'President' }),
-    contract({ id: 'CT-1008', person: 'Luis Ortega', employeeId: 'EMP-1010', role: 'Mechanic', agreement: AGREEMENTS[0], start: '2023-02-09', payBasis: 'Hourly', rate: 34.5, frequency: 'Every 2 weeks', clauses: [...defaultClauses(AGREEMENTS[0]), 'Equipment returned on exit'] }),
+    contract({ id: 'CT-1008', person: 'Luis Ortega', employeeId: 'EMP-1010', role: 'Mechanic', agreement: AGREEMENTS[0], start: '2023-02-09', payBasis: 'Hourly', rate: 34.5, frequency: 'Every 2 weeks', clauses: [...defaultClauses(AGREEMENTS[0], 'Mechanic'), 'Equipment returned on exit'] }),
     // Started this summer: the 90-day review is due.
     contract({ id: 'CT-1009', person: 'Evan Brooks', employeeId: 'EMP-1009', email: 'evan.brooks@sunridgefreight.com', role: 'Dispatcher', agreement: AGREEMENTS[0], start: d('2026-07-27'), payBasis: 'Salary', rate: 52000, frequency: 'Every 2 weeks', onboardingId: 'ON-1006' }),
     // Sent, not back yet.
