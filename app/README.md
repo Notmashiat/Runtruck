@@ -183,6 +183,23 @@ unique. Accounts are kept in `runtruck-1-accounts`. A super admin can edit any a
 (type, company, details, email, a new password, status, access) or delete it; nobody can disable,
 delete or demote their own account. A company can only be deleted once it has no accounts.
 
+**Payroll** (Accounting › Payroll; `data/payroll.ts`, `components/PayrollDialogs.tsx`, `lib/payStub.ts`;
+release 1.5). Everyone the company pays is kept per company (`runtruck-<id>-employees`): role (company
+driver, owner-operator, lease-purchase driver, dispatcher, mechanic, office…), W-2 or 1099, contact and
+address, start date, how they are paid (per mile, % of line haul, per load, hourly or salary, with the
+rate), pay schedule (weekly, every 2 weeks, twice a month, monthly), the fleet driver whose loads count,
+estimated tax withholding (W-2), payout (direct deposit, check, pay card), deductions and additions taken
+every pay (escrow, truck lease, insurance, ELD fee, tool allowance…), documents (W-4/W-9, direct deposit
+form, contract) and notes. **+ New pay run** picks a pay group, period and pay date and works out each
+person's pay: drivers from loads delivered in the period, hourly staff from their usual hours, salaried
+staff from one period of salary, then every-pay items and withholding. Runs (`runtruck-<id>-payruns`)
+start as drafts — Adjust changes units, adds one-off bonuses, reimbursements or deductions, holds a pay
+or adds a pay-stub note — then go Approved and Paid (each step logged with who and when; Back to draft
+and Undo paid are there too). Every line has a PDF pay statement, and a run can download them all.
+Employees show year-to-date gross, last paid, pay history and a log; **Archived** (top right) keeps
+people who left (with why, when and who) and Edit employee restores them; people who were paid can be
+archived but not deleted. Companies not on 1.5 keep the driver settlements list.
+
 **Customers** (CRM; `data/customers.ts`, `components/CustomerDialogs.tsx`, `lib/customerSync.ts`; release
 1.4). Customers are kept per company (`runtruck-<id>-customers`). **+ Add Customer** opens a form in five
 parts: company (name, legal name, type — shipper, broker, 3PL, forwarder, manufacturer, retailer… —

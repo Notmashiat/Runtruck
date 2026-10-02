@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BATCH_SEED, INVOICE_SEED, type Batch, type InvoiceRecord } from '../data/invoicing';
 import { BILL_SEED, reviveBills, type BillRecord } from '../data/bills';
+import { EMPLOYEE_SEED, PAYRUN_SEED, reviveEmployees, reviveRuns, type Employee, type PayRun } from '../data/payroll';
 import { AUTO_BY, AUTO_INACTIVE_DAYS, CUSTOMER_SEED, addDays, reviveCustomers, usageOf, type CustomerRecord } from '../data/customers';
 import { todayIso } from '../lib/clock';
 import { syncCustomers } from '../lib/customerSync';
@@ -59,6 +60,12 @@ interface AppShellState {
   customers: CustomerRecord[];
   saveCustomer: (c: CustomerRecord) => void;
   deleteCustomer: (id: string) => void;
+  employees: Employee[];
+  saveEmployee: (e: Employee) => void;
+  deleteEmployee: (id: string) => void;
+  payRuns: PayRun[];
+  savePayRun: (r: PayRun) => void;
+  deletePayRun: (id: string) => void;
   // Table filters, per page ('loads', 'fleet/drivers', …): what each page
   // offers (registered by the page) and what is chosen (kept while you move around).
   filterMeta: Record<string, FilterMeta[]>;
@@ -106,6 +113,8 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
   const [batches, setBatches] = usePersisted<Batch[]>('runtruck-batches', BATCH_SEED, (raw) => reviveBatches(raw));
   const [bills, setBills] = usePersisted<BillRecord[]>('runtruck-bills', BILL_SEED, reviveBills);
   const [customers, setCustomers] = usePersisted<CustomerRecord[]>('runtruck-customers', CUSTOMER_SEED, reviveCustomers);
+  const [employees, setEmployees] = usePersisted<Employee[]>('runtruck-employees', EMPLOYEE_SEED, reviveEmployees);
+  const [payRuns, setPayRuns] = usePersisted<PayRun[]>('runtruck-payruns', PAYRUN_SEED, reviveRuns);
   // The pickers and invoice billing details follow the CRM.
   useMemo(() => syncCustomers(customers), [customers]);
   const [filterMeta, setFilterMeta] = useState<Record<string, FilterMeta[]>>({});
@@ -137,7 +146,7 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
   // Stored files that no bill or customer points to any more are removed
   // once, as the app opens (deleted records, cancelled forms).
   useEffect(() => {
-    const keep = [...bills.flatMap((b) => b.documents), ...customers.flatMap((c) => c.documents)].filter((d) => d.stored).map((d) => d.id);
+    const keep = [...bills.flatMap((b) => b.documents), ...customers.flatMap((c) => c.documents), ...employees.flatMap((e) => e.documents)].filter((d) => d.stored).map((d) => d.id);
     pruneFiles(keep).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -264,6 +273,12 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
       }
     },
     deleteCustomer: (id) => setCustomers((list) => list.filter((c) => c.id !== id)),
+    employees,
+    saveEmployee: (e) => setEmployees((list) => upsert(list, e)),
+    deleteEmployee: (id) => setEmployees((list) => list.filter((e) => e.id !== id)),
+    payRuns,
+    savePayRun: (r) => setPayRuns((list) => upsert(list, r)),
+    deletePayRun: (id) => setPayRuns((list) => list.filter((r) => r.id !== id)),
     filterMeta,
     registerFilters,
     filterValues,

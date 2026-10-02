@@ -108,6 +108,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.5',
+    date: '2026-10-01',
+    title: 'Payroll',
+    changes: [
+      {
+        id: 'payroll', kind: 'New', section: 'Accounting', title: 'Payroll: employees, pay runs and pay stubs',
+        details: 'Accounting › Payroll keeps everyone the company pays (drivers, owner-operators, staff) with how they are paid, payout details, every-pay deductions and documents. + New pay run works out pay for a period (drivers from delivered loads per mile, % of line haul or per load; hourly and salaried staff), with one-off additions, deductions, holds and estimated withholding; runs go Draft → Approved → Paid, with PDF pay stubs. Archived (top right) keeps people who left, with why, when and who.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

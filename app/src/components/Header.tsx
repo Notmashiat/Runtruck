@@ -11,6 +11,7 @@ import { describe, FilterPanel } from './FilterPanel';
 import { BatchDialog } from './BatchDialog';
 import { BillDialog } from './BillDialogs';
 import { CustomerDialog } from './CustomerDialogs';
+import { EmployeeDialog, PayRunDialog } from './PayrollDialogs';
 import { CompanyDialog } from './CompanyDialog';
 import { AccountDialog } from './AccountDialog';
 import { FacilityDialog } from './FacilityDialog';
@@ -36,7 +37,7 @@ export function Header() {
   const now = useNow(15_000);
   const [newLoadOpen, setNewLoadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | 'bill' | 'customer' | null>(null);
+  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | 'bill' | 'customer' | 'employee' | 'payrun' | null>(null);
 
   // Route matching is case-insensitive, so normalise before keying off the section.
   const segments = location.pathname.toLowerCase().split('/');
@@ -59,6 +60,7 @@ export function Header() {
     { label: '+ Create company', primary: true, onClick: () => setAdding('company') },
   ];
   const inactiveView = view === 'crm' && new URLSearchParams(location.search).get('view') === 'inactive';
+  const archivedView = tab === 'payroll' && new URLSearchParams(location.search).get('view') === 'archived';
   const actionsFor: Record<string, HeadAction[]> = {
     // New Load from the Dashboard only for accounts that may open Loads.
     dashboard: can('loads') ? [{ label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) }] : [],
@@ -90,7 +92,16 @@ export function Header() {
     'accounting/batches': [{ label: '+ New Batch', primary: true, onClick: () => setAdding('batch') }],
     'accounting/past-due': [{ label: 'Send reminders', primary: true, onClick: () => setAdding('reminders') }],
     'accounting/paid': [{ label: 'Export' }],
-    'accounting/payroll': [{ label: 'Run settlements', primary: true, onClick: () => approveAll() }],
+    // Release 1.5: employees, the archived list and pay runs.
+    'accounting/payroll': isLive('payroll')
+      ? [
+          archivedView
+            ? { label: '← Active employees', onClick: () => navigate('/app/accounting/payroll') }
+            : { label: 'Archived', onClick: () => navigate('/app/accounting/payroll?view=archived') },
+          { label: '+ Add employee', onClick: () => setAdding('employee') },
+          { label: '+ New pay run', primary: true, onClick: () => setAdding('payrun') },
+        ]
+      : [{ label: 'Run settlements', primary: true, onClick: () => approveAll() }],
     // Release 1.3: Add Bill opens the new bill form.
     'accounting/bills': [{ label: '+ Add Bill', primary: true, onClick: isLive('bills-manage') ? () => setAdding('bill') : undefined }],
     'hr/employee-contracts': [{ label: '+ New Contract', primary: true }],
@@ -158,6 +169,8 @@ export function Header() {
       {adding === 'reminders' && <ReminderDialog onClose={() => setAdding(null)} />}
       {adding === 'bill' && <BillDialog onClose={() => setAdding(null)} />}
       {adding === 'customer' && <CustomerDialog onClose={() => setAdding(null)} />}
+      {adding === 'employee' && <EmployeeDialog onClose={() => setAdding(null)} />}
+      {adding === 'payrun' && <PayRunDialog onClose={() => setAdding(null)} onCreated={() => navigate('/app/accounting/payroll')} />}
       {adding === 'company' && <CompanyDialog onClose={() => setAdding(null)} />}
       {adding === 'account' && <AccountDialog onClose={() => setAdding(null)} />}
       {filtersOpen && <FilterPanel page={page} title={pageTitle} onClose={() => setFiltersOpen(false)} />}

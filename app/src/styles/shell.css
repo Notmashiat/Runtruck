@@ -744,3 +744,12 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 .bill-doc-list li.is-missing .bill-doc-icon { color: var(--ui-muted); background: var(--ui-expand); }
 .crm-paper { font-size: 12px; }
 .ui-dialog.is-compact.crm-docs-dialog { width: min(760px, calc(100vw - 32px)); }
+
+/* Accounting › Payroll */
+.pay-items { display: flex; flex-direction: column; gap: 8px; }
+.pay-item { display: grid; grid-template-columns: minmax(0, 1fr) 150px 110px 28px; gap: 8px; align-items: center; }
+@media (max-width: 560px) { .pay-item { grid-template-columns: minmax(0, 1fr) 110px 28px; } .pay-item select { grid-column: 1 / -1; } }
+.pay-actions { display: inline-flex; gap: 12px; white-space: nowrap; }
+.pay-run-total, .pay-summary { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-end; gap: 6px 18px; margin-top: 12px; font-size: 13px; color: var(--ui-muted); }
+.pay-run-total strong, .pay-summary strong { font-size: 15px; color: var(--ui-text); }
+.ui-dialog.is-compact.payrun-dialog { width: min(820px, calc(100vw - 32px)); }

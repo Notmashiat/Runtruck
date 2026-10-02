@@ -8,7 +8,8 @@ import type { Facility } from '../data/facilities';
 import type { FleetDriver, FleetTrailer, FleetTruck, FormValues } from '../data/fleet';
 import { CONTRACTS, ONBOARDING } from '../data/hr';
 import { batchStatus, batchTotal, billableLoads, invoiceTotal, statusOf, usd, type Batch, type InvoiceRecord } from '../data/invoicing';
-import { SETTLEMENTS, type Load } from '../data/mock';
+import type { Load } from '../data/mock';
+import { payLabel, runTotals, type Employee, type PayRun } from '../data/payroll';
 import type { CustomerRecord } from '../data/customers';
 import { PLANNER_EVENTS, type PlannerEvent } from '../data/planner';
 import { CLAIMS, MAINTENANCE, VIOLATIONS } from '../data/safety';
@@ -51,6 +52,8 @@ export interface ExportSources {
   batches: Batch[];
   bills: BillRecord[];
   customers: CustomerRecord[];
+  employees: Employee[];
+  payRuns: PayRun[];
 }
 
 // '2026-10-01', 'Oct 1', 'Thu Oct 1 · 08:00' → '2026-10-01' ('' when there is no date).
@@ -131,7 +134,7 @@ function plannerEvents(): PlannerEvent[] {
 }
 
 export function buildExportSets(s: ExportSources): ExportSet[] {
-  const { loads, drivers, trucks, trailers, facilities, invoices, batches, bills, customers } = s;
+  const { loads, drivers, trucks, trailers, facilities, invoices, batches, bills, customers, employees, payRuns } = s;
   return [
     makeSet({ key: 'loads', label: 'Loads', group: 'Loads', perm: 'loads', dateLabel: 'pickup date' }, loads, [
       ['id', 'Load', (l) => l.id], ['status', 'Status', (l) => l.status], ['customer', 'Customer', (l) => l.customer], ['ref', 'Reference', (l) => l.ref],
@@ -197,10 +200,25 @@ export function buildExportSets(s: ExportSources): ExportSet[] {
       ['sentOn', 'Sent on', (b) => b.sentOn], ['notes', 'Notes', (b) => b.notes],
     ], (b) => ({ date: b.created })),
 
-    makeSet({ key: 'payroll', label: 'Driver settlements', group: 'Accounting', perm: 'accounting/payroll' }, SETTLEMENTS, [
-      ['name', 'Driver', (x) => x.name], ['basis', 'Pay basis', (x) => x.basis], ['loads', 'Loads', (x) => x.loads], ['miles', 'Miles', (x) => x.miles],
-      ['gross', 'Gross', (x) => x.gross], ['ded', 'Deductions', (x) => x.ded], ['net', 'Net', (x) => x.net], ['status', 'Status', (x) => x.status],
-    ], (x) => ({ drivers: [x.name] })),
+    makeSet({ key: 'payroll', label: 'Payroll (pay run lines)', group: 'Accounting', perm: 'accounting/payroll', dateLabel: 'pay date' },
+      payRuns.flatMap((r) => r.lines.map((l) => ({ r, l }))), [
+      ['run', 'Run', (x) => x.r.id], ['payDate', 'Pay date', (x) => x.r.payDate], ['name', 'Employee', (x) => x.l.name], ['role', 'Role', (x) => x.l.role],
+      ['basis', 'Paid', (x) => x.l.basis], ['units', 'Units', (x) => (x.l.basis === 'Salary' ? '' : x.l.units)], ['gross', 'Gross', (x) => money(x.l.gross)],
+      ['additions', 'Additions', (x) => money(x.l.items.filter((i) => i.kind !== 'Deduction').reduce((a, i) => a + i.amount, 0))],
+      ['deductions', 'Deductions', (x) => money(x.l.items.filter((i) => i.kind === 'Deduction').reduce((a, i) => a + i.amount, 0))],
+      ['tax', 'Tax withheld (est.)', (x) => money(x.l.tax)], ['net', 'Net', (x) => money(x.l.net)], ['status', 'Status', (x) => (x.l.hold ? 'On hold' : x.r.status)],
+      ['period', 'Period', (x) => `${x.r.start} to ${x.r.end}`, false], ['group', 'Pay group', (x) => x.r.frequency, false], ['loads', 'Loads', (x) => x.l.loads, false],
+      ['items', 'Items', (x) => x.l.items.map((i) => `${i.label} ${i.kind === 'Deduction' ? '-' : '+'}${i.amount}`), false], ['runNet', 'Run total net', (x) => money(runTotals(x.r).net), false],
+    ], (x) => ({ date: x.r.payDate, drivers: [x.l.name] })),
+
+    makeSet({ key: 'employees', label: 'Employees', group: 'Accounting', perm: 'accounting/payroll', dateLabel: 'start date' }, employees, [
+      ['name', 'Employee', (e) => e.name], ['role', 'Role', (e) => e.role], ['workerType', 'Type', (e) => e.workerType], ['pay', 'Pay', (e) => payLabel(e)],
+      ['frequency', 'Schedule', (e) => e.frequency], ['method', 'Paid by', (e) => e.method], ['status', 'Status', (e) => e.status], ['hired', 'Started', (e) => e.hired],
+      ['id', 'Employee ID', (e) => e.id, false], ['email', 'Email', (e) => e.email, false], ['phone', 'Phone', (e) => e.phone, false],
+      ['address', 'Address', (e) => [e.street, e.city, e.state, e.zip].filter(Boolean).join(', '), false], ['withholding', 'Withholding %', (e) => e.withholdingPct, false],
+      ['recurring', 'Every pay', (e) => e.recurring.map((i) => `${i.label} ${i.kind === 'Deduction' ? '-' : '+'}${i.amount}`), false],
+      ['documents', 'Documents', (e) => e.documents.map((d) => d.name), false], ['notes', 'Notes', (e) => e.notes, false],
+    ], (e) => ({ date: e.hired, drivers: [e.name], archived: e.status === 'Archived' })),
 
     makeSet({ key: 'bills', label: 'Bills', group: 'Accounting', perm: 'accounting/bills', dateLabel: 'due date' }, bills, [
       ['vendor', 'Vendor', (b) => b.vendor], ['billNumber', 'Vendor invoice #', (b) => b.billNumber], ['category', 'Category', (b) => b.category],
