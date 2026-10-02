@@ -9,9 +9,10 @@ handoff bundle in the repo root.
 - Vite + React 19 + TypeScript
 - React Router for client-side routing (`/` marketing site, `/app/*` the operations app)
 - Plain CSS. The app (`/app/*`) uses its own light/dark, card-based UI (`src/styles/shell.css`, the
-  `ui-*` classes, Inter); the marketing site uses the "Industry" design system from the handoff
-  (`src/styles/industry.css`, copied from the bundle; only its font `@import` moved to `index.html`), and `src/styles/app.css` holds
-  the small shared additions
+  `ui-*` classes, Inter). The marketing page (`/`, `src/pages/marketing`) wears the same look
+  (`src/styles/site.css`, the `mk-*` classes) and has a scroll-driven scene (`lib/scrollFx.ts`); what it
+  says is in `src/data/site.ts`. `src/styles/industry.css` and `app.css` are the base styles from the
+  original design handoff
 - Static in-memory mock data (`src/data/mock.ts`) — no backend, matching the original prototype
 
 ## Structure
