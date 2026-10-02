@@ -26,12 +26,15 @@ function hoursLeft(hos: string): number {
 }
 
 function groupBy(list: Earned[], key: (e: Earned) => string) {
-  const map = new Map<string, { key: string; amount: number; miles: number; count: number }>();
+  // `rated` is the revenue of the loads that have miles: a rate per mile is
+  // only true over those (a load with no miles would inflate it).
+  const map = new Map<string, { key: string; amount: number; rated: number; miles: number; count: number }>();
   for (const e of list) {
     const k = key(e);
     if (!k) continue;
-    const g = map.get(k) ?? { key: k, amount: 0, miles: 0, count: 0 };
+    const g = map.get(k) ?? { key: k, amount: 0, rated: 0, miles: 0, count: 0 };
     g.amount += e.amount;
+    if (e.miles > 0) g.rated += e.amount;
     g.miles += e.miles;
     g.count += 1;
     map.set(k, g);
@@ -96,8 +99,10 @@ export function kpiFor(id: WidgetId, d: DashData): KpiView | null {
     case 'kpi-revenue':
       return { kind: 'kpi', label: 'Revenue this week', value: compactUsd(sum(d.thisWeek)), note: `${d.thisWeek.length} deliveries since Mon · last week ${compactUsd(sum(d.lastWeek))}`, to: '/app/accounting/invoiced' };
     case 'kpi-rpm': {
-      const miles = sum(d.thisWeek, 'miles');
-      return { kind: 'kpi', label: 'Rate per mile', value: miles ? `$${(sum(d.thisWeek) / miles).toFixed(2)}` : '—', note: `${miles.toLocaleString('en-US')} loaded miles this week`, to: '/app/loads' };
+      // Only loads that have miles: one without would inflate the rate.
+      const withMiles = d.thisWeek.filter((e) => e.miles > 0);
+      const miles = sum(withMiles, 'miles');
+      return { kind: 'kpi', label: 'Rate per mile', value: miles ? `$${(sum(withMiles) / miles).toFixed(2)}` : '—', note: `${miles.toLocaleString('en-US')} loaded miles this week`, to: '/app/loads' };
     }
     case 'kpi-unbilled':
       return { kind: 'kpi', label: 'Unbilled loads', value: String(d.unbilled.length), note: `${usd0(d.unbilled.reduce((s, l) => s + l.amount, 0))} waiting`, to: '/app/accounting/uninvoiced' };
@@ -413,7 +418,7 @@ export function cardFor(id: WidgetId, d: DashData, o: DashOptions): CardView | n
       const rows = groupBy(d.earned, (e) => e.route).slice(0, 8);
       return {
         kind: 'card', title: 'Top lanes', action: muted('All delivered'),
-        body: <HBars rows={rows.map((r) => ({ key: r.key, value: r.amount, label: usd0(r.amount), meta: `${r.count} loads${r.miles ? ` · $${(r.amount / r.miles).toFixed(2)}/mi` : ''}` }))} />,
+        body: <HBars rows={rows.map((r) => ({ key: r.key, value: r.amount, label: usd0(r.amount), meta: `${r.count} loads${r.miles ? ` · $${(r.rated / r.miles).toFixed(2)}/mi` : ''}` }))} />,
       };
     }
     case 'cash':

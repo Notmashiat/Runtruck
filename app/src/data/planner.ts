@@ -145,6 +145,25 @@ const EVENTS_2026: PlannerEvent[] = [
   { id: 'ev-15', title: 'Ana Cortez — MVR & annual review due', category: 'driver', date: '2026-09-24', people: ['Ana Cortez'] },
 ];
 
+const CLOCK = /^(\d{1,2}):(\d{2})$/;
+const clock = (s: string) => {
+  const m = CLOCK.exec(s.trim());
+  return m && Number(m[1]) < 24 && Number(m[2]) < 60 ? `${m[1].padStart(2, '0')}:${m[2]}` : '';
+};
+
+// A stop's appointment window ('08:00–10:00') as a start and an end on the
+// calendar. A window with one time only ('14:30', or '14:30–') is shown as an
+// hour from that time, not at 8 AM. A window that runs past midnight
+// ('22:00–02:00') is shown to the end of its day. No time at all: 8 to 9 AM.
+export function windowOf(window: string): [string, string] {
+  const [a = '', b = ''] = window.split('–');
+  const start = clock(a) || '08:00';
+  const hourLater = `${String(Math.min(23, Number(start.slice(0, 2)) + 1)).padStart(2, '0')}:${Number(start.slice(0, 2)) >= 23 ? '59' : start.slice(3)}`;
+  let end = clock(b) || hourLater;
+  if (end <= start) end = '23:59';
+  return [start, end];
+}
+
 // One pickup and one delivery per load (every stop for loads entered with New Load).
 export function loadEvents(loads: Load[]): PlannerEvent[] {
   return loads.flatMap((l) => {
@@ -157,11 +176,11 @@ export function loadEvents(loads: Load[]): PlannerEvent[] {
         const [day, window = ''] = s.when.split(' · ');
         const date = isoFromText(day);
         if (!date) return [];
-        const [start, end] = window.includes('–') ? window.split('–') : ['08:00', '09:00'];
+        const [start, end] = windowOf(window);
         const place = cityState(s.address);
         return [{
           ...shared, id: `load:${l.id}:${i}`, title: `${l.id} · ${place}`, category: s.kind === 'Pickup' ? 'pickup' : 'delivery',
-          date, start, end: end || start, place, facility: s.name, notes: `${s.name} · ${l.customer}`,
+          date, start, end, place, facility: s.name, notes: `${s.name} · ${l.customer}`,
         }];
       });
     }

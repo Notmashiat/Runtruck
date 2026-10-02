@@ -81,6 +81,21 @@ export function textWidth(s: string, size: number, bold = false): number {
   return (w * size) / 1000;
 }
 
+// The text, shortened with '…' when it is wider than `width`. Finds the cut
+// by halving, so a very long note costs a handful of measurements, not one
+// per character.
+export function fit(s: string, width: number, size: number, bold = false): string {
+  if (textWidth(s, size, bold) <= width) return s;
+  let lo = 1;
+  let hi = s.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (textWidth(`${s.slice(0, mid)}…`, size, bold) <= width) lo = mid;
+    else hi = mid - 1;
+  }
+  return `${s.slice(0, lo)}…`;
+}
+
 // Break text into lines no wider than `width`, at spaces.
 export function wrap(s: string, width: number, size: number, bold = false): string[] {
   const out: string[] = [];

@@ -18,6 +18,8 @@ export function EventDialog({ event, categories, isNew, onSave, onDelete, onClos
   const { loads } = useAppShell();
   const [e, setE] = useState<PlannerEvent>(event);
   const [allDay, setAllDay] = useState(!event.start);
+  // Typed as plain text and split into names on save, so a comma can be deleted again.
+  const [people, setPeople] = useState((event.people ?? []).join(', '));
   const [tried, setTried] = useState(false);
 
   useEffect(() => {
@@ -26,8 +28,9 @@ export function EventDialog({ event, categories, isNew, onSave, onDelete, onClos
   }, []);
 
   const set = <K extends keyof PlannerEvent>(key: K, value: PlannerEvent[K]) => setE((prev) => ({ ...prev, [key]: value }));
-  const start = e.start ?? '09:00';
-  const end = e.end ?? '10:00';
+  // A cleared time field falls back to the default instead of saving an event with no time.
+  const start = e.start || '09:00';
+  const end = e.end || '10:00';
   const badTitle = !e.title.trim();
   const badDate = !e.date;
   const badEnd = allDay ? Boolean(e.endDate && e.endDate < e.date) : toMinutes(end) <= toMinutes(start);
@@ -44,7 +47,7 @@ export function EventDialog({ event, categories, isNew, onSave, onDelete, onClos
       start: allDay ? undefined : start,
       end: allDay ? undefined : end,
       endDate: allDay && e.endDate && e.endDate > e.date ? e.endDate : undefined,
-      people: e.people?.map((p) => p.trim()).filter(Boolean),
+      people: people.split(',').map((p) => p.trim()).filter(Boolean),
     });
     ref.current?.close();
   };
@@ -110,7 +113,7 @@ export function EventDialog({ event, categories, isNew, onSave, onDelete, onClos
             </label>
             <label className="ui-field is-wide">
               <span className="ui-field-label">People (comma-separated)</span>
-              <input className="ui-input" value={(e.people ?? []).join(', ')} onChange={(x) => set('people', x.target.value.split(',').map((p) => p.trimStart()))} />
+              <input className="ui-input" value={people} onChange={(x) => setPeople(x.target.value)} />
             </label>
             <label className="ui-field is-wide">
               <span className="ui-field-label">Notes</span>

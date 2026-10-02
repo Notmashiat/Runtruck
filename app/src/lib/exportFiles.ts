@@ -2,7 +2,7 @@
 // with no outside libraries: .docx and .xlsx are zip packages of XML, put
 // together by the small zip writer below.
 import { csvText } from './csv';
-import { PdfDoc, textWidth } from './pdf';
+import { PdfDoc, fit, textWidth } from './pdf';
 
 export interface ExportTable {
   title: string;
@@ -231,20 +231,7 @@ function capWidths(natural: number[], avail: number): number[] {
   return natural;
 }
 
-// The text, shortened with '…' when it is wider than `width`. Finds the cut
-// by halving, so a very long note costs a handful of measurements, not one
-// per character.
-export function fit(s: string, width: number, size: number, bold = false): string {
-  if (textWidth(s, size, bold) <= width) return s;
-  let lo = 1;
-  let hi = s.length - 1;
-  while (lo < hi) {
-    const mid = (lo + hi + 1) >> 1;
-    if (textWidth(`${s.slice(0, mid)}…`, size, bold) <= width) lo = mid;
-    else hi = mid - 1;
-  }
-  return `${s.slice(0, lo)}…`;
-}
+
 
 export function pdf(doc: ExportDoc): PdfDoc {
   const p = new PdfDoc(doc.title, doc.landscape);

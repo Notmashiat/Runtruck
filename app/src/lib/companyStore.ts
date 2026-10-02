@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from 'react';
 import { reviveCompany, type ClientCompany } from '../data/companies';
 import { OWNER_COMPANY_ID, OWNER_COMPANY_NAME, readRegistry, registryKey } from './account';
-import { onStorageChange, writeJson } from './storage';
+import { purgeCompanyFiles } from './fileStore';
+import { onStorageChange, removeKeysWithPrefix, writeJson } from './storage';
 
 // The client companies (runtruck-1-companies) and every Company ID ever
 // issued (runtruck-1-company-ids). An ID stays issued when its company is
@@ -96,9 +97,21 @@ export function saveCompany(c: ClientCompany) {
   persist();
 }
 
-// Remove a company. Its ID stays issued and is never reused.
+// Remove a company, with everything it kept in this browser. Its ID stays
+// issued and is never reused.
 export function deleteCompany(id: string) {
   refresh();
   companies = companies.filter((c) => c.companyId !== id);
   persist();
+  purgeCompanyData(id);
+}
+
+// A deleted company's records ('runtruck-<id>-…') and attached files. Left
+// behind, they would use up the storage every other company shares and stay
+// readable on this computer. RunTruck's own workspace is never purged.
+export function purgeCompanyData(id: string) {
+  if (!/^\d+$/.test(id) || id === OWNER_COMPANY_ID) return;
+  removeKeysWithPrefix(`runtruck-${id}-`);
+  // No files, or no file storage in this browser: nothing to remove.
+  purgeCompanyFiles(id).catch(() => undefined);
 }

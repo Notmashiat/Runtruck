@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '../../../components/Card';
 import { DriverDialog } from '../../../components/FleetDialogs';
@@ -7,8 +7,12 @@ import { Tag } from '../../../components/Tag';
 import { useAppShell, type DriverTab } from '../../../context/AppShellContext';
 import { byUrgency, driverDocuments, renewWindow } from '../../../data/compliance';
 import { getSettings, numSetting } from '../../../lib/settingsStore';
+import { driverStats } from '../../../data/driverStats';
 import type { FleetDriver } from '../../../data/fleet';
-import { fmtDate } from '../../../data/invoicing';
+import { fmtDate, usd0 } from '../../../data/invoicing';
+import { IS_DEMO } from '../../../lib/account';
+import { todayIso } from '../../../lib/clock';
+import { isLive } from '../../../lib/releases';
 import { matchesQuery } from '../../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
 import { usePaged } from '../../../lib/paging';
@@ -22,8 +26,21 @@ function hoursLeft(hos: string): number {
 }
 
 export function DriversTab() {
-  const { query, driverTab, setDriverTab, drivers } = useAppShell();
+  const { query, driverTab, setDriverTab, drivers: saved, loads, employees, payRuns } = useAppShell();
   const [editing, setEditing] = useState<FleetDriver | null>(null);
+  // Release 1.10: current load, miles and pay come from the loads and pay
+  // runs. Hours left needs an ELD feed, which RunTruck does not have yet, so
+  // outside the demo it is a dash rather than a number nobody measured.
+  const live = isLive('driver-roster-live');
+  const hoursKnown = !live || IS_DEMO;
+  const drivers = useMemo(() => {
+    if (!live) return saved;
+    const stats = driverStats(loads, employees, payRuns, todayIso());
+    return saved.map((d): FleetDriver => {
+      const s = stats.get(d.name);
+      return { ...d, load: s?.load ?? '—', miles: s?.miles ?? 0, pay: s && s.pay !== null ? usd0(s.pay) : '—', hos: IS_DEMO ? d.hos : '—' };
+    });
+  }, [live, saved, loads, employees, payRuns]);
   const [showArchived, setShowArchived] = useState(false);
 
   const active = drivers.filter((d) => !d.archived);
@@ -41,7 +58,9 @@ export function DriversTab() {
   const kpis = [
     { label: 'On the roster', value: String(active.length), note: `${onDuty.length} on duty · ${active.length - onDuty.length - available.length} off` },
     { label: 'Available now', value: String(available.length), note: available.map((d) => d.name.split(' ')[0]).join(', ') || 'Nobody free' },
-    { label: 'Hours at risk', value: String(atRisk.length), note: atRisk.map((d) => `${d.name.split(' ').at(-1)} · ${d.hos}`).join(', ') || `Nobody under ${warnHours}h` },
+    hoursKnown
+      ? { label: 'Hours at risk', value: String(atRisk.length), note: atRisk.map((d) => `${d.name.split(' ').at(-1)} · ${d.hos}`).join(', ') || `Nobody under ${warnHours}h` }
+      : { label: 'Hours at risk', value: '—', note: 'Needs an ELD connection' },
     { label: 'Docs to renew', value: String(watchlist.length), note: [`${countDocs('Expired')} expired`, `${countDocs('Expiring')} due within ${renewWindow()} days`, countDocs('Missing') ? `${countDocs('Missing')} missing` : ''].filter(Boolean).join(' · ') },
   ];
 
@@ -106,7 +125,7 @@ export function DriversTab() {
                 <td className="num">{d.hos}</td>
                 <td className="num">{d.cdl}</td>
                 <td className="num">{d.pay}</td>
-                <td className="num"><button type="button" className="ui-link" onClick={() => setEditing(d)}>Edit</button></td>
+                <td className="num"><button type="button" className="ui-link" onClick={() => setEditing(saved.find((x) => x.id === d.id) ?? d)}>Edit</button></td>
               </tr>
             ))}
           </tbody>

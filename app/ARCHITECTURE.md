@@ -110,8 +110,10 @@ To find a problem a user reports:
 1. Ask for the reference on the panel (or have them press **Copy details**).
 2. Open **Developer › Error log** on that device. Each entry shows the
    message, where it happened, how many times, and the stack.
-3. The stack names the real file and function: production builds ship source
-   maps and keep function names.
+3. The stack names the real function ("at PayrollTab"): production builds keep
+   function names. Source maps are not published (they would give away the
+   source code). For exact lines, check out the commit shown as the entry's
+   Build, run `npm run build`, and open the matching file in `app/maps/`.
 4. Write a test that reproduces it in the matching `*.test.ts`, fix it, and
    run `npm run verify`.
 
@@ -151,5 +153,9 @@ old behaviour otherwise. Super admins deploy a release to companies from
 - CSV exports neutralise cells that a spreadsheet would run as a formula (`lib/csv.ts`).
 - `vercel.json` sends a Content-Security-Policy: scripts only from this site,
   no inline scripts. Keep it that way (`public/theme-init.js` exists for that reason).
+- A free trial that has ended locks the company's accounts out (`trialEnded`
+  in `data/companies.ts`, enforced in `lib/auth.ts`); nothing is deleted.
+- Deleting a company removes its records and files from the browser
+  (`purgeCompanyData` in `lib/companyStore.ts`).
 - Passwords are salted and hashed (`lib/password.ts`), but they are checked in
   the browser. That is not real security until sign-in moves to a server.

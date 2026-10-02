@@ -3,7 +3,7 @@ import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
 import { useAppShell } from '../../../context/AppShellContext';
 import {
-  CYCLES, PLANS, STATUS_TAG, STATUSES, addDaysIso, billingDates, monthlyPrice, todayInZone, type ClientCompany,
+  CYCLES, PLANS, STATUS_TAG, STATUSES, addDaysIso, billingDates, monthlyPrice, todayInZone, trialEnded, type ClientCompany,
 } from '../../../data/companies';
 import { fmtDate, usd0 } from '../../../data/invoicing';
 import { useCompanies } from '../../../lib/companyStore';
@@ -32,11 +32,12 @@ export function ClientsTab() {
   const soon = addDaysIso(today, 7);
   const count = (s: ClientCompany['status']) => companies.filter((c) => c.status === s).length;
   const renewing = companies.filter((c) => c.status === 'Active' && billingDates(c, today).next <= soon).length;
-  const trialsEnding = companies.filter((c) => c.status === 'Trial' && c.trialEnds <= soon).length;
+  const trialsOver = companies.filter((c) => trialEnded(c, today)).length;
+  const trialsEnding = companies.filter((c) => c.status === 'Trial' && c.trialEnds <= soon).length - trialsOver;
 
   const kpis = [
     { label: 'Active', value: String(count('Active')), note: `${renewing} billing in 7 days` },
-    { label: 'In trial', value: String(count('Trial')), note: `${trialsEnding} ending in 7 days` },
+    { label: 'In trial', value: String(count('Trial')), note: `${trialsEnding} ending in 7 days${trialsOver ? ` · ${trialsOver} ended, locked out` : ''}` },
     { label: 'Past due', value: String(count('Past due')), note: 'Payment failed or late' },
     { label: 'Paused or cancelled', value: String(count('Paused') + count('Cancelled')), note: 'Not billed' },
   ];
@@ -76,7 +77,7 @@ export function ClientsTab() {
                   <td>{c.cycle}<div className="ui-stop-meta">{c.paymentMethod || 'No payment method yet'}</div></td>
                   <td>{fmtDate(c.started)}</td>
                   <td>{dates.last ? fmtDate(dates.last) : '—'}</td>
-                  <td>{stopped ? '—' : c.status === 'Trial' ? <>{fmtDate(dates.next)}<div className="ui-stop-meta">Trial ends</div></> : fmtDate(dates.next)}</td>
+                  <td>{stopped ? '—' : c.status === 'Trial' ? <>{fmtDate(dates.next)}<div className="ui-stop-meta">{trialEnded(c, today) ? 'Trial ended · cannot sign in' : 'Trial ends'}</div></> : fmtDate(dates.next)}</td>
                   <td>
                     {versionAt(versionOf(c), releaseState).id}
                     <div className="ui-stop-meta">{behind(c) === 0 ? 'Newest' : `${behind(c)} behind`}</div>
@@ -89,7 +90,7 @@ export function ClientsTab() {
                       {c.cycle === 'Annual' && price !== null ? ` · ${usd0(price * 12)} a year` : ''}
                     </div>
                   </td>
-                  <td className="num"><Tag label={c.status} tagClass={STATUS_TAG[c.status]} /></td>
+                  <td className="num">{trialEnded(c, today) ? <Tag label="Trial ended" tagClass="tag-outline" /> : <Tag label={c.status} tagClass={STATUS_TAG[c.status]} />}</td>
                 </tr>
               );
             })}

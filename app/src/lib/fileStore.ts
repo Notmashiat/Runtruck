@@ -41,6 +41,13 @@ const addedAt = (k: string): number => {
 };
 const KEEP_NEW_FOR_MS = 24 * 3_600_000;
 
+// Remove every attached file of a company (when the company is deleted).
+export async function purgeCompanyFiles(companyId: string): Promise<void> {
+  const keys = (await run('readonly', (s) => s.getAllKeys())) as string[];
+  const theirs = keys.filter((k) => typeof k === 'string' && k.startsWith(`${companyId}:`));
+  if (theirs.length) await run('readwrite', (s) => { theirs.forEach((k) => s.delete(k)); return s.count(); });
+}
+
 // Remove this company's files that no record points to any more (files of
 // deleted records, or attached in a form that was cancelled). A file added
 // in the last day is kept either way: it may belong to a form that is still

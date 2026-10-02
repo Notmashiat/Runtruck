@@ -5,7 +5,8 @@ import {
 } from './account';
 import { accountByEmail, accountById, reloadAccounts, saveAccount } from './accountStore';
 import { companyById, reloadCompanies } from './companyStore';
-import type { ClientCompany } from '../data/companies';
+import { trialEnded, type ClientCompany } from '../data/companies';
+import { todayIso } from './clock';
 import { readJson, removeKey, writeJson } from './storage';
 import { MIN_PASSWORD, makePasswordRecord, passwordFits, passwordProblems as problemsFor, type PasswordRecord } from './password';
 
@@ -106,10 +107,11 @@ function meFor(memberId: string, companyId: string): Me | null {
 }
 
 // A client company whose accounts may not use RunTruck: removed, deactivated,
-// paused or cancelled. The same rule decides who may log in and whose open
-// session keeps working, so pausing a company takes effect at once.
+// paused, cancelled, or on a free trial that has ended. The same rule decides
+// who may log in and whose open session keeps working, so pausing a company
+// (or a trial running out) takes effect at once.
 function companyBlocked(c: ClientCompany | undefined): boolean {
-  return !c || Boolean(c.deactivated) || c.status === 'Paused' || c.status === 'Cancelled';
+  return !c || Boolean(c.deactivated) || c.status === 'Paused' || c.status === 'Cancelled' || trialEnded(c, todayIso());
 }
 
 // The account this page was opened for (null when signed out).
@@ -185,7 +187,7 @@ function clearFails(email: string) {
 
 export type LoginResult =
   | { ok: true }
-  | { ok: false; reason: 'locked' | 'email' | 'password' | 'disabled' | 'company' | 'storage'; seconds?: number; company?: string };
+  | { ok: false; reason: 'locked' | 'email' | 'password' | 'disabled' | 'company' | 'trial' | 'storage'; seconds?: number; company?: string; ended?: string };
 
 function openSession(companyId: string, memberId: string, email: string, remember: boolean): boolean {
   const now = Date.now();
@@ -234,6 +236,7 @@ export async function logIn(email: string, password: string, remember: boolean):
     if (a.status !== 'Active') return { ok: false, reason: 'disabled' };
     if (a.companyId !== OWNER_COMPANY_ID) {
       const c = companyById(a.companyId);
+      if (c && !c.deactivated && trialEnded(c, todayIso())) return { ok: false, reason: 'trial', company: c.name, ended: c.trialEnds };
       if (companyBlocked(c)) return { ok: false, reason: 'company', company: c ? `${c.name} (${c.deactivated ? 'deactivated' : c.status.toLowerCase()})` : 'This company' };
     }
     saveAccount({ ...a, lastSignIn: new Date().toISOString() });

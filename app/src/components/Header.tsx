@@ -5,6 +5,7 @@ import { NAV, PAYROLL_PATH, PAYROLL_SECTION, SECTION_TABS, type ViewKey } from '
 import { formatNow, todayIso, useNow } from '../lib/clock';
 import { isActive, pageKeyOf } from '../lib/tableTools';
 import { can } from '../lib/auth';
+import { daysFrom, invoiceTotal } from '../data/invoicing';
 import { downloadCsv } from '../lib/csv';
 import { isLive } from '../lib/releases';
 import { lazyNamed } from '../lib/lazyPage';
@@ -17,6 +18,7 @@ import { describe, FilterPanel } from './FilterPanel';
 const forms = {
   load: () => import('./NewLoadDialog'),
   loadStatus: () => import('./LoadDialogs'),
+  message: () => import('./MessageDriverDialog'),
   fleet: () => import('./FleetDialogs'),
   facility: () => import('./FacilityDialog'),
   invoice: () => import('./InvoiceDialog'),
@@ -32,6 +34,7 @@ const forms = {
 };
 const NewLoadDialog = lazyNamed(forms.load, 'NewLoadDialog');
 const LoadStatusDialog = lazyNamed(forms.loadStatus, 'LoadStatusDialog');
+const MessageDriverDialog = lazyNamed(forms.message, 'MessageDriverDialog');
 const DriverDialog = lazyNamed(forms.fleet, 'DriverDialog');
 const TruckDialog = lazyNamed(forms.fleet, 'TruckDialog');
 const TrailerDialog = lazyNamed(forms.fleet, 'TrailerDialog');
@@ -54,8 +57,8 @@ const AccountDialog = lazyNamed(forms.account, 'AccountDialog');
 
 // Which forms each page's buttons open (the keys match actionsFor below).
 const FORMS_FOR: Record<string, (keyof typeof forms)[]> = {
-  dashboard: ['load'], loads: ['load'], loadDetail: ['load', 'loadStatus'],
-  'fleet/drivers': ['fleet'], 'fleet/trucks': ['fleet'], 'fleet/trailers': ['fleet'],
+  dashboard: ['load'], loads: ['load'], loadDetail: ['load', 'loadStatus', 'message'],
+  'fleet/drivers': ['fleet'], 'fleet/trucks': ['fleet', 'safety'], 'fleet/trailers': ['fleet'],
   crm: ['customer'], facilities: ['facility'],
   'accounting/uninvoiced': ['invoice'], 'accounting/invoiced': ['invoice'], 'accounting/batches': ['batch'], 'accounting/past-due': ['reminders'],
   'accounting/payroll': ['payroll'], 'hr/payroll': ['payroll'], 'accounting/bills': ['bill'],
@@ -77,12 +80,12 @@ const NO_FILTERS: ViewKey[] = ['dashboard', 'planner'];
 export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { searchText, setQuery, approveAll, loads, filterMeta, filterValues, setFilter, clearFilters } = useAppShell();
+  const { searchText, setQuery, approveAll, loads, invoices, filterMeta, filterValues, setFilter, clearFilters } = useAppShell();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const now = useNow(15_000);
   const [newLoadOpen, setNewLoadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | 'bill' | 'customer' | 'employee' | 'payrun' | 'contract' | 'onboarding' | 'workorder' | 'docrequest' | 'violation' | 'claim' | 'loadstatus' | null>(null);
+  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | 'bill' | 'customer' | 'employee' | 'payrun' | 'contract' | 'onboarding' | 'workorder' | 'docrequest' | 'violation' | 'claim' | 'loadstatus' | 'message' | null>(null);
 
   // Route matching is case-insensitive, so normalise before keying off the section.
   const segments = location.pathname.toLowerCase().split('/');
@@ -98,8 +101,18 @@ export function Header() {
       ...loads.map((l) => [l.id, l.status, l.customer, l.ref, l.route, l.pickup, l.delivery, l.driver, l.unit, l.carrier, l.equip, l.commodity, l.weight, l.miles, l.rate]),
     ]);
 
-  // Keyed by section, or section/tab for the tabbed sections. Most are stubs,
-  // as in the original prototype; the ones that navigate are the real flows.
+  // Every paid invoice as a spreadsheet, most recently paid first.
+  const exportPaid = () =>
+    downloadCsv(`runtruck-paid-invoices-${todayIso()}.csv`, [
+      ['Invoice', 'Customer', 'Loads', 'Issued', 'Paid on', 'Paid via', 'Days to pay', 'Amount'],
+      ...invoices
+        .filter((i) => i.paid)
+        .sort((a, b) => (b.paid?.date ?? '').localeCompare(a.paid?.date ?? ''))
+        .map((i) => [i.id, i.customer, i.loads.join(' '), i.issued, i.paid?.date ?? '', i.paid?.via ?? '', i.issued && i.paid?.date ? Math.max(0, daysFrom(i.issued, i.paid.date)) : '', invoiceTotal(i)]),
+    ]);
+
+  // Keyed by section, or section/tab for the tabbed sections. A button with
+  // no onClick belongs to a release the company has not been given yet.
   const developer: HeadAction[] = [
     { label: '+ Create account', onClick: () => setAdding('account') },
     { label: '+ Create company', primary: true, onClick: () => setAdding('company') },
@@ -115,13 +128,15 @@ export function Header() {
       { label: '+ New Load', primary: true, onClick: () => setNewLoadOpen(true) },
     ],
     loadDetail: [
-      { label: 'Message driver' },
+      // Release 1.10: the message popup (the button did nothing before).
+      { label: 'Message driver', onClick: detailLoad && isLive('driver-message') ? () => setAdding('message') : undefined },
       ...(detailLoad ? [{ label: 'Edit load', onClick: () => setEditOpen(true) }] : []),
       // Release 1.9: the status is changed here (it could not be changed at all before).
       { label: 'Update status', primary: true, onClick: detailLoad && isLive('load-tracking') ? () => setAdding('loadstatus') : undefined },
     ],
     'fleet/drivers': [{ label: '+ Add Driver', primary: true, onClick: () => setAdding('driver') }],
-    'fleet/trucks': [{ label: 'Log service' }, { label: '+ Add Unit', primary: true, onClick: () => setAdding('truck') }],
+    // Release 1.10: Log service opens the work order form.
+    'fleet/trucks': [{ label: 'Log service', onClick: isLive('fleet-log-service') ? () => setAdding('workorder') : undefined }, { label: '+ Add Unit', primary: true, onClick: () => setAdding('truck') }],
     'fleet/trailers': [{ label: '+ Add Trailer', primary: true, onClick: () => setAdding('trailer') }],
     // Release 1.4: the inactive list and the Add Customer form.
     crm: isLive('crm-customers')
@@ -137,7 +152,8 @@ export function Header() {
     'accounting/invoiced': [{ label: '+ New Invoice', primary: true, onClick: () => setAdding('invoice') }],
     'accounting/batches': [{ label: '+ New Batch', primary: true, onClick: () => setAdding('batch') }],
     'accounting/past-due': [{ label: 'Send reminders', primary: true, onClick: () => setAdding('reminders') }],
-    'accounting/paid': [{ label: 'Export' }],
+    // Release 1.10: Export downloads the paid invoices.
+    'accounting/paid': [{ label: 'Export', onClick: isLive('paid-export') ? exportPaid : undefined }],
     // Release 1.5: employees, the archived list and pay runs.
     [`${PAYROLL_SECTION}/payroll`]: isLive('payroll')
       ? [
@@ -223,6 +239,7 @@ export function Header() {
         <NewLoadDialog load={detailLoad} onClose={() => setEditOpen(false)} onDeleted={() => { setEditOpen(false); navigate('/app/loads'); }} />
       )}
       {adding === 'loadstatus' && detailLoad && <LoadStatusDialog load={detailLoad} onClose={() => setAdding(null)} />}
+      {adding === 'message' && detailLoad && <MessageDriverDialog load={detailLoad} onClose={() => setAdding(null)} />}
       {adding === 'driver' && <DriverDialog onClose={() => setAdding(null)} />}
       {adding === 'truck' && <TruckDialog onClose={() => setAdding(null)} />}
       {adding === 'trailer' && <TrailerDialog onClose={() => setAdding(null)} />}

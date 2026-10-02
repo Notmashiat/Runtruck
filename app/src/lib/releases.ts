@@ -255,6 +255,17 @@ export function setVersionCompanies(
   commit({ ...s, assignments, defaults, log });
 }
 
+// Whether a version number is already in use outside the releases being
+// merged: by another version, or by a release hidden inside another merged
+// version (it still owns its number in the deploy log and assignments).
+export function versionIdTaken(id: string, mergedReleases: string[], s: State = state): boolean {
+  const wanted = id.trim().toLowerCase();
+  if (!wanted) return false;
+  const inside = new Set(mergedReleases);
+  return RELEASES.some((r) => !inside.has(r.id) && r.id.toLowerCase() === wanted)
+    || s.merges.some((m) => m.id.toLowerCase() === wanted && !m.releases.some((r) => inside.has(r)));
+}
+
 // Merge versions that have not gone out yet into one. Versions go out in
 // order, so anything between the chosen ones is merged in too.
 export function mergeVersions(chosen: Version[], id: string, title: string, byName: string): Merge | null {
@@ -264,6 +275,7 @@ export function mergeVersions(chosen: Version[], id: string, title: string, byNa
   const last = Math.max(...chosen.map((v) => v.last));
   if (first <= latestDeployedIndex(state)) return null;
   const releases = RELEASES.slice(first, last + 1).map((r) => r.id);
+  if (!id.trim() || versionIdTaken(id, releases, state)) return null;
   const merge: Merge = { id: id.trim(), title: title.trim(), releases, at: new Date().toISOString(), byName };
   commit({ ...state, merges: [...state.merges.filter((m) => !m.releases.some((r) => releases.includes(r))), merge] });
   return merge;

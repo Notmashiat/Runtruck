@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { TRIAL_WARN_DAYS, trialDaysLeft } from '../data/companies';
+import { COMPANY_ID, OWNER_COMPANY_ID } from '../lib/account';
+import { todayIso } from '../lib/clock';
+import { useCompanies } from '../lib/companyStore';
 import { describeError, useErrorLog } from '../lib/errorLog';
 import { storageUsage, useStorageProblem } from '../lib/storage';
 
@@ -41,6 +45,22 @@ export function StorageBanner() {
     );
   }
   return null;
+}
+
+// Tells a company on a free trial when it is about to end, so the lock-out
+// (lib/auth.ts) is never a surprise.
+export function TrialBanner() {
+  const company = useCompanies().find((c) => c.companyId === COMPANY_ID);
+  if (!company || COMPANY_ID === OWNER_COMPANY_ID) return null;
+  const left = trialDaysLeft(company, todayIso());
+  if (left === null || left > TRIAL_WARN_DAYS || left < 1) return null;
+  const day = new Date(`${company.trialEnds}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return (
+    <div className="ui-banner" role="status">
+      <strong>Your free trial ends {left === 1 ? 'today' : left === 2 ? 'tomorrow' : `in ${left - 1} days`} ({day}).</strong>{' '}
+      After that nobody at {company.name} can sign in until the account is renewed. Nothing is deleted. Contact RunTruck to keep going.
+    </div>
+  );
 }
 
 // A short notice when an action failed behind the scenes (a click handler or

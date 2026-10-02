@@ -3,6 +3,7 @@
 // subscription. Creating a company creates no accounts; login accounts are
 // assigned to a Company ID in Developer › Create account (data/accounts.ts).
 import { isoDateAt } from '../lib/clock';
+import { addDaysIso, daysBetweenIso, isIsoDate } from '../lib/isoDates';
 import type { FormValues } from './fleet';
 
 export type Plan = 'Starter' | 'Growth' | 'Enterprise';
@@ -93,6 +94,25 @@ export function monthlyPrice(c: ClientCompany): number | null {
   return per === null ? c.customPrice : per * c.trucks;
 }
 
+// — free trials —
+//
+// A trial runs through its last day. From the day after, the company's
+// accounts cannot sign in until a super admin makes it a paying client or
+// moves the end date (Developer › Clients › Edit). Nothing is deleted. A
+// trial with no usable end date never locks anyone out.
+
+// How many days before the end the company's own people are told.
+export const TRIAL_WARN_DAYS = 7;
+
+export const trialEnded = (c: Pick<ClientCompany, 'status' | 'trialEnds'>, today: string): boolean =>
+  c.status === 'Trial' && isIsoDate(c.trialEnds) && isIsoDate(today) && c.trialEnds < today;
+
+// Days of trial left, counting today (0 = ended; null = not on a trial).
+export function trialDaysLeft(c: Pick<ClientCompany, 'status' | 'trialEnds'>, today: string): number | null {
+  if (c.status !== 'Trial' || !isIsoDate(c.trialEnds) || !isIsoDate(today)) return null;
+  return Math.max(0, daysBetweenIso(today, c.trialEnds) + 1);
+}
+
 // Whether the company is billed now (trials, paused and cancelled are not).
 export const isPaying = (c: ClientCompany) => !c.deactivated && (c.status === 'Active' || c.status === 'Past due');
 
@@ -121,11 +141,8 @@ export function billingDates(c: ClientCompany, today: string): { last: string; n
 
 export const todayInZone = () => isoDateAt(new Date());
 
-export function addDaysIso(iso: string, n: number): string {
-  const d = new Date(`${iso}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
+// Date arithmetic lives in lib/isoDates.ts (safe on blank or mistyped dates).
+export { addDaysIso };
 
 // — the Create company form —
 

@@ -11,7 +11,7 @@ import { me } from '../../../lib/auth';
 import { useAccounts } from '../../../lib/accountStore';
 import { useCompanies } from '../../../lib/companyStore';
 import {
-  companyReleaseIndex, deployVersion, latestDeployedIndex, mergeVersions, newCompaniesIndex, pendingVersions, setVersionCompanies,
+  companyReleaseIndex, deployVersion, latestDeployedIndex, mergeVersions, newCompaniesIndex, pendingVersions, setVersionCompanies, versionIdTaken,
   splitVersion, useReleaseState, versionAt, versions, type ReleaseAction, type Version,
 } from '../../../lib/releases';
 
@@ -136,7 +136,7 @@ function MergeDialog({ chosen, onClose }: { chosen: Version[]; onClose: () => vo
   const pulledIn = covered.filter((v) => !chosen.some((c) => c.id === v.id));
   const [id, setId] = useState(covered[0]?.id ?? '');
   const [title, setTitle] = useState(covered.map((v) => v.title).join(' + '));
-  const clash = all.some((v) => !covered.some((c) => c.id === v.id) && v.id.toLowerCase() === id.trim().toLowerCase());
+  const clash = versionIdTaken(id, covered.flatMap((v) => v.releases.map((r) => r.id)), s);
   const problem = !id.trim() ? 'Give the version a number' : clash ? `Version ${id.trim()} already exists` : !title.trim() ? 'Give the version a name' : '';
 
   return (

@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ErrorBoundary } from './ErrorBoundary';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { StorageBanner } from './StatusBanners';
+import { StorageBanner, TrialBanner } from './StatusBanners';
 import { AppShellProvider } from '../context/AppShellContext';
 import { Suspense, useEffect } from 'react';
 import { TODAY } from '../data/planner';
@@ -54,6 +54,7 @@ export function AppLayout() {
             <Header />
           </ErrorBoundary>
           <StorageBanner />
+          <TrialBanner />
           <main className="ui-main">
             <ErrorBoundary where="Page" resetKey={location.pathname}>
               <Suspense fallback={<div className="ui-empty">Loading…</div>}>

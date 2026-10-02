@@ -109,6 +109,7 @@ function companySections(isNew: boolean, others: ClientCompany[]): SectionSpec[]
         { key: 'started', label: 'Subscription starts', type: 'date', required: true, help: 'Billing renews on this day.' },
         {
           key: 'trialEnds', label: 'Trial ends', type: 'date', required: true, show: (v) => val(v, 'status') === 'Trial',
+          help: 'The last day of the trial. After it, the company’s accounts cannot sign in until it is made Active or this date is moved.',
           check: (value, v) => (value > val(v, 'started') ? null : 'After the start date'),
         },
         ...requiredWhen({ key: 'paymentMethod', label: 'Payment method', type: 'select', options: PAYMENT_METHODS }, (v) => val(v, 'status') !== 'Trial'),
@@ -148,7 +149,7 @@ export function CompanyDialog({ company, onClose }: { company?: ClientCompany; o
       isNew={!company}
       recordLabel={company ? `${company.name} (${company.companyId})` : 'company'}
       noun="company"
-      deleteNote={`${company?.name ?? 'The company'} leaves the client list. Company ID ${id} stays retired and is never given to another company.`}
+      deleteNote={`${company?.name ?? 'The company'} leaves the client list, and its records and attached files in this browser are deleted for good. Export anything that must be kept first. Company ID ${id} stays retired and is never given to another company.`}
       banner={banner}
       onSave={(v) => {
         // Another tab could have issued the same ID meanwhile: draw again if so.

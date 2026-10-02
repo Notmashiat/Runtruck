@@ -179,6 +179,29 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.10',
+    date: '2026-10-02',
+    title: 'Message driver, live driver roster, and the buttons that did nothing',
+    changes: [
+      {
+        id: 'driver-message', kind: 'New', section: 'Loads', title: 'Message driver from a load’s page',
+        details: 'Message driver on a load’s page writes the load’s stops, times, reference and freight as a message and opens it as a text or an email to the driver on the load, from the phone or mail app of the device in use, or starts a call. The message can be edited or copied first, and opening one is noted in the load’s history. Before this the button did nothing.',
+      },
+      {
+        id: 'fleet-log-service', kind: 'New', section: 'Fleet', title: 'Log service from the Trucks tab',
+        details: 'Log service on Fleet › Trucks opens the work order form (the same one as Safety › Maintenance), so a repair or service can be logged from the truck list. Before this the button did nothing.',
+      },
+      {
+        id: 'paid-export', kind: 'New', section: 'Accounting', title: 'Export paid invoices',
+        details: 'Export on Accounting › Paid downloads every paid invoice as a spreadsheet: invoice, customer, loads, issue date, the day it was paid, how, days to pay and the amount. Before this the button did nothing.',
+      },
+      {
+        id: 'driver-roster-live', kind: 'Updated', section: 'Fleet', title: 'Driver roster figures come from the company’s own records',
+        details: 'On Fleet › Drivers, Current load is the load the driver is on now, Miles this week adds up the loads they delivered since Monday, and Pay YTD is what pay runs have paid them this year (a dash when the driver is not on payroll). Before this the three were typed-in figures that never changed. Hours left needs an electronic logging device connection, so it shows a dash until one is connected instead of a made-up number.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

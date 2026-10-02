@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { opensInTab } from './attachments';
-import { fit } from './exportFiles';
-import { PdfDoc, sanitize, textWidth } from './pdf';
+import { PdfDoc, fit, sanitize, textWidth } from './pdf';
 
 describe('sanitize', () => {
   it('keeps Western European letters', () => {

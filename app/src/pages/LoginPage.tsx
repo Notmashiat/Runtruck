@@ -67,6 +67,9 @@ export function LoginPage() {
       setError('This account has been deactivated. Ask a RunTruck super admin to reactivate it.');
     } else if (result.reason === 'storage') {
       setError('This browser is blocking site data, so RunTruck cannot keep you signed in. Allow cookies and site data for this site, then try again.');
+    } else if (result.reason === 'trial') {
+      const day = result.ended ? new Date(`${result.ended}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+      setError(`${result.company ?? 'Your company'}’s free trial ended${day ? ` on ${day}` : ''}. Nothing has been deleted. Contact RunTruck to keep using your account.`);
     } else if (result.reason === 'company') {
       setError(`${result.company ?? 'This company'} can’t sign in right now. Contact RunTruck.`);
     } else {

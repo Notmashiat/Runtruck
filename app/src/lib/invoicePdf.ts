@@ -1,10 +1,14 @@
-// The invoice document: one US Letter page (more if there are many charges)
-// laid out like a carrier's official invoice. The same drawing feeds the PDF
-// download and the on-screen preview.
+// The invoice document: one US Letter page (more if there are many charges
+// or long notes) laid out like a carrier's official invoice. The same drawing
+// feeds the PDF download and the on-screen preview.
+//
+// Nothing may run off the paper: text on one line is shortened to its space
+// with fit(), and anything that can grow (charges, notes, a long list of
+// loads) moves on to a new page when it reaches BOTTOM.
 import {
   COMPANY, fmtDate, invoiceTotal, lateFees, lineAmount, statusOf, usd, type InvoiceRecord,
 } from '../data/invoicing';
-import { PAGE_H, PAGE_W, PdfDoc, textWidth, wrap } from './pdf';
+import { PAGE_H, PAGE_W, PdfDoc, fit, textWidth, wrap } from './pdf';
 import { getSettings } from './settingsStore';
 
 const BRAND = '#1e5eff';
@@ -17,6 +21,18 @@ const L = 48;
 const R = PAGE_W - 48;
 const W = R - L;
 const BOTTOM = 700; // content stops here; the footer sits below
+
+// A value wrapped to at most `max` lines; what does not fit ends in '…'.
+function lines(s: string, width: number, size: number, max: number, bold = false): string[] {
+  const all = wrap(s, width, size, bold);
+  if (all.length <= max) return all;
+  return [...all.slice(0, max - 1), fit(all.slice(max - 1).join(' '), width, size, bold)];
+}
+
+// The loads on an invoice, as the shipment block names them: all of them, or
+// the first dozen and a count (every load has its own charge line below).
+const LOADS_NAMED = 12;
+const loadList = (ids: string[]) => (ids.length > LOADS_NAMED ? `${ids.slice(0, LOADS_NAMED).join(', ')} and ${ids.length - LOADS_NAMED} more` : ids.join(', '));
 
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
 
@@ -38,13 +54,15 @@ export function invoiceDoc(inv: InvoiceRecord): PdfDoc {
   doc.rect(0, 0, PAGE_W, 6, { fill: BRAND });
   doc.rect(L, 34, 38, 38, { fill: BRAND });
   doc.text(L + 19, 58, initials(COMPANY.name), { size: 15, bold: true, color: '#ffffff', align: 'center' });
-  doc.text(L + 50, 48, COMPANY.legal, { size: 15, bold: true, color: INK });
-  doc.text(L + 50, 62, `${COMPANY.street}, ${COMPANY.city}, ${COMPANY.state} ${COMPANY.zip}`, { size: 8.5, color: MUTED });
-  doc.text(L + 50, 73, [COMPANY.phone, COMPANY.email, COMPANY.website].filter(Boolean).join('  ·  '), { size: 8.5, color: MUTED });
-  doc.text(L + 50, 84, [COMPANY.dot, COMPANY.mc].filter(Boolean).join('  ·  '), { size: 8.5, color: MUTED });
+  // The letterhead shares its row with the word INVOICE on the right.
+  const headW = W - 50 - 150;
+  doc.text(L + 50, 48, fit(COMPANY.legal, headW, 15, true), { size: 15, bold: true, color: INK });
+  doc.text(L + 50, 62, fit(`${COMPANY.street}, ${COMPANY.city}, ${COMPANY.state} ${COMPANY.zip}`, headW, 8.5), { size: 8.5, color: MUTED });
+  doc.text(L + 50, 73, fit([COMPANY.phone, COMPANY.email, COMPANY.website].filter(Boolean).join('  ·  '), headW, 8.5), { size: 8.5, color: MUTED });
+  doc.text(L + 50, 84, fit([COMPANY.dot, COMPANY.mc].filter(Boolean).join('  ·  '), headW, 8.5), { size: 8.5, color: MUTED });
 
   doc.text(R, 56, 'INVOICE', { size: 26, bold: true, color: INK, align: 'right' });
-  doc.text(R, 74, inv.id, { size: 11, bold: true, color: BRAND, align: 'right' });
+  doc.text(R, 74, fit(inv.id, 140, 11, true), { size: 11, bold: true, color: BRAND, align: 'right' });
   const stamp = status === 'Paid' ? ['PAID', '#167a3b'] : status === 'Overdue' ? ['PAST DUE', '#b42318'] : status === 'Draft' ? ['DRAFT', MUTED] : null;
   if (stamp) {
     const w = textWidth(stamp[0], 8, true) + 16;
@@ -67,7 +85,7 @@ export function invoiceDoc(inv: InvoiceRecord): PdfDoc {
     const x = L + cell * i + 12;
     if (i > 0 && i < 3) doc.line(L + cell * i, top, L + cell * i, top + 50, BORDER);
     label(x, top + 18, k);
-    doc.text(x, top + 37, v, { size: i === 3 ? 13 : 11, bold: true, color: i === 3 ? BRAND : INK });
+    doc.text(x, top + 37, fit(v, cell - 20, i === 3 ? 13 : 11, true), { size: i === 3 ? 13 : 11, bold: true, color: i === 3 ? BRAND : INK });
   });
 
   // — bill to / shipment —
@@ -85,7 +103,7 @@ export function invoiceDoc(inv: InvoiceRecord): PdfDoc {
   let ly = y + 16;
   for (const [s, size, bold] of billLines) {
     if (!s) continue;
-    for (const part of wrap(s, 240, size, bold)) {
+    for (const part of lines(s, 240, size, 2, bold)) {
       doc.text(L, ly, part, { size, bold, color: bold ? INK : '#374151' });
       ly += size + 4;
     }
@@ -95,7 +113,7 @@ export function invoiceDoc(inv: InvoiceRecord): PdfDoc {
   const vx = 398;
   label(sx, y, 'Shipment');
   const ship: [string, string][] = [
-    [inv.loads.length > 1 ? 'Loads' : 'Load #', inv.loads.join(', ')],
+    [inv.loads.length > 1 ? 'Loads' : 'Load #', loadList(inv.loads)],
     ['Your reference', inv.ref],
     ['BOL #', inv.bol],
     ['Route', inv.route],
@@ -109,7 +127,7 @@ export function invoiceDoc(inv: InvoiceRecord): PdfDoc {
   for (const [k, v] of ship) {
     if (!v) continue;
     doc.text(sx, ry, k, { size: 8.5, color: MUTED });
-    for (const part of wrap(v, R - vx, 9)) {
+    for (const part of lines(v, R - vx, 9, 3)) {
       doc.text(vx, ry, part, { size: 9, color: INK });
       ry += 13;
     }
@@ -119,6 +137,14 @@ export function invoiceDoc(inv: InvoiceRecord): PdfDoc {
   // — charges —
   const qtyX = 372;
   const rateX = 462;
+  const continuation = () => {
+    doc.addPage();
+    doc.rect(0, 0, PAGE_W, 6, { fill: BRAND });
+    doc.text(L, 44, fit(`${COMPANY.legal} · Invoice ${inv.id} (continued)`, W, 10, true), { size: 10, bold: true, color: INK });
+    y = 64;
+  };
+  // An invoice for very many loads: the shipment block has used the page.
+  if (y > BOTTOM - 60) continuation();
   const tableHead = () => {
     doc.rect(L, y, W, 22, { fill: BRAND_SOFT });
     label(L + 10, y + 14.5, 'Description');
@@ -126,12 +152,6 @@ export function invoiceDoc(inv: InvoiceRecord): PdfDoc {
     label(rateX, y + 14.5, 'Rate', 'right');
     label(R - 10, y + 14.5, 'Amount', 'right');
     y += 22;
-  };
-  const continuation = () => {
-    doc.addPage();
-    doc.rect(0, 0, PAGE_W, 6, { fill: BRAND });
-    doc.text(L, 44, `${COMPANY.legal} · Invoice ${inv.id} (continued)`, { size: 10, bold: true, color: INK });
-    y = 64;
   };
   tableHead();
   for (const line of inv.lines) {
@@ -141,7 +161,7 @@ export function invoiceDoc(inv: InvoiceRecord): PdfDoc {
       continuation();
       tableHead();
     }
-    doc.text(L + 10, y + 15, line.kind || 'Charge', { size: 9.5, bold: true, color: INK });
+    doc.text(L + 10, y + 15, fit(line.kind || 'Charge', 290, 9.5, true), { size: 9.5, bold: true, color: INK });
     desc.forEach((d, i) => doc.text(L + 10, y + 27 + i * 11, d, { size: 8.5, color: MUTED }));
     doc.text(qtyX, y + 15, line.qty || '0', { size: 9.5, color: INK, align: 'right' });
     doc.text(rateX, y + 15, usd(Number(line.rate) || 0), { size: 9.5, color: INK, align: 'right' });
@@ -153,12 +173,13 @@ export function invoiceDoc(inv: InvoiceRecord): PdfDoc {
   // — totals and notes —
   const notes = inv.memo.trim() ? wrap(inv.memo.trim(), 270, 8.5) : [];
   const totalsH = 22 + 20 * (1 + (lateFees(inv) ? 1 : 0) + (paid ? 1 : 0)) + 30;
-  if (y + Math.max(totalsH, 30 + notes.length * 11) + 10 > BOTTOM) continuation();
+  // Room for the totals and the first few lines of the notes; longer notes carry on overleaf.
+  if (y + Math.max(totalsH, 30 + Math.min(notes.length, 6) * 11) + 10 > BOTTOM) continuation();
   y += 14;
   const tx = 356;
   let ty = y;
   const totalRow = (k: string, v: string) => {
-    doc.text(tx + 10, ty + 12, k, { size: 9, color: MUTED });
+    doc.text(tx + 10, ty + 12, fit(k, R - tx - 100, 9), { size: 9, color: MUTED });
     doc.text(R - 10, ty + 12, v, { size: 9.5, color: INK, align: 'right' });
     ty += 20;
   };
@@ -175,6 +196,12 @@ export function invoiceDoc(inv: InvoiceRecord): PdfDoc {
     label(L, ny + 12, 'Notes');
     ny += 26;
     for (const n of notes) {
+      if (ny > BOTTOM) {
+        // The notes have filled the page: carry on at the top of the next one.
+        continuation();
+        ny = y + 10;
+        ty = y;
+      }
       doc.text(L, ny, n, { size: 8.5, color: '#374151' });
       ny += 11;
     }
@@ -193,7 +220,7 @@ export function invoiceDoc(inv: InvoiceRecord): PdfDoc {
   ];
   payRows.forEach(([k, v], i) => {
     doc.text(L + 14, y + 36 + i * 14, k, { size: 8.5, bold: true, color: INK });
-    doc.text(L + 84, y + 36 + i * 14, v, { size: 8.5, color: '#374151' });
+    doc.text(L + 84, y + 36 + i * 14, fit(v, W - 98, 8.5), { size: 8.5, color: '#374151' });
   });
   wrap([getSettings().invoicing.paymentNote, COMPANY.lateFeePct > 0 ? `Balances unpaid after the due date accrue a late fee of ${COMPANY.lateFeePct}% per month.` : ''].filter(Boolean).join(' '), W - 28, 7.5)
     .slice(0, 2)
@@ -204,9 +231,10 @@ export function invoiceDoc(inv: InvoiceRecord): PdfDoc {
   doc.pages.forEach((_, i) => {
     doc.goToPage(i);
     doc.line(L, PAGE_H - 46, R, PAGE_H - 46, BORDER);
-    doc.text(L, PAGE_H - 30, getSettings().invoicing.footer, { size: 8.5, bold: true, color: INK });
-    doc.text(R, PAGE_H - 30, `${inv.id}  ·  Page ${i + 1} of ${count}`, { size: 7.5, color: MUTED, align: 'right' });
-    doc.text(PAGE_W / 2, PAGE_H - 18, [COMPANY.legal, COMPANY.dot, COMPANY.mc, 'Issued with RunTruck TMS'].filter(Boolean).join(' · '), { size: 7, color: '#9ca3af', align: 'center' });
+    const pageNo = `${fit(inv.id, 120, 7.5)}  ·  Page ${i + 1} of ${count}`;
+    doc.text(L, PAGE_H - 30, fit(getSettings().invoicing.footer, W - textWidth(pageNo, 7.5) - 16, 8.5, true), { size: 8.5, bold: true, color: INK });
+    doc.text(R, PAGE_H - 30, pageNo, { size: 7.5, color: MUTED, align: 'right' });
+    doc.text(PAGE_W / 2, PAGE_H - 18, fit([COMPANY.legal, COMPANY.dot, COMPANY.mc, 'Issued with RunTruck TMS'].filter(Boolean).join(' · '), W, 7), { size: 7, color: '#9ca3af', align: 'center' });
   });
   doc.goToPage(count - 1);
   return doc;

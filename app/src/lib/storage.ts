@@ -87,6 +87,22 @@ export function removeKey(key: string) {
   if (failed.delete(key)) publish();
 }
 
+// Remove every key that starts with `prefix` (a deleted company's records).
+export function removeKeysWithPrefix(prefix: string): number {
+  if (!prefix) return 0;
+  const gone: string[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(prefix)) gone.push(k);
+    }
+  } catch {
+    return 0;
+  }
+  gone.forEach(removeKey);
+  return gone.length;
+}
+
 // — whether saving works —
 
 const subscribe = (fn: () => void) => {
