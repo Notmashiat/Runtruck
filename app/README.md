@@ -200,6 +200,11 @@ customers** (top right) lists customers moved there by a person (with the reason
 RunTruck after a year with no loads or invoices (logged on the day the year passed, with the last use),
 and can reactivate them; reactivating counts as use. Companies not on 1.4 keep the read-only list.
 
+**Attaching documents** (`components/AttachDialog.tsx`, `lib/attachments.ts`). Every Attach / Replace /
+Attach document button in the app opens the same popup: drag and drop files onto it or browse for them,
+say what each file is when the place has document types (guessed from the file name), see size problems
+before saving, then Attach. New attach buttons must use it too.
+
 **Bills** (Accounting › Bills; `data/bills.ts`, `components/BillDialogs.tsx`; release 1.3). Bills are kept
 per company (`runtruck-<id>-bills`). **+ Add Bill** opens a form in five parts: the bill (vendor, vendor
 invoice #, category from a trucking list — fuel, repairs, parts, tires, insurance, leases, ELD, permits,

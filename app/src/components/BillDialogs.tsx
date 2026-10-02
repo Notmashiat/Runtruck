@@ -1,78 +1,28 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import {
-  BILL_CATEGORIES, BILL_KINDS, BILL_TERMS, ENDS, FREQUENCIES, MAX_DOC_BYTES, PAY_METHODS,
+  BILL_CATEGORIES, BILL_KINDS, BILL_TERMS, ENDS, FREQUENCIES, PAY_METHODS,
   billFromForm, billToForm, blankBillForm, dueFrom, nextBillId, nextInSeries,
   type BillDocument, type BillRecord,
 } from '../data/bills';
 import { TERMINALS, type FormValues } from '../data/fleet';
 import { fmtDate, usd } from '../data/invoicing';
+import { downloadDocument, fileSize, openDocument } from '../lib/attachments';
 import { isoDateAt, todayIso } from '../lib/clock';
 import { PHONE } from '../lib/rules';
+import { AttachDialog } from './AttachDialog';
 import { Field, useModal } from './FormBits';
 import { RecordDialog, type SectionSpec } from './RecordDialog';
 
 const val = (v: FormValues, k: string) => (typeof v[k] === 'string' ? (v[k] as string).trim() : '');
 const YES_NO = ['Yes', 'No'];
 
-export const fileSize = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
-
-function readFile(f: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result));
-    r.onerror = () => reject(r.error);
-    r.readAsDataURL(f);
-  });
-}
-
-// A file read into an attachment, or its name when it is too big.
-export async function readAttachment(f: File, kind?: string): Promise<BillDocument | string> {
-  if (f.size > MAX_DOC_BYTES) return f.name;
-  return {
-    id: `DOC-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name: f.name, type: f.type || 'application/octet-stream',
-    size: f.size, data: await readFile(f), added: new Date().toISOString(), ...(kind ? { kind } : {}),
-  };
-}
-
-// Open an attached file in a new tab (PDFs and images show in the browser).
-export async function openDocument(d: BillDocument) {
-  const blob = await (await fetch(d.data)).blob();
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank', 'noopener');
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}
-
-export function downloadDocument(d: BillDocument) {
-  const a = document.createElement('a');
-  a.href = d.data;
-  a.download = d.name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
+// Kept here too for the files that import them from this module.
+export { downloadDocument, fileSize, openDocument, readAttachment } from '../lib/attachments';
 
 // The documents on a bill: attach (PDF, images, Word, Excel), open, download, remove.
 export function BillDocuments({ docs, onChange, hint = 'The vendor’s invoice, receipts, contracts' }: { docs: BillDocument[]; onChange: (d: BillDocument[]) => void; hint?: string }) {
-  const input = useRef<HTMLInputElement>(null);
-  const [error, setError] = useState('');
-
-  const add = async (files: FileList | null) => {
-    setError('');
-    if (!files) return;
-    const added: BillDocument[] = [];
-    const tooBig: string[] = [];
-    for (const f of [...files]) {
-      if (f.size > MAX_DOC_BYTES) {
-        tooBig.push(f.name);
-        continue;
-      }
-      added.push({ id: `DOC-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name: f.name, type: f.type || 'application/octet-stream', size: f.size, data: await readFile(f), added: new Date().toISOString() });
-    }
-    if (tooBig.length) setError(`${tooBig.join(', ')} ${tooBig.length === 1 ? 'is' : 'are'} over 2 MB. Attach a smaller copy (a PDF scan usually is).`);
-    if (added.length) onChange([...docs, ...added]);
-    if (input.current) input.current.value = '';
-  };
+  const [attaching, setAttaching] = useState(false);
 
   return (
     <div className="bill-docs">
@@ -80,14 +30,8 @@ export function BillDocuments({ docs, onChange, hint = 'The vendor’s invoice, 
         <span className="ui-label">Documents</span>
         <span className="ui-stop-meta" style={{ marginTop: 0 }}>{hint} · PDF, images, Word or Excel, up to 2 MB each</span>
         <div style={{ flex: 1 }} />
-        <button type="button" className="ui-btn ui-btn-sm" onClick={() => input.current?.click()}>Attach document</button>
-        <input
-          ref={input} type="file" multiple hidden
-          accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx,.csv,.txt"
-          onChange={(e) => { void add(e.target.files); }}
-        />
+        <button type="button" className="ui-btn ui-btn-sm" onClick={() => setAttaching(true)}>Attach document</button>
       </div>
-      {error && <div className="ui-errors" role="alert">{error}</div>}
       {docs.length === 0 ? (
         <div className="ui-stop-meta">No documents attached.</div>
       ) : (
@@ -101,11 +45,12 @@ export function BillDocuments({ docs, onChange, hint = 'The vendor’s invoice, 
               </span>
               <button type="button" className="ui-link" onClick={() => { void openDocument(d); }}>Open</button>
               <button type="button" className="ui-link" onClick={() => downloadDocument(d)}>Download</button>
-              <button type="button" className="ui-link is-danger" onClick={() => { if (window.confirm(`Remove ${d.name} from this bill?`)) onChange(docs.filter((x) => x.id !== d.id)); }}>Remove</button>
+              <button type="button" className="ui-link is-danger" onClick={() => { if (window.confirm(`Remove ${d.name}?`)) onChange(docs.filter((x) => x.id !== d.id)); }}>Remove</button>
             </li>
           ))}
         </ul>
       )}
+      {attaching && <AttachDialog title="Documents" onAttach={(added) => onChange([...docs, ...added])} onClose={() => setAttaching(false)} />}
     </div>
   );
 }

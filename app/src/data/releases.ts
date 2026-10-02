@@ -102,6 +102,10 @@ export const RELEASES: Release[] = [
         id: 'crm-inactive', kind: 'New', section: 'CRM', title: 'Inactive customers',
         details: 'Customers can be moved to inactive with a reason, and move there by themselves after a year with no loads or invoices. Inactive customers (top right) lists them with when, why and by whom, and can reactivate them.',
       },
+      {
+        id: 'attach-popup', kind: 'Updated', section: 'Loads', title: 'Attach documents by drag and drop',
+        details: 'Attach on the New Load documents step opens a popup: drag and drop the file or browse for it. Bills and customers attach the same way.',
+      },
     ],
   },
 ];

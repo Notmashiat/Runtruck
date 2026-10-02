@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import type { BillDocument } from '../data/bills';
 import { ON_FILE, type CustomerRecord } from '../data/customers';
 import { fmtDate } from '../data/invoicing';
 import { isoDateAt } from '../lib/clock';
-import { downloadDocument, fileSize, openDocument, readAttachment } from './BillDialogs';
+import { downloadDocument, fileSize, openDocument } from '../lib/attachments';
+import { AttachDialog, OTHER } from './AttachDialog';
 import { useModal } from './FormBits';
 
 const kindLabel = (d: BillDocument) => (d.type === 'application/pdf' ? 'PDF' : d.type.startsWith('image/') ? 'IMG' : 'DOC');
@@ -13,32 +14,13 @@ const kindLabel = (d: BillDocument) => (d.type === 'application/pdf' ? 'PDF' : d
 // credit application…) with its file, or "on file" for a paper copy, then
 // any other files. Attach, open, download, replace and remove from here.
 export function CustomerDocs({ docs, onFile, onChange }: { docs: BillDocument[]; onFile: string[]; onChange: (docs: BillDocument[], onFile: string[]) => void }) {
-  const input = useRef<HTMLInputElement>(null);
-  const [pendingKind, setPendingKind] = useState<string | undefined>(undefined);
-  const [error, setError] = useState('');
+  // Which document the popup attaches (OTHER: any files, typed by the user).
+  const [attaching, setAttaching] = useState<string | null>(null);
 
-  const pick = (kind?: string) => {
-    setError('');
-    setPendingKind(kind);
-    input.current?.click();
-  };
-
-  const attach = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    const added: BillDocument[] = [];
-    const tooBig: string[] = [];
-    for (const f of pendingKind ? [files[0]] : [...files]) {
-      const doc = await readAttachment(f, pendingKind);
-      if (typeof doc === 'string') tooBig.push(doc);
-      else added.push(doc);
-    }
-    if (tooBig.length) setError(`${tooBig.join(', ')} ${tooBig.length === 1 ? 'is' : 'are'} over 2 MB. Attach a smaller copy.`);
-    if (added.length) {
-      // A required document replaces the file it had; attaching it marks it on file.
-      const kept = pendingKind ? docs.filter((d) => d.kind !== pendingKind) : docs;
-      onChange([...kept, ...added], pendingKind && !onFile.includes(pendingKind) ? [...onFile, pendingKind] : onFile);
-    }
-    if (input.current) input.current.value = '';
+  // A required document replaces the file it had and is marked on file.
+  const attach = (added: BillDocument[]) => {
+    const kinds = new Set(added.map((d) => d.kind).filter(Boolean) as string[]);
+    onChange([...docs.filter((d) => !d.kind || !kinds.has(d.kind)), ...added], [...new Set([...onFile, ...kinds])]);
   };
 
   const remove = (d: BillDocument) => {
@@ -56,8 +38,6 @@ export function CustomerDocs({ docs, onFile, onChange }: { docs: BillDocument[];
 
   return (
     <div className="bill-docs">
-      <input ref={input} type="file" hidden multiple={!pendingKind} accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx,.csv,.txt" onChange={(e) => { void attach(e.target.files); }} />
-      {error && <div className="ui-errors" role="alert">{error}</div>}
       <ul className="bill-doc-list">
         {ON_FILE.map((kind) => {
           const d = docs.find((x) => x.kind === kind);
@@ -77,7 +57,7 @@ export function CustomerDocs({ docs, onFile, onChange }: { docs: BillDocument[];
                   Paper copy on file
                 </label>
               )}
-              <button type="button" className="ui-btn ui-btn-sm" onClick={() => pick(kind)}>{d ? 'Replace' : 'Attach'}</button>
+              <button type="button" className="ui-btn ui-btn-sm" onClick={() => setAttaching(kind)}>{d ? 'Replace' : 'Attach'}</button>
             </li>
           );
         })}
@@ -86,7 +66,7 @@ export function CustomerDocs({ docs, onFile, onChange }: { docs: BillDocument[];
         <span className="ui-label">Other documents</span>
         <span className="ui-stop-meta" style={{ marginTop: 0 }}>PDF, images, Word or Excel, up to 2 MB each</span>
         <div style={{ flex: 1 }} />
-        <button type="button" className="ui-btn ui-btn-sm" onClick={() => pick(undefined)}>Attach document</button>
+        <button type="button" className="ui-btn ui-btn-sm" onClick={() => setAttaching(OTHER)}>Attach document</button>
       </div>
       {others.length === 0 ? (
         <div className="ui-stop-meta">None.</div>
@@ -103,6 +83,15 @@ export function CustomerDocs({ docs, onFile, onChange }: { docs: BillDocument[];
             </li>
           ))}
         </ul>
+      )}
+      {attaching && (
+        <AttachDialog
+          title={attaching === OTHER ? 'Documents' : attaching}
+          kinds={attaching === OTHER ? ON_FILE : []}
+          only={attaching === OTHER ? undefined : attaching}
+          onAttach={attach}
+          onClose={() => setAttaching(null)}
+        />
       )}
     </div>
   );

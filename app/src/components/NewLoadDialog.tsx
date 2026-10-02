@@ -4,6 +4,8 @@ import { money } from '../data/accounting';
 import { facilityFor, isRoad, stopHint, type Facility } from '../data/facilities';
 import { CARRIERS, CUSTOMERS, stopsOf, USER, type Load } from '../data/mock';
 import { formatNow, isoFromText } from '../lib/clock';
+import { isLive } from '../lib/releases';
+import { AttachDialog } from './AttachDialog';
 
 type Section = 'Load info' | 'Stops' | 'Freight' | 'LTL' | 'Carrier' | 'Driver & equipment' | 'Rates' | 'Documents' | 'Notes' | 'Review';
 const SECTIONS: Section[] = ['Load info', 'Stops', 'Freight', 'LTL', 'Carrier', 'Driver & equipment', 'Rates', 'Documents', 'Notes', 'Review'];
@@ -329,6 +331,8 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
   const errors = validate(d);
   const dirty = JSON.stringify(d) !== JSON.stringify(initial);
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setD((prev) => ({ ...prev, [key]: value }));
+  // The document the attach popup is for.
+  const [attachingDoc, setAttachingDoc] = useState<string | null>(null);
   const setStop = (i: number, patch: Partial<StopDraft>) =>
     setD((prev) => ({ ...prev, stops: prev.stops.map((s, j) => (j === i ? { ...s, ...patch } : s)) }));
   const missing = (s: Section, msg: string) => showErrors && Boolean(errors[s]?.includes(msg));
@@ -760,19 +764,30 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
                     Remove
                   </button>
                 )}
-                <label className="ui-btn ui-btn-sm">
-                  {file ? 'Replace' : 'Attach'}
-                  <input
-                    className="ui-file-input"
-                    type="file"
-                    accept=".pdf,image/*"
-                    onChange={(e) => set('docs', { ...d.docs, [name]: e.target.files?.[0]?.name ?? '' })}
-                  />
-                </label>
+                {isLive('attach-popup') ? (
+                  <button type="button" className="ui-btn ui-btn-sm" onClick={() => setAttachingDoc(name)}>{file ? 'Replace' : 'Attach'}</button>
+                ) : (
+                  <label className="ui-btn ui-btn-sm">
+                    {file ? 'Replace' : 'Attach'}
+                    <input
+                      className="ui-file-input"
+                      type="file"
+                      accept=".pdf,image/*"
+                      onChange={(e) => set('docs', { ...d.docs, [name]: e.target.files?.[0]?.name ?? '' })}
+                    />
+                  </label>
+                )}
               </div>
             );
           })}
         </div>
+        {attachingDoc && (
+          <AttachDialog
+            title={attachingDoc} only={attachingDoc} accept=".pdf,image/*"
+            onAttach={(docs) => { if (docs[0]) set('docs', { ...d.docs, [attachingDoc]: docs[0].name }); }}
+            onClose={() => setAttachingDoc(null)}
+          />
+        )}
       </>
     ),
 

@@ -184,10 +184,10 @@ function CustomerManager() {
           );
         })()}
         <span className="crm-doc-actions">
-          <button type="button" className="ui-btn ui-btn-sm" onClick={() => setAttaching(customers.find((x) => x.id === c.id) ?? null)}>Attach document</button>
           <button type="button" className="ui-btn ui-btn-sm crm-viewall" onClick={() => setViewingDocs(customers.find((x) => x.id === c.id) ?? null)}>
             View all documents{c.documents.length ? ` (${c.documents.length})` : ''}
           </button>
+          <button type="button" className="ui-btn ui-btn-sm" onClick={() => setAttaching(customers.find((x) => x.id === c.id) ?? null)}>Attach document</button>
         </span>
       </div>
       <div>
