@@ -18,6 +18,7 @@ import { DRIVER_SEED, TRAILER_SEED, TRUCK_SEED, type FleetDriver, type FleetTrai
 import { loadFiles, normalizeLoad } from '../data/loads';
 import { LOADS, type Load } from '../data/mock';
 import { noteIds } from '../lib/ids';
+import { bornAt, freeId } from '../lib/mergeLists';
 import { hadLoadProblems, reviveList, usePersisted } from '../lib/persist';
 import type { FilterMeta, FilterValue, FilterValues } from '../lib/tableTools';
 
@@ -40,7 +41,8 @@ interface AppShellState {
   // Loads and the fleet are kept in this browser's storage (there is no back
   // end yet), so new, edited, archived and deleted records survive a reload.
   loads: Load[];
-  addLoad: (l: Load) => void;
+  // Returns the load's id (a new number if another tab has just used it).
+  addLoad: (l: Load) => string;
   updateLoad: (l: Load) => void;
   deleteLoad: (id: string) => void;
   drivers: FleetDriver[];
@@ -152,9 +154,19 @@ function renumber(unit: string, from: string, to: string): string {
   return unit.split(' / ').map((u) => (u === from ? to : u)).join(' / ');
 }
 
-// Insert or replace by id.
+// Save a record into its list: replace the one with its id, or add it.
+//
+// A record made at a different moment from the one already under its id is
+// a different record (its form was opened before another tab took that
+// number), so it is added under the next free number rather than replacing
+// the other one.
 function upsert<T extends { id: string }>(list: T[], item: T): T[] {
-  return list.some((x) => x.id === item.id) ? list.map((x) => (x.id === item.id ? item : x)) : [...list, item];
+  const at = list.findIndex((x) => x.id === item.id);
+  if (at < 0) return [...list, item];
+  const was = bornAt(list[at]);
+  const now = bornAt(item);
+  if (was && now && was !== now) return [...list, { ...item, id: freeId(item.id, list.map((x) => x.id)) }];
+  return list.map((x, i) => (i === at ? item : x));
 }
 
 export function AppShellProvider({ children }: { children: ReactNode }) {
@@ -278,7 +290,11 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
     approved,
     approveAll: () => setApproved(true),
     loads,
-    addLoad: (l) => setLoads((prev) => [l, ...prev]),
+    addLoad: (l) => {
+      const id = loads.some((x) => x.id === l.id) ? freeId(l.id, loads.map((x) => x.id)) : l.id;
+      setLoads((prev) => [{ ...l, id: prev.some((x) => x.id === id) ? freeId(id, prev.map((x) => x.id)) : id }, ...prev]);
+      return id;
+    },
     updateLoad: (l) => setLoads((prev) => prev.map((x) => (x.id === l.id ? l : x))),
     deleteLoad: (id) => setLoads((prev) => prev.filter((x) => x.id !== id)),
     drivers,

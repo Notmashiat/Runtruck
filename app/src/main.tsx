@@ -12,6 +12,7 @@ import { installErrorHandlers, reportError, setErrorRelease } from './lib/errorL
 import { currentRelease } from './lib/releases'
 import { initTheme } from './lib/theme'
 import { initSettings } from './lib/applySettings'
+import { storedSession } from './lib/account'
 import App from './App.tsx'
 
 // Record problems from here on (see lib/errorLog.ts).
@@ -21,7 +22,9 @@ installErrorHandlers()
 // here is recorded and the app carries on with its defaults.
 for (const [name, step] of [
   ['theme', initTheme],
-  ['settings', initSettings],
+  // Only for someone signed in: the login and marketing pages keep the
+  // browser's last theme and read nobody's settings.
+  ['settings', () => { if (storedSession()) initSettings() }],
   ['release', () => setErrorRelease(currentRelease().id)],
 ] as const) {
   try {

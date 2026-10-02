@@ -9,7 +9,7 @@ import { CUSTOMERS, INVOICES, LOADS, USER, type Load } from './mock';
 import { TODAY } from './planner';
 import { isoFromText, shiftDemo } from '../lib/clock';
 import { fillTemplate, getSettings, numSetting } from '../lib/settingsStore';
-import { IS_DEMO } from '../lib/account';
+import { IS_DEMO, demoOnly } from '../lib/account';
 
 export { TODAY };
 
@@ -52,7 +52,10 @@ export function usd0(n: number): string {
 
 // — the carrier issuing the invoices —
 
-export const COMPANY = {
+// Filled from Settings as the app starts (lib/applySettings.ts). A client
+// company's page starts with it blank, so nothing it prints (an invoice, a
+// pay statement) can ever carry the demo company's name or bank details.
+export const COMPANY = demoOnly({
   name: USER.company,
   legal: `${USER.company} LLC`,
   street: '2250 Finch Rd',
@@ -68,7 +71,9 @@ export const COMPANY = {
   bank: 'Valley Commerce Bank',
   accountLast4: '4417',
   lateFeePct: 1.5,
-};
+}, {
+  name: '', legal: '', street: '', city: '', state: '', zip: '', phone: '', email: '', website: '', mc: '', dot: '', remit: '', bank: '', accountLast4: '', lateFeePct: 0,
+});
 
 // — who gets billed —
 
@@ -166,6 +171,8 @@ export interface InvoiceRecord {
   sentTo?: string;
   paid?: { date: string; via: string; reference: string };
   history: InvoiceEvent[];
+  // When the draft was started.
+  created?: string;
 }
 
 export type InvoiceStatus = 'Draft' | 'Unsent' | 'Sent' | 'Overdue' | 'Paid';
@@ -317,7 +324,7 @@ export function draftForLoads(picked: BillableLoad[], id: string): InvoiceRecord
     bol: '', ...shipmentFor(picked),
     issued: TODAY, terms, due: addDays(TODAY, termDays(terms)),
     lines: picked.flatMap(loadLines),
-    memo: '', internal: '', history: [],
+    memo: '', internal: '', history: [], created: new Date().toISOString(),
   };
 }
 
@@ -452,7 +459,8 @@ export function batchTotal(b: Batch, invoices: InvoiceRecord[]): number {
 }
 
 export function nextBatchId(batches: Batch[]): string {
-  return `B-${nextSerial('B', batches.map((b) => b.id), 2028)}`;
+  // The demo company's batches run from B-2029; a client's from B-1001.
+  return `B-${nextSerial('B', batches.map((b) => b.id), IS_DEMO ? 2028 : 1000)}`;
 }
 
 const BATCHES_2026: Batch[] = [

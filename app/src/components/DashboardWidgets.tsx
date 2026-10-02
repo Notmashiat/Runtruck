@@ -1,5 +1,5 @@
 import { canPath } from '../lib/auth';
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppShell } from '../context/AppShellContext';
 import { isOpen as billOpen } from '../data/bills';
@@ -45,30 +45,28 @@ function groupBy(list: Earned[], key: (e: Earned) => string) {
 // Everything the widgets show, worked out once per render from the records.
 export function useDashboardData() {
   const { loads, invoices, drivers, trucks, trailers, bills, query } = useAppShell();
-  const earned = deliveredRevenue(loads, invoices);
-  const monday = mondayOf(TODAY);
-  const active = loads.filter((l) => ACTIVE_STATUSES.includes(l.status));
-  const unbilled = billableLoads(loads, invoices);
-  const open = invoices.filter((i) => !i.draft && !i.paid);
-  const overdue = open.filter((i) => statusOf(i) === 'Overdue');
-  const docs = driverDocuments(drivers).filter((d) => d.status !== 'Valid');
-  return {
-    query,
-    loads,
-    invoices,
-    earned,
-    thisWeek: between(earned, monday, TODAY),
-    lastWeek: between(earned, addDays(monday, -7), addDays(monday, -1)),
-    active,
-    unbilled,
-    open,
-    overdue,
-    docs,
-    drivers: drivers.filter((d) => !d.archived),
-    trucks: trucks.filter((t) => !t.archived),
-    trailers: trailers.filter((t) => !t.archived),
-    bills: bills.filter(billOpen),
-  };
+  const figures = useMemo(() => {
+    const earned = deliveredRevenue(loads, invoices);
+    const monday = mondayOf(TODAY);
+    const open = invoices.filter((i) => !i.draft && !i.paid);
+    return {
+      loads,
+      invoices,
+      earned,
+      thisWeek: between(earned, monday, TODAY),
+      lastWeek: between(earned, addDays(monday, -7), addDays(monday, -1)),
+      active: loads.filter((l) => ACTIVE_STATUSES.includes(l.status)),
+      unbilled: billableLoads(loads, invoices),
+      open,
+      overdue: open.filter((i) => statusOf(i) === 'Overdue'),
+      docs: driverDocuments(drivers).filter((d) => d.status !== 'Valid'),
+      drivers: drivers.filter((d) => !d.archived),
+      trucks: trucks.filter((t) => !t.archived),
+      trailers: trailers.filter((t) => !t.archived),
+      bills: bills.filter(billOpen),
+    };
+  }, [loads, invoices, drivers, trucks, trailers, bills]);
+  return useMemo(() => ({ query, ...figures }), [query, figures]);
 }
 
 export type DashData = ReturnType<typeof useDashboardData>;

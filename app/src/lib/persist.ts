@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { readScoped, scopedKey } from './account';
 import { reportError } from './errorLog';
+import { mergeChanges } from './mergeLists';
 import { onStorageChange, readJson, readText, writeJson, writeText } from './storage';
 
 // useState that survives reloads, stored under the account's company ID
@@ -14,22 +15,30 @@ import { onStorageChange, readJson, readText, writeJson, writeText } from './sto
 //   the value stays in memory.
 // - When another tab saves the same key, this tab takes that value, so the
 //   two never overwrite each other with an older copy.
+// - If another tab saved in the moment before this tab heard about it, this
+//   tab's save puts the two together (lib/mergeLists.ts) rather than
+//   replacing what the other tab saved.
 // - Saved data that cannot be read is never silently replaced: unreadable
 //   text is copied to '<key>-damaged', and single records that do not fit
 //   are set aside by reviveList() below.
 export function usePersisted<T>(key: string, fallback: T, revive: (raw: unknown) => T | null = (raw) => raw as T) {
-  const [value, setValue] = useState<T>(() => {
+  // What is saved, read once as the page opens.
+  const [start] = useState(() => {
     const raw = readScoped(key);
-    if (raw === null) return fallback;
+    if (raw === null) return { raw, value: fallback };
     try {
       const revived = revive(JSON.parse(raw));
-      if (revived !== null) return revived;
+      if (revived !== null) return { raw, value: revived };
     } catch {
       // Not JSON, or the reviver could not make sense of it.
     }
     setAside(scopedKey(key), raw);
-    return fallback;
+    return { raw, value: fallback };
   });
+  const [value, setValue] = useState<T>(start.value);
+  // The stored text this tab last read or wrote: anything else in storage
+  // was written by another tab.
+  const known = useRef<string | null>(start.raw);
   // The value storage holds (or, before the first save, the starting value).
   const synced = useRef(value);
   const reviveRef = useRef(revive);
@@ -39,17 +48,39 @@ export function usePersisted<T>(key: string, fallback: T, revive: (raw: unknown)
 
   useEffect(() => {
     if (value === synced.current) return;
-    synced.current = value;
-    writeJson(scopedKey(key), value);
+    let next = value;
+    const now = readText(scopedKey(key));
+    if (now !== null && now !== known.current) {
+      // Another tab saved since this one last looked: keep its changes too.
+      try {
+        const theirs = reviveRef.current(JSON.parse(now));
+        if (theirs !== null) next = mergeChanges(synced.current, value, theirs);
+      } catch {
+        // What is stored cannot be read: this tab's value replaces it.
+      }
+    }
+    synced.current = next;
+    let text: string | null = null;
+    try {
+      text = JSON.stringify(next);
+    } catch (e) {
+      reportError(e, { kind: 'storage', where: `Saving ${scopedKey(key)}` });
+    }
+    if (text !== null && writeText(scopedKey(key), text)) known.current = text;
+    if (next !== value) setValue(next);
   }, [key, value]);
 
   useEffect(
     () =>
-      onStorageChange(scopedKey(key), (raw) => {
-        if (raw === null) return;
+      onStorageChange(scopedKey(key), () => {
+        // What storage holds now, not what the event carries: the news of an
+        // older save can arrive after this tab has already saved on top of it.
+        const raw = readText(scopedKey(key));
+        if (raw === null || raw === known.current) return;
         try {
           const next = reviveRef.current(JSON.parse(raw));
           if (next === null) return;
+          known.current = raw;
           synced.current = next;
           setValue(next);
         } catch {

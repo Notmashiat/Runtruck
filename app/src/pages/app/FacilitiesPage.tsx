@@ -38,6 +38,9 @@ function Item({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+// How many loads the "Stops not in the register" table names for each site.
+const LOADS_NAMED = 3;
+
 export function FacilitiesPage() {
   const { query, facilities, loads, trucks, trailers, drivers, workOrders } = useAppShell();
   const [params] = useSearchParams();
@@ -64,17 +67,19 @@ export function FacilitiesPage() {
   const risky = customerSites.filter((f) => detentionRisk(f.details));
 
   // Stops on the load board whose facility is not in the register yet.
-  const unknown = new Map<string, { name: string; address: string; loads: string[]; kinds: string[] }>();
+  const unknown = new Map<string, { name: string; address: string; loads: Set<string>; kinds: string[] }>();
   for (const l of loads) {
     for (const s of stopsOf(l)) {
       if (!s.name.trim() || facilityFor(facilities, s.name)) continue;
       const key = s.name.trim().toLowerCase();
-      const entry = unknown.get(key) ?? { name: s.name.trim(), address: s.address, loads: [], kinds: [] };
-      if (!entry.loads.includes(l.id)) entry.loads.push(l.id);
+      const entry = unknown.get(key) ?? { name: s.name.trim(), address: s.address, loads: new Set<string>(), kinds: [] };
+      entry.loads.add(l.id);
       if (!entry.kinds.includes(s.kind)) entry.kinds.push(s.kind);
       unknown.set(key, entry);
     }
   }
+  const unknownList = [...unknown.values()];
+  const pagedUnknown = usePaged(unknownList);
 
   const kpis = [
     {
@@ -333,11 +338,15 @@ export function FacilitiesPage() {
               <tr><th>Facility on the load</th><th>Address</th><th>Loads</th><th className="num" aria-label="Actions" /></tr>
             </thead>
             <tbody>
-              {[...unknown.values()].map((u) => (
+              {pagedUnknown.rows.map((u) => (
                 <tr key={u.name}>
                   <td className="strong">{u.name}</td>
                   <td className="muted">{u.address}</td>
-                  <td>{u.loads.map((id, i) => <Fragment key={id}>{i > 0 && ', '}<Link className="ui-link" to={`/app/loads/${id}`}>{id}</Link></Fragment>)}</td>
+                  {/* The first few loads by name; a busy site can have hundreds. */}
+                  <td>
+                    {[...u.loads].slice(0, LOADS_NAMED).map((id, i) => <Fragment key={id}>{i > 0 && ', '}<Link className="ui-link" to={`/app/loads/${id}`}>{id}</Link></Fragment>)}
+                    {u.loads.size > LOADS_NAMED && <span className="muted"> and {u.loads.size - LOADS_NAMED} more</span>}
+                  </td>
                   <td className="num">
                     <button type="button" className="ui-link" onClick={() => setAdding(prefillFromStop(u.name, u.address, u.kinds))}>+ Add to register</button>
                   </td>
@@ -345,6 +354,7 @@ export function FacilitiesPage() {
               ))}
             </tbody>
           </table>
+          {pagedUnknown.pager}
         </Card>
       )}
 

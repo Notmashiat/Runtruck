@@ -162,7 +162,8 @@ export function startingSettings(company: Partial<StartingCompany> | null, perso
       name: str(c.name), legal: str(c.legal), dot: str(c.dot), mc: str(c.mc), ein: str(c.ein), street: str(c.street), city: str(c.city),
       state: str(c.state), zip: str(c.zip), phone: str(c.phone), email: str(c.contactEmail), website: str(c.website),
     };
-    d.invoicing = { ...d.invoicing, bank: '', accountLast4: '', remit: '', factoringName: '', factoringEmail: '' };
+    // Numbering from 1001, and no fuel surcharge or late fee until the company sets its own.
+    d.invoicing = { ...d.invoicing, startAt: '1001', fscPct: '0', lateFeePct: '0', bank: '', accountLast4: '', remit: '', factoringName: '', factoringEmail: '' };
     d.operations = { ...d.operations, terminals: [] };
     d.team = [];
   }
@@ -180,16 +181,29 @@ export function startingSettings(company: Partial<StartingCompany> | null, perso
 export function mergeSettings(raw: unknown, d: Settings = DEFAULT_SETTINGS): Settings {
   if (!raw || typeof raw !== 'object') return structuredCopy(d);
   const r = raw as Partial<Settings>;
-  const obj = <T extends object>(def: T, v: unknown): T => ({ ...def, ...(v && typeof v === 'object' ? (v as Partial<T>) : {}) });
+  // A saved section over its defaults. A saved value of the wrong kind (a
+  // number where text belongs, from a hand-edited backup) is dropped for the
+  // default, so the rest of the app can rely on every setting's type.
+  const obj = <T extends object>(def: T, v: unknown): T => {
+    const out = { ...def } as Record<string, unknown>;
+    if (v && typeof v === 'object') {
+      for (const [k, value] of Object.entries(v as Record<string, unknown>)) {
+        const d0 = (def as Record<string, unknown>)[k];
+        if (d0 === undefined || (typeof value === typeof d0 && Array.isArray(value) === Array.isArray(d0))) out[k] = value;
+      }
+    }
+    return out as T;
+  };
+  const textList = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
   const ops = obj(d.operations, r.operations);
   return {
     profile: obj(d.profile, r.profile),
     company: obj(d.company, r.company),
     invoicing: obj(d.invoicing, r.invoicing),
     messages: obj(d.messages, r.messages),
-    operations: { ...ops, terminals: Array.isArray(ops.terminals) && ops.terminals.length ? ops.terminals : [...d.operations.terminals] },
+    operations: { ...ops, terminals: textList(ops.terminals).length ? textList(ops.terminals) : [...d.operations.terminals] },
     alerts: obj(d.alerts, r.alerts),
-    team: Array.isArray(r.team) ? r.team.filter((m) => m && typeof m.id === 'string') : d.team.map((m) => ({ ...m })),
+    team: Array.isArray(r.team) ? r.team.filter((m) => m && typeof m.id === 'string' && typeof m.name === 'string' && typeof m.email === 'string' && typeof m.role === 'string') : d.team.map((m) => ({ ...m })),
     appearance: obj(d.appearance, r.appearance),
   };
 }

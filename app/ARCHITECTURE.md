@@ -36,6 +36,24 @@ npm run verify     # typecheck + tests + production build (what Vercel and CI ru
 A deploy is refused when `npm run verify` fails, so a type error or a failing
 test never reaches production.
 
+### The load test
+
+`src/test/load/` opens RunTruck as many accounts of many companies, one after
+another, all saving into the same storage through the app's own save
+functions, then checks that no company's data ever reached another company,
+that everything saved is still there, and that the demo company (ID 1) is
+unchanged. `npm test` runs it small (6 companies × 5 accounts). The full size,
+100 companies × 50 accounts (5,000 sessions, about six minutes):
+
+```
+VITE_RT_LOAD=100x50 NODE_OPTIONS=--max-old-space-size=8192 npx vitest run src/test/load
+```
+
+(In PowerShell set the two variables with `$env:VITE_RT_LOAD='100x50'` and
+`$env:NODE_OPTIONS='--max-old-space-size=8192'` first.) Its storage is in
+memory: it creates nothing that lasts. `tabs.load.test.tsx` covers several
+tabs of one browser saving at the same moment.
+
 ## Where things live
 
 ```
@@ -48,7 +66,7 @@ src/
   data/           record types and the business rules (pure functions, tested)
   lib/            storage, errors, auth, ids, dates, exports, PDF: no screens
   styles/         CSS
-  test/           test set-up
+  test/           test set-up, and the load test (test/load)
 ```
 
 Rule of thumb: **rules go in `data/` or `lib/` as plain functions; screens only
@@ -73,6 +91,9 @@ screen ──calls──▶ AppShellContext (saveLoad, saveInvoice, …)
   `AppShellContext.tsx`. A record that does not fit is repaired or moved to
   `runtruck-<companyId>-quarantine`; one bad record never empties a list.
 - **Ids are never reused** (`lib/ids.ts`), even after a record is deleted.
+- **Tabs never overwrite each other.** A tab that saves a list just after
+  another tab did merges the two (`lib/mergeLists.ts`), and a new record whose
+  number another tab has just used is saved under the next free number.
 - **Dates are `YYYY-MM-DD` strings.** Do date arithmetic only with
   `lib/isoDates.ts`; it never throws on a blank or mistyped date. "Today" is
   `todayIso()` from `lib/clock.ts` (the company's time zone).
@@ -82,7 +103,13 @@ screen ──calls──▶ AppShellContext (saveLoad, saveInvoice, …)
 
 Everything above lives in the browser. That is the one real limit of the
 current build: records are per browser (about 5 MB per site), accounts are
-checked in the browser, and two people do not see each other's work. Before
+checked in the browser, and two people do not see each other's work.
+
+Measured sizes, for planning: a load is about 0.7–2.5 KB, an invoice about
+1 KB, a customer about 1.2 KB, a login account about 0.45 KB. A 40-truck
+fleet books roughly 4,000 loads a year, so one year of loads and invoices is
+7 MB or more: more than a browser holds. The account register alone for 100
+companies of 50 people is 2.2 MB. Before
 client companies use RunTruck for real it needs a server: a database, sign-in
 checked on the server, and an API.
 

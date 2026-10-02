@@ -52,11 +52,14 @@ export const NAV: NavEntry[] = [
 ];
 
 // The signed-in user: shown at the foot of the sidebar and on Settings › Profile.
+// The signed-in person. Filled from Settings as the app starts
+// (lib/applySettings.ts); until then a client company's page has nobody's
+// name in it, never the demo company's.
 export const USER = {
-  name: 'Rosa Medina',
-  role: 'Dispatch',
-  company: 'Sunridge Freight',
-  email: 'rosa.medina@sunridgefreight.com',
+  name: IS_DEMO ? 'Rosa Medina' : '',
+  role: IS_DEMO ? 'Dispatch' : '',
+  company: IS_DEMO ? 'Sunridge Freight' : '',
+  email: IS_DEMO ? 'rosa.medina@sunridgefreight.com' : '',
   memberId: MEMBER_ID,
   companyId: COMPANY_ID,
 };
@@ -356,22 +359,6 @@ export const SECTION_TABS: Partial<Record<ViewKey, SectionTab[]>> = {
     { key: 'errors', label: 'Error log' },
   ],
 };
-
-export const COMPLIANCE = [
-  { name: 'Priya Raman', item: 'CDL renewal', due: 'Jul 2026' },
-  { name: 'Ellis Nakamura', item: 'Medical card', due: 'Oct 12' },
-  { name: 'Ana Cortez', item: 'Annual MVR review', due: 'Sep 24' },
-];
-
-export const AR = [
-  { label: 'Current', value: '$96,400', note: '32 invoices' },
-  { label: '1–30 days', value: '$41,200', note: '14 invoices' },
-  { label: '31–60 days', value: '$18,750', note: '5 invoices' },
-  { label: '60+ days', value: '$7,900', note: '2 invoices · collections' },
-];
-
-export const REVENUE_BARS = [42, 58, 51, 66, 74, 38, 29];
-export const REVENUE_DAYS = ['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'];
 
 // The demo loads and drivers, moved to today's date (lib/clock.ts).
 export const LOADS: Load[] = !IS_DEMO ? [] : shiftDemo(LOADS_2026).map(normalizeLoad);

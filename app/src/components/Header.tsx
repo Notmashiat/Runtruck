@@ -4,7 +4,7 @@ import { useAppShell } from '../context/AppShellContext';
 import { NAV, PAYROLL_PATH, PAYROLL_SECTION, SECTION_TABS, type ViewKey } from '../data/mock';
 import { formatNow, todayIso, useNow } from '../lib/clock';
 import { isActive, pageKeyOf } from '../lib/tableTools';
-import { can } from '../lib/auth';
+import { can, isSuperAdmin } from '../lib/auth';
 import { daysFrom, invoiceTotal } from '../data/invoicing';
 import { downloadCsv } from '../lib/csv';
 import { isLive } from '../lib/releases';
@@ -115,10 +115,15 @@ export function Header() {
 
   // Keyed by section, or section/tab for the tabbed sections. A button with
   // no onClick belongs to a release the company has not been given yet.
-  const developer: HeadAction[] = [
-    { label: '+ Create company', primary: true, onClick: () => setAdding('company') },
-    { label: '+ Create account', tone: 'teal', onClick: () => setAdding('account') },
-  ];
+  // Super admins only: nobody else gets the buttons or the forms, even for
+  // the instant before a mistyped address is turned away.
+  const superAdmin = isSuperAdmin();
+  const developer: HeadAction[] = superAdmin
+    ? [
+        { label: '+ Create company', primary: true, onClick: () => setAdding('company') },
+        { label: '+ Create account', tone: 'teal', onClick: () => setAdding('account') },
+      ]
+    : [];
   const inactiveView = view === 'crm' && new URLSearchParams(location.search).get('view') === 'inactive';
   const archivedView = tab === 'payroll' && new URLSearchParams(location.search).get('view') === 'archived';
   const actionsFor: Record<string, HeadAction[]> = {
@@ -259,8 +264,8 @@ export function Header() {
       {adding === 'violation' && <ViolationDialog onClose={() => setAdding(null)} />}
       {adding === 'claim' && <ClaimDialog onClose={() => setAdding(null)} />}
       {adding === 'onboarding' && <OnboardingDialog onClose={() => setAdding(null)} />}
-      {adding === 'company' && <CompanyDialog onClose={() => setAdding(null)} />}
-      {adding === 'account' && <AccountDialog onClose={() => setAdding(null)} />}
+      {superAdmin && adding === 'company' && <CompanyDialog onClose={() => setAdding(null)} />}
+      {superAdmin && adding === 'account' && <AccountDialog onClose={() => setAdding(null)} />}
       </Suspense>
       </ErrorBoundary>
       {filtersOpen && <FilterPanel page={page} title={pageTitle} onClose={() => setFiltersOpen(false)} />}

@@ -2,6 +2,7 @@
 // the summary fields the tables show plus `details` — every field of its Add /
 // Edit form, as strings (lists for multi-choice fields). The demo fleet below is
 // complete and consistent with Safety, HR and the load board.
+import { demoOnly } from '../lib/account';
 import { nextSerial } from '../lib/ids';
 import { DRIVERS, TRAILERS, TRUCKS, type Driver, type Trailer, type Truck } from './mock';
 import { shiftDemo } from '../lib/clock';
@@ -10,26 +11,32 @@ export type FormValues = Record<string, string | string[]>;
 
 export interface FleetDriver extends Driver {
   id: string;
+  // When it was added (kept on every edit).
+  created?: string;
   archived?: boolean;
   details: FormValues;
 }
 
 export interface FleetTruck extends Truck {
   id: string;
+  created?: string;
   archived?: boolean;
   details: FormValues;
 }
 
 export interface FleetTrailer extends Trailer {
   id: string;
+  created?: string;
   archived?: boolean;
   details: FormValues;
 }
 
 // — choices used by the forms —
 
-export const TERMINALS = ['Modesto, CA — main yard', 'Fresno, CA — drop yard', 'Sacramento, CA — drop yard'];
-export const DISPATCHERS = ['Rosa Medina', 'Evan Brooks'];
+// Both are filled from Settings as the app starts (lib/applySettings.ts);
+// a client company's start empty, never with the demo company's.
+export const TERMINALS = demoOnly(['Modesto, CA — main yard', 'Fresno, CA — drop yard', 'Sacramento, CA — drop yard'], []);
+export const DISPATCHERS = demoOnly(['Rosa Medina', 'Evan Brooks'], []);
 export const DRIVER_TYPES = ['Company driver (W-2)', 'Owner-operator (1099)', 'Lease-purchase', 'Team driver'];
 export const DRIVER_STATUSES = ['Available', 'On duty', 'Home time', 'Off duty', 'Inactive'];
 export const CDL_CLASSES = ['A', 'B', 'C'];
@@ -97,6 +104,7 @@ export function driverFromForm(v: FormValues, id: string, prev?: FleetDriver): F
     cdl: monthYear(str(v, 'cdlExpiry')),
     pay: prev?.pay ?? '$0',
     miles: prev?.miles ?? 0,
+    created: prev ? prev.created : new Date().toISOString(),
     archived: prev?.archived,
     details: v,
   };
@@ -114,6 +122,7 @@ export function truckFromForm(v: FormValues, id: string, prev?: FleetTruck): Fle
     service: thousands(str(v, 'nextService')),
     status,
     tagClass: TRUCK_TAG[status] ?? 'tag-neutral',
+    created: prev ? prev.created : new Date().toISOString(),
     archived: prev?.archived,
     details: v,
   };
@@ -128,6 +137,7 @@ export function trailerFromForm(v: FormValues, id: string, prev?: FleetTrailer):
     status,
     tagClass: TRAILER_TAG[status] ?? 'tag-neutral',
     where: str(v, 'location') || '—',
+    created: prev ? prev.created : new Date().toISOString(),
     archived: prev?.archived,
     details: v,
   };

@@ -16,6 +16,8 @@ export interface Facility {
   city: string;
   state: string;
   customer: string;
+  // When it was added (kept on every edit).
+  created?: string;
   archived?: boolean;
   details: FormValues;
 }
@@ -141,6 +143,7 @@ export function facilityFromForm(v: FormValues, id: string, prev?: Facility): Fa
     city: str(v, 'city'),
     state: str(v, 'state').toUpperCase(),
     customer: isCustomerSite(type) ? str(v, 'customer') : '',
+    created: prev ? prev.created : new Date().toISOString(),
     archived: prev?.archived,
     details: { ...v, name: str(v, 'name'), state: str(v, 'state').toUpperCase() },
   };
@@ -164,8 +167,30 @@ export interface SiteStop {
   when: string;
 }
 
+// Every stop of every load by site name, built once per load list (the list
+// is replaced, never changed in place, whenever a load is saved).
+const STOPS_BY_SITE = new WeakMap<Load[], Map<string, SiteStop[]>>();
+function stopsBySite(loads: Load[]): Map<string, SiteStop[]> {
+  let map = STOPS_BY_SITE.get(loads);
+  if (!map) {
+    map = new Map();
+    for (const l of loads) {
+      for (const s of stopsOf(l)) {
+        const key = nameKey(s.name);
+        if (!key) continue;
+        const pile = map.get(key);
+        const stop = { load: l, kind: s.kind, when: s.when };
+        if (pile) pile.push(stop);
+        else map.set(key, [stop]);
+      }
+    }
+    STOPS_BY_SITE.set(loads, map);
+  }
+  return map;
+}
+
 export function stopsUsing(loads: Load[], name: string): SiteStop[] {
-  return loads.flatMap((l) => stopsOf(l).filter((s) => sameName(s.name, name)).map((s) => ({ load: l, kind: s.kind, when: s.when })));
+  return stopsBySite(loads).get(nameKey(name)) ?? [];
 }
 
 // Renaming a facility carries through to the loads that stop there.

@@ -408,10 +408,11 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
       return;
     }
     const saved = load ? toLoad(d, load.id, load) : toLoad(d, nextId(loads));
+    let id = saved.id;
     if (load) updateLoad(saved);
-    else addLoad(saved);
+    else id = addLoad(saved);
     closeNow();
-    onSaved?.(saved.id);
+    onSaved?.(id);
   };
 
   const remove = () => {

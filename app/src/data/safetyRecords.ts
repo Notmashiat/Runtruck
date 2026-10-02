@@ -356,7 +356,7 @@ export function cargoDeadlines(c: ClaimRecord, today = todayIso()): { ack?: { du
   };
 }
 
-export const nextClaimId = (list: { id: string }[]) => nextNum('CLM', list.map((c) => c.id), 1100);
+export const nextClaimId = (list: { id: string }[]) => nextNum('CLM', list.map((c) => c.id), IS_DEMO ? 1100 : 1000);
 
 export function blankClaimForm(today: string, prefill: FormValues = {}): FormValues {
   return {
