@@ -114,8 +114,8 @@ export function Header() {
   // Keyed by section, or section/tab for the tabbed sections. A button with
   // no onClick belongs to a release the company has not been given yet.
   const developer: HeadAction[] = [
-    { label: '+ Create account', onClick: () => setAdding('account') },
     { label: '+ Create company', primary: true, onClick: () => setAdding('company') },
+    { label: '+ Create account', primary: true, onClick: () => setAdding('account') },
   ];
   const inactiveView = view === 'crm' && new URLSearchParams(location.search).get('view') === 'inactive';
   const archivedView = tab === 'payroll' && new URLSearchParams(location.search).get('view') === 'archived';
