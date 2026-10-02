@@ -183,6 +183,21 @@ unique. Accounts are kept in `runtruck-1-accounts`. A super admin can edit any a
 (type, company, details, email, a new password, status, access) or delete it; nobody can disable,
 delete or demote their own account. A company can only be deleted once it has no accounts.
 
+**Bills** (Accounting › Bills; `data/bills.ts`, `components/BillDialogs.tsx`; release 1.3). Bills are kept
+per company (`runtruck-<id>-bills`). **+ Add Bill** opens a form in five parts: the bill (vendor, vendor
+invoice #, category from a trucking list — fuel, repairs, parts, tires, insurance, leases, ELD, permits,
+tolls, lumper, driver expenses, rent, utilities, software, factoring fees and more — amount, what it is
+for, bill date, terms and due date, which follows the terms), **one-time or recurring** (weekly, every
+two weeks, monthly, quarterly, twice a year or yearly, with an optional last date), what it is charged
+to (truck, trailer, driver, load, terminal), payment (pay by, auto-pay, scheduled date, already paid,
+vendor account, email, phone, remit-to) and documents and notes. Each bill opens to all its details
+with Mark paid (date, amount, method, reference; a recurring bill makes its next bill then), Schedule
+payment / Reschedule / Unschedule, Undo payment, Void / Restore, Stop repeating and Edit bill (which
+can also delete). Documents (PDF, images, Word, Excel; up to 2 MB each) are attached to the bill and
+can be opened, downloaded or removed. Status is worked out: Overdue, Due, Scheduled (scheduled or
+auto-pay), Paid or Void. The dashboard's cash widget and Export data read the same bills. Companies
+not on 1.3 keep the read-only list.
+
 **Deactivated** (Developer › Deactivated; `lib/deactivate.ts`). A super admin deactivates an account
 (Accounts tab, or Status in Edit account) or a whole company (Account manager); deactivating a company
 deactivates all its accounts. A deactivated account cannot log in and gets no updates: it keeps the

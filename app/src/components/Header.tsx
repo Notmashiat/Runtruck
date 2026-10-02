@@ -9,6 +9,7 @@ import { downloadCsv } from '../lib/csv';
 import { isLive } from '../lib/releases';
 import { describe, FilterPanel } from './FilterPanel';
 import { BatchDialog } from './BatchDialog';
+import { BillDialog } from './BillDialogs';
 import { CompanyDialog } from './CompanyDialog';
 import { AccountDialog } from './AccountDialog';
 import { FacilityDialog } from './FacilityDialog';
@@ -34,7 +35,7 @@ export function Header() {
   const now = useNow(15_000);
   const [newLoadOpen, setNewLoadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | null>(null);
+  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | 'bill' | null>(null);
 
   // Route matching is case-insensitive, so normalise before keying off the section.
   const segments = location.pathname.toLowerCase().split('/');
@@ -80,7 +81,8 @@ export function Header() {
     'accounting/past-due': [{ label: 'Send reminders', primary: true, onClick: () => setAdding('reminders') }],
     'accounting/paid': [{ label: 'Export' }],
     'accounting/payroll': [{ label: 'Run settlements', primary: true, onClick: () => approveAll() }],
-    'accounting/bills': [{ label: '+ Add Bill', primary: true }],
+    // Release 1.3: Add Bill opens the new bill form.
+    'accounting/bills': [{ label: '+ Add Bill', primary: true, onClick: isLive('bills-manage') ? () => setAdding('bill') : undefined }],
     'hr/employee-contracts': [{ label: '+ New Contract', primary: true }],
     'hr/onboarding': [{ label: '+ Start Onboarding', primary: true }],
     'safety/maintenance': [{ label: '+ Log Service', primary: true }],
@@ -144,6 +146,7 @@ export function Header() {
       {adding === 'invoice' && <InvoiceDialog onClose={() => setAdding(null)} />}
       {adding === 'batch' && <BatchDialog onClose={() => setAdding(null)} />}
       {adding === 'reminders' && <ReminderDialog onClose={() => setAdding(null)} />}
+      {adding === 'bill' && <BillDialog onClose={() => setAdding(null)} />}
       {adding === 'company' && <CompanyDialog onClose={() => setAdding(null)} />}
       {adding === 'account' && <AccountDialog onClose={() => setAdding(null)} />}
       {filtersOpen && <FilterPanel page={page} title={pageTitle} onClose={() => setFiltersOpen(false)} />}

@@ -2,7 +2,7 @@
 // rows of text, with the date, driver, truck and customer each row is about
 // (for the filters). Each set names the permission that opens it, so an
 // account only ever sees the sets it has access to.
-import { BILLS } from '../data/accounting';
+import { billStatus, type BillRecord } from '../data/bills';
 import { driverDocuments } from '../data/compliance';
 import type { Facility } from '../data/facilities';
 import type { FleetDriver, FleetTrailer, FleetTruck, FormValues } from '../data/fleet';
@@ -48,6 +48,7 @@ export interface ExportSources {
   facilities: Facility[];
   invoices: InvoiceRecord[];
   batches: Batch[];
+  bills: BillRecord[];
 }
 
 // '2026-10-01', 'Oct 1', 'Thu Oct 1 · 08:00' → '2026-10-01' ('' when there is no date).
@@ -128,7 +129,7 @@ function plannerEvents(): PlannerEvent[] {
 }
 
 export function buildExportSets(s: ExportSources): ExportSet[] {
-  const { loads, drivers, trucks, trailers, facilities, invoices, batches } = s;
+  const { loads, drivers, trucks, trailers, facilities, invoices, batches, bills } = s;
   return [
     makeSet({ key: 'loads', label: 'Loads', group: 'Loads', perm: 'loads', dateLabel: 'pickup date' }, loads, [
       ['id', 'Load', (l) => l.id], ['status', 'Status', (l) => l.status], ['customer', 'Customer', (l) => l.customer], ['ref', 'Reference', (l) => l.ref],
@@ -192,9 +193,16 @@ export function buildExportSets(s: ExportSources): ExportSet[] {
       ['gross', 'Gross', (x) => x.gross], ['ded', 'Deductions', (x) => x.ded], ['net', 'Net', (x) => x.net], ['status', 'Status', (x) => x.status],
     ], (x) => ({ drivers: [x.name] })),
 
-    makeSet({ key: 'bills', label: 'Bills', group: 'Accounting', perm: 'accounting/bills', dateLabel: 'due date' }, BILLS, [
-      ['vendor', 'Vendor', (b) => b.vendor], ['category', 'Category', (b) => b.category], ['due', 'Due', (b) => b.due], ['amount', 'Amount', (b) => b.amount], ['status', 'Status', (b) => b.status],
-    ], (b) => ({ date: toIso(b.due) })),
+    makeSet({ key: 'bills', label: 'Bills', group: 'Accounting', perm: 'accounting/bills', dateLabel: 'due date' }, bills, [
+      ['vendor', 'Vendor', (b) => b.vendor], ['billNumber', 'Vendor invoice #', (b) => b.billNumber], ['category', 'Category', (b) => b.category],
+      ['description', 'What it is for', (b) => b.description], ['issued', 'Bill date', (b) => b.issued], ['due', 'Due', (b) => b.due],
+      ['amount', 'Amount', (b) => money(b.amount)], ['status', 'Status', (b) => billStatus(b)], ['repeats', 'Repeats', (b) => b.frequency ?? 'One-time'],
+      ['paidOn', 'Paid on', (b) => b.paid?.date],
+      ['id', 'Bill', (b) => b.id, false], ['terms', 'Terms', (b) => b.terms, false], ['truck', 'Truck', (b) => b.truck, false], ['trailer', 'Trailer', (b) => b.trailer, false],
+      ['driver', 'Driver', (b) => b.driver, false], ['load', 'Load', (b) => b.load, false], ['terminal', 'Terminal', (b) => b.terminal, false],
+      ['method', 'Pay by', (b) => b.method, false], ['paidRef', 'Payment reference', (b) => b.paid?.reference, false], ['scheduledFor', 'Scheduled for', (b) => b.scheduledFor, false],
+      ['vendorAccount', 'Account with vendor', (b) => b.vendorAccount, false], ['documents', 'Documents', (b) => b.documents.map((d) => d.name), false], ['notes', 'Notes', (b) => b.notes, false],
+    ], (b) => ({ date: b.due, drivers: [b.driver], trucks: [b.truck, b.trailer].filter(Boolean) })),
 
     makeSet({ key: 'contracts', label: 'Employee contracts', group: 'HR', perm: 'hr/employee-contracts', dateLabel: 'start date' }, CONTRACTS, [
       ['employee', 'Employee', (c) => c.employee], ['role', 'Role', (c) => c.role], ['type', 'Type', (c) => c.type], ['start', 'Start', (c) => c.start],

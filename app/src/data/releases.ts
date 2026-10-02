@@ -74,6 +74,21 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.3',
+    date: '2026-10-01',
+    title: 'Bills',
+    changes: [
+      {
+        id: 'bills-manage', kind: 'New', section: 'Accounting', title: 'Manage bills',
+        details: 'Each bill on Accounting › Bills opens to every detail, with Edit bill, Mark paid, Schedule payment, Void and Undo payment, and documents (vendor invoices, receipts, contracts) attached to the bill.',
+      },
+      {
+        id: 'bills-add', kind: 'New', section: 'Accounting', title: 'Add Bill form, one-time or recurring',
+        details: '+ Add Bill opens a form for the vendor, invoice #, category, amount, dates and terms, what it is charged to (truck, trailer, driver, load, terminal), payment and documents. Recurring bills (weekly to yearly, with an optional end date) make the next bill when one is paid.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

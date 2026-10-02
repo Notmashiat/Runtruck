@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { BATCH_SEED, INVOICE_SEED, type Batch, type InvoiceRecord } from '../data/invoicing';
+import { BILL_SEED, reviveBills, type BillRecord } from '../data/bills';
 import { FACILITY_SEED, renameInLoad, sameName, type Facility } from '../data/facilities';
 import { DRIVER_SEED, TRAILER_SEED, TRUCK_SEED, type FleetDriver, type FleetTrailer, type FleetTruck } from '../data/fleet';
 import { LOADS, type Load } from '../data/mock';
@@ -47,6 +48,9 @@ interface AppShellState {
   batches: Batch[];
   saveBatch: (b: Batch) => void;
   deleteBatch: (id: string) => void;
+  bills: BillRecord[];
+  saveBill: (b: BillRecord) => void;
+  deleteBill: (id: string) => void;
   // Table filters, per page ('loads', 'fleet/drivers', …): what each page
   // offers (registered by the page) and what is chosen (kept while you move around).
   filterMeta: Record<string, FilterMeta[]>;
@@ -92,6 +96,7 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
   const [trailers, setTrailers] = usePersisted<FleetTrailer[]>('runtruck-trailers', TRAILER_SEED, (raw) => reviveRecords<FleetTrailer>(raw));
   const [invoices, setInvoices] = usePersisted<InvoiceRecord[]>('runtruck-invoices', INVOICE_SEED, (raw) => reviveInvoices(raw));
   const [batches, setBatches] = usePersisted<Batch[]>('runtruck-batches', BATCH_SEED, (raw) => reviveBatches(raw));
+  const [bills, setBills] = usePersisted<BillRecord[]>('runtruck-bills', BILL_SEED, reviveBills);
   const [filterMeta, setFilterMeta] = useState<Record<string, FilterMeta[]>>({});
   const [filterValues, setFilterValues] = useState<Record<string, FilterValues>>({});
   const registerFilters = useCallback((page: string, meta: FilterMeta[]) =>
@@ -201,6 +206,9 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
     batches,
     saveBatch: (b) => setBatches((list) => upsert(list, b)),
     deleteBatch: (id) => setBatches((list) => list.filter((b) => b.id !== id)),
+    bills,
+    saveBill: (b) => setBills((list) => upsert(list, b)),
+    deleteBill: (id) => setBills((list) => list.filter((b) => b.id !== id)),
     filterMeta,
     registerFilters,
     filterValues,

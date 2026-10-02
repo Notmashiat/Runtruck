@@ -696,3 +696,14 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 .deact-body { display: flex; flex-direction: column; gap: 12px; padding: 0 20px 18px 44px; }
 .deact-note { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 10px 14px; font-size: 13px; background: var(--ui-card); border: 1px dashed var(--ui-border); border-radius: 10px; }
 .deact-note span { flex: 1; min-width: 220px; }
+
+/* Accounting › Bills */
+.bill-docs { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.bill-docs-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.bill-doc-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.bill-doc-list li { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 8px 12px; background: var(--ui-card); border: 1px solid var(--ui-border); border-radius: 10px; }
+.bill-doc-icon { flex: none; display: grid; place-items: center; width: 36px; height: 36px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; color: var(--ui-primary); background: var(--ui-primary-soft); border-radius: 8px; }
+.bill-doc-name { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+.ui-link.is-danger { color: var(--ui-red); }
+.bill-schedule { display: inline-flex; align-items: center; gap: 8px; }
+.bill-schedule .ui-input { width: 160px; height: 32px; }

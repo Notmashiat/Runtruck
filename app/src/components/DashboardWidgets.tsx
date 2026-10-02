@@ -2,7 +2,7 @@ import { canPath } from '../lib/auth';
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppShell } from '../context/AppShellContext';
-import { BILLS } from '../data/accounting';
+import { isOpen as billOpen } from '../data/bills';
 import { driverDocuments } from '../data/compliance';
 import type { DashOptions, WidgetId } from '../data/dashboard';
 import {
@@ -41,7 +41,7 @@ function groupBy(list: Earned[], key: (e: Earned) => string) {
 
 // Everything the widgets show, worked out once per render from the records.
 export function useDashboardData() {
-  const { loads, invoices, drivers, trucks, trailers, query } = useAppShell();
+  const { loads, invoices, drivers, trucks, trailers, bills, query } = useAppShell();
   const earned = deliveredRevenue(loads, invoices);
   const monday = mondayOf(TODAY);
   const active = loads.filter((l) => ACTIVE_STATUSES.includes(l.status));
@@ -64,6 +64,7 @@ export function useDashboardData() {
     drivers: drivers.filter((d) => !d.archived),
     trucks: trucks.filter((t) => !t.archived),
     trailers: trailers.filter((t) => !t.archived),
+    bills: bills.filter(billOpen),
   };
 }
 
@@ -258,8 +259,7 @@ function Cash({ d }: { d: DashData }) {
   const until = addDays(TODAY, 14);
   const incoming = d.open.filter((i) => i.due >= TODAY && i.due <= until);
   const late = d.overdue;
-  const bills = BILLS.filter((b) => b.status !== 'Paid').map((b) => ({ ...b, iso: isoFromShort(b.due), value: Number(b.amount.replace(/[$,]/g, '')) || 0 }))
-    .filter((b) => b.iso && b.iso <= until);
+  const bills = d.bills.filter((b) => b.due <= until).map((b) => ({ ...b, value: b.amount }));
   const inAmt = incoming.reduce((s, i) => s + invoiceTotal(i), 0);
   const lateAmt = late.reduce((s, i) => s + invoiceTotal(i), 0);
   const outAmt = bills.reduce((s, b) => s + b.value, 0);

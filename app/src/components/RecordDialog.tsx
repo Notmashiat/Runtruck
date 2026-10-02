@@ -41,6 +41,8 @@ interface RecordDialogProps {
   deleteNote: string;
   // Shown under every section's title (e.g. the record's ID).
   banner?: ReactNode;
+  // Extra content under a section's fields, by section title (e.g. attachments).
+  extras?: Record<string, ReactNode>;
   // Follow-on changes when a field changes (e.g. a preset filling a checklist).
   adjust?: (prev: FormValues, next: FormValues, key: string) => FormValues;
   onSave: (v: FormValues) => void;
@@ -246,7 +248,10 @@ export function RecordDialog(p: RecordDialogProps) {
             <div className="ui-note">This {p.noun} is archived: hidden from lists and pickers but kept on file. Restore it to use it again.</div>
           )}
           {applies ? (
-            <div className="ui-form-grid">{visibleFields(current, v).map(field)}</div>
+            <>
+              <div className="ui-form-grid">{visibleFields(current, v).map(field)}</div>
+              {p.extras?.[current.title]}
+            </>
           ) : (
             <div className="ui-note">{current.naText ?? 'Nothing to fill in here.'}</div>
           )}
