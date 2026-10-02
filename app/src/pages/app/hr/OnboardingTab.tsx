@@ -96,7 +96,8 @@ function OnboardingBoard() {
     { key: 'progress', label: 'Progress', type: 'range', get: (o) => progressOf(o).pct, suffix: '%' },
   ];
   const sort = useSort(
-    usePageFilters((showClosed ? onboardings : [...active, ...settingUp]).filter((o) => matchesQuery({ ...o, steps: '', log: '', documents: o.documents.map((d) => d.name).join(' ') }, query)), filters),
+    // The open row stays put when it is hired or closed, so its next steps stay in view.
+    usePageFilters((showClosed ? onboardings : onboardings.filter((o) => active.includes(o) || settingUp.includes(o) || o.id === open)).filter((o) => matchesQuery({ ...o, steps: '', log: '', documents: o.documents.map((d) => d.name).join(' ') }, query)), filters),
     { stage: (o) => STAGE_ORDER.indexOf(stageOf(o)), progress: (o) => progressOf(o).pct, next: (o) => nextStepOf(o)?.label ?? '' },
   );
   const rows = sort.rows;
@@ -152,6 +153,7 @@ function OnboardingBoard() {
     const agreement = agreementFor(o.role, o.workerType);
     return {
       person: o.name, email: o.email, role: o.role, workerType: o.workerType, agreement, employeeId: o.employeeId, start: o.targetStart || today,
+      employee: o.employeeId ? `${o.name} · ${o.employeeId}` : '',
       clauses: defaultClauses(agreement, o.role), ...(offer ? { payBasis: offer.payBasis, rate: String(offer.rate) } : {}),
     };
   };

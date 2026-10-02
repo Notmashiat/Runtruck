@@ -85,7 +85,7 @@ function Contracts() {
     { key: 'end', label: 'Ends or renews', type: 'dates', get: (c) => currentEnd(c, today) },
   ];
   const sort = useSort(
-    usePageFilters((showEnded ? contracts : live).filter((c) => matchesQuery({ ...c, documents: c.documents.map((d) => d.name).join(' '), log: '' }, query)), filters),
+    usePageFilters((showEnded ? contracts : contracts.filter((c) => c.status !== 'Ended' || c.id === open)).filter((c) => matchesQuery({ ...c, documents: c.documents.map((d) => d.name).join(' '), log: '' }, query)), filters),
     { end: (c) => currentEnd(c, today) || '9999', state: (c) => CONTRACT_STATES.indexOf(stateOf(c)), pay: (c) => c.rate },
   );
   const rows = sort.rows;

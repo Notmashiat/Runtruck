@@ -433,7 +433,7 @@ export function OnboardingDialog({ onboarding, onClose }: { onboarding?: Onboard
           return (
             <>
               <div className="ui-note">
-                {req} required and {steps.length - req} optional steps for a {val(v, 'role').toLowerCase() || 'new hire'}{isDriverRole(val(v, 'role')) ? ': the driver qualification file (49 CFR 391), DOT drug and alcohol testing (49 CFR 382) and the paperwork to start' : ''}.
+                {req} required and {steps.length - req} optional steps for {/^[aeiou]/i.test(val(v, 'role')) ? 'an' : 'a'} {val(v, 'role').toLowerCase() || 'new hire'}{isDriverRole(val(v, 'role')) ? ': the driver qualification file (49 CFR 391), DOT drug and alcohol testing (49 CFR 382) and the paperwork to start' : ''}.
                 {onboarding && ' Changing the role rebuilds it and keeps the steps already done.'}
               </div>
               <ChecklistPreview steps={steps} />
