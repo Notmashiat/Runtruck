@@ -145,6 +145,29 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.8',
+    date: '2026-10-02',
+    title: 'Safety',
+    changes: [
+      {
+        id: 'safety-maintenance', kind: 'Updated', section: 'Safety', title: 'Maintenance work orders',
+        details: '+ Log Service opens a work order for a truck or trailer: service type (PM, DOT annual inspection, brakes, tires, reefer…), priority and out-of-service, due date or odometer, shop, estimate and repeat interval. Each order moves Scheduled → In shop → Waiting on parts → Done with a log; Complete records parts, labor, odometer and invoice, updates the unit (service date, inspection date, next PM, back in service), can add a bill to Accounting and books the next one. The page flags overdue work, units out of service, monthly spend, and inspections or PMs coming due with nothing booked.',
+      },
+      {
+        id: 'safety-documents', kind: 'Updated', section: 'Safety', title: 'Driver qualification files',
+        details: 'One file per driver with every document (CDL, medical card, hazmat, TWIC, MVR and annual reviews, Clearinghouse query, drug test), its rule and status, and who cannot drive. Update renews a document on the driver record with the new copy attached; Request documents asks a driver for them with a due date and an email ready to send, and open requests are tracked until received.',
+      },
+      {
+        id: 'safety-violations', kind: 'Updated', section: 'Safety', title: 'Roadside inspections and BASICs',
+        details: '+ Log Violation records an inspection (level, report, location, driver, equipment) as clean or with a violation (BASIC, code, severity, out of service, fine). The page shows inspections and the out-of-service rate for 12 months, weighted points by BASIC and by driver for 24 months, and each inspection can be challenged through DataQs, closed with an outcome, used to coach the driver or turned into a work order.',
+      },
+      {
+        id: 'safety-claims', kind: 'Updated', section: 'Safety', title: 'Cargo and accident claims',
+        details: '+ New Claim records cargo, accident and equipment claims with the load, driver, equipment, claimant, amounts, insurance and, for accidents, what the DOT accident register needs. Cargo claims show the 30-day acknowledgment and 120-day decision deadlines (49 CFR 370); payments by insurance, the company or a driver deduction, recoveries, denials and withdrawals are logged. The accident register lists recordable accidents for 3 years.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

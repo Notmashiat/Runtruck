@@ -11,7 +11,9 @@ import {
 } from '../../data/facilities';
 import type { FormValues } from '../../data/fleet';
 import { ACTIVE_STATUSES, stopsOf } from '../../data/mock';
+import { fmtDate } from '../../data/invoicing';
 import { MAINTENANCE } from '../../data/safety';
+import { isLive } from '../../lib/releases';
 import { matchesQuery } from '../../lib/search';
 import { SortTh, useSort, usePageFilters, type FilterDef } from '../../lib/tableTools';
 
@@ -36,7 +38,7 @@ function Item({ label, children }: { label: string; children: ReactNode }) {
 }
 
 export function FacilitiesPage() {
-  const { query, facilities, loads, trucks, trailers, drivers } = useAppShell();
+  const { query, facilities, loads, trucks, trailers, drivers, workOrders } = useAppShell();
   const [params] = useSearchParams();
   const linked = params.get('open');
   const [group, setGroup] = useState<Group>('All');
@@ -160,7 +162,10 @@ export function FacilitiesPage() {
       );
     }
     if (f.type === 'Repair shop') {
-      const orders = MAINTENANCE.filter((w) => sameName(w.shop, f.name) && w.status !== 'Done');
+      // Release 1.8: the managed work orders.
+      const orders = isLive('safety-maintenance')
+        ? workOrders.filter((w) => sameName(w.shop, f.name) && w.status !== 'Done' && w.status !== 'Cancelled').map((w) => ({ unit: w.unit, item: w.type, status: w.status, due: w.dueDate ? fmtDate(w.dueDate) : w.dueOdometer ? `${w.dueOdometer.toLocaleString('en-US')} mi` : '—' }))
+        : MAINTENANCE.filter((w) => sameName(w.shop, f.name) && w.status !== 'Done');
       return (
         <>
           <div className="ui-label">Open work orders ({orders.length})</div>

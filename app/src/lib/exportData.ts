@@ -15,6 +15,7 @@ import { payLabel, runTotals, type Employee, type PayRun } from '../data/payroll
 import type { CustomerRecord } from '../data/customers';
 import { PLANNER_EVENTS, type PlannerEvent } from '../data/planner';
 import { CLAIMS, MAINTENANCE, VIOLATIONS } from '../data/safety';
+import { netCost, paidOf, recordable, woCost, type ClaimRecord, type ViolationRecord, type WorkOrder } from '../data/safetyRecords';
 import { isoFromText } from './clock';
 import { readScoped } from './account';
 
@@ -61,6 +62,9 @@ export interface ExportSources {
   employees: Employee[];
   contracts: ContractRecord[];
   onboardings: OnboardingRecord[];
+  workOrders: WorkOrder[];
+  violations: ViolationRecord[];
+  claims: ClaimRecord[];
   payRuns: PayRun[];
 }
 
@@ -142,7 +146,7 @@ function plannerEvents(): PlannerEvent[] {
 }
 
 export function buildExportSets(s: ExportSources): ExportSet[] {
-  const { loads, drivers, trucks, trailers, facilities, invoices, batches, bills, customers, employees, payRuns, contracts, onboardings } = s;
+  const { loads, drivers, trucks, trailers, facilities, invoices, batches, bills, customers, employees, payRuns, contracts, onboardings, workOrders, violations, claims } = s;
   return [
     makeSet({ key: 'loads', label: 'Loads', group: 'Loads', perm: 'loads', dateLabel: 'pickup date' }, loads, [
       ['id', 'Load', (l) => l.id], ['status', 'Status', (l) => l.status], ['customer', 'Customer', (l) => l.customer], ['ref', 'Reference', (l) => l.ref],
@@ -266,24 +270,44 @@ export function buildExportSets(s: ExportSources): ExportSet[] {
       ['owner', 'Owner', (o) => o.owner], ['progress', 'Progress', (o) => `${o.progress}%`], ['nextStep', 'Next step', (o) => o.nextStep], ['docsPending', 'Documents pending', (o) => o.docsPending],
     ], (o) => ({ date: toIso(o.started), drivers: [o.candidate] }))]),
 
-    makeSet({ key: 'maintenance', label: 'Maintenance', group: 'Safety', perm: 'safety/maintenance', dateLabel: 'due date' }, MAINTENANCE, [
+    // Release 1.8: the managed safety records.
+    ...(isLive('safety-maintenance') ? [makeSet({ key: 'maintenance', label: 'Maintenance work orders', group: 'Safety', perm: 'safety/maintenance', dateLabel: 'due date' }, workOrders, [
+      ['id', 'Work order', (w) => w.id], ['unit', 'Unit', (w) => w.unit], ['type', 'Service', (w) => w.type], ['description', 'Work', (w) => w.description],
+      ['due', 'Due', (w) => w.dueDate], ['shop', 'Shop', (w) => w.shop], ['cost', 'Cost', (w) => money(woCost(w))], ['status', 'Status', (w) => w.status],
+      ['priority', 'Priority', (w) => w.priority, false], ['dueOdometer', 'Due at odometer', (w) => w.dueOdometer || '', false], ['driver', 'Driver', (w) => w.driver, false],
+      ['completed', 'Done on', (w) => w.completed?.date, false], ['parts', 'Parts', (w) => w.completed?.parts, false], ['labor', 'Labor', (w) => w.completed?.labor, false],
+      ['invoice', 'Shop invoice', (w) => w.completed?.invoice, false], ['bill', 'Bill', (w) => w.billId, false], ['documents', 'Documents', (w) => w.documents.map((d) => d.name), false],
+    ], (w) => ({ date: w.completed?.date || w.dueDate, drivers: [w.driver].filter(Boolean), trucks: [w.unit] }))] : [makeSet({ key: 'maintenance', label: 'Maintenance', group: 'Safety', perm: 'safety/maintenance', dateLabel: 'due date' }, MAINTENANCE, [
       ['unit', 'Unit', (w) => w.unit], ['item', 'Work', (w) => w.item], ['due', 'Due', (w) => w.due], ['shop', 'Shop', (w) => w.shop],
       ['estimate', 'Estimate', (w) => money(w.estimate)], ['status', 'Status', (w) => w.status],
-    ], (w) => ({ date: toIso(w.due), trucks: [w.unit] })),
+    ], (w) => ({ date: toIso(w.due), trucks: [w.unit] }))]),
 
     makeSet({ key: 'documents', label: 'Driver documents', group: 'Safety', perm: 'safety/driver-documents', dateLabel: 'expiry date' }, driverDocuments(drivers), [
       ['driver', 'Driver', (d) => d.driver], ['document', 'Document', (d) => d.document], ['date', 'Date', (d) => d.date], ['status', 'Status', (d) => d.status],
     ], (d) => ({ date: d.date, drivers: [d.driver] })),
 
-    makeSet({ key: 'violations', label: 'Violations', group: 'Safety', perm: 'safety/violations', dateLabel: 'violation date' }, VIOLATIONS, [
+    ...(isLive('safety-violations') ? [makeSet({ key: 'violations', label: 'Inspections & violations', group: 'Safety', perm: 'safety/violations', dateLabel: 'inspection date' }, violations, [
+      ['date', 'Date', (v) => v.date], ['driver', 'Driver', (v) => v.driver], ['truck', 'Truck', (v) => v.truck], ['basic', 'BASIC', (v) => v.basic],
+      ['code', 'Code', (v) => v.code], ['description', 'Violation', (v) => v.description], ['severity', 'Severity', (v) => v.severity || ''], ['oos', 'Out of service', (v) => v.oos],
+      ['status', 'Status', (v) => v.status], ['id', 'Inspection', (v) => v.id, false], ['level', 'Level', (v) => v.level, false], ['report', 'Report #', (v) => v.reportNumber, false],
+      ['state', 'State', (v) => v.state, false], ['location', 'Location', (v) => v.location, false], ['trailer', 'Trailer', (v) => v.trailer, false], ['fine', 'Fine', (v) => v.fine || '', false],
+      ['dataQs', 'DataQs', (v) => v.dataQs, false], ['resolution', 'Outcome', (v) => v.resolution, false], ['coached', 'Coached', (v) => v.coached, false],
+    ], (v) => ({ date: v.date, drivers: [v.driver], trucks: [v.truck, v.trailer].filter(Boolean) }))] : [makeSet({ key: 'violations', label: 'Violations', group: 'Safety', perm: 'safety/violations', dateLabel: 'violation date' }, VIOLATIONS, [
       ['date', 'Date', (v) => v.date], ['driver', 'Driver', (v) => v.driver], ['unit', 'Unit', (v) => v.unit], ['type', 'Violation', (v) => v.type],
       ['severityPoints', 'Severity points', (v) => v.severityPoints], ['location', 'Location', (v) => v.location], ['status', 'Status', (v) => v.status],
-    ], (v) => ({ date: toIso(v.date), drivers: [v.driver], trucks: units(v.unit) })),
+    ], (v) => ({ date: toIso(v.date), drivers: [v.driver], trucks: units(v.unit) }))]),
 
-    makeSet({ key: 'claims', label: 'Claims', group: 'Safety', perm: 'safety/settlements', dateLabel: 'claim date' }, CLAIMS, [
+    ...(isLive('safety-claims') ? [makeSet({ key: 'claims', label: 'Claims', group: 'Safety', perm: 'safety/settlements', dateLabel: 'incident date' }, claims, [
+      ['id', 'Claim', (c) => c.id], ['type', 'Type', (c) => c.type], ['incidentDate', 'Incident', (c) => c.incidentDate], ['driver', 'Driver', (c) => c.driver],
+      ['claimant', 'Claimant', (c) => c.claimant], ['claimed', 'Claimed', (c) => money(c.amountClaimed)], ['reserve', 'Reserve', (c) => money(c.reserve)],
+      ['paid', 'Paid', (c) => money(paidOf(c))], ['status', 'Status', (c) => c.status],
+      ['received', 'Received', (c) => c.received, false], ['load', 'Load', (c) => c.load, false], ['truck', 'Truck', (c) => c.truck, false], ['trailer', 'Trailer', (c) => c.trailer, false],
+      ['location', 'Location', (c) => c.location, false], ['recordable', 'DOT recordable', (c) => recordable(c), false], ['preventable', 'Preventable', (c) => c.preventable, false],
+      ['insurerClaimNo', 'Insurer claim #', (c) => c.insurerClaimNo, false], ['netCost', 'Cost to company', (c) => money(netCost(c)), false], ['closedReason', 'Why closed', (c) => c.closedReason, false],
+    ], (c) => ({ date: c.incidentDate, drivers: [c.driver], trucks: [c.truck, c.trailer].filter(Boolean), customer: c.claimant }))] : [makeSet({ key: 'claims', label: 'Claims', group: 'Safety', perm: 'safety/settlements', dateLabel: 'claim date' }, CLAIMS, [
       ['id', 'Claim', (c) => c.id], ['date', 'Date', (c) => c.date], ['driver', 'Driver', (c) => c.driver], ['unit', 'Units', (c) => c.unit], ['type', 'Type', (c) => c.type],
       ['claimant', 'Claimant', (c) => c.claimant], ['reserved', 'Reserved', (c) => money(c.reserved)], ['paid', 'Paid', (c) => money(c.paid)], ['status', 'Status', (c) => c.status],
-    ], (c) => ({ date: toIso(c.date), drivers: [c.driver], trucks: units(c.unit) })),
+    ], (c) => ({ date: toIso(c.date), drivers: [c.driver], trucks: units(c.unit) }))]),
 
     makeSet({ key: 'planner', label: 'Planner events', group: 'Planner', perm: 'planner', dateLabel: 'event date' }, plannerEvents(), [
       ['title', 'Event', (e) => e.title], ['category', 'Category', (e) => e.category], ['date', 'Date', (e) => e.date], ['endDate', 'Ends', (e) => e.endDate],

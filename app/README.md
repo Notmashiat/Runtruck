@@ -215,6 +215,21 @@ certificates that run out near the start date are flagged. Mark hired, then Add 
 Drivers (with the qualification dates) and Create contract; Not hired / withdrawn closes it with a reason.
 Companies not on 1.7 keep the read-only lists.
 
+**Safety** (`data/safetyRecords.ts`, `components/SafetyDialogs.tsx`; release 1.8). **Maintenance** keeps work orders
+(`runtruck-<id>-workorders`): unit, service type, priority and out-of-service, due date or odometer, shop, estimate
+and repeat interval, moving Scheduled → In shop → Waiting on parts → Done. Complete records parts, labor,
+odometer and invoice, updates the truck or trailer (service date, DOT inspection date, next PM, back in
+service), can add a bill to Accounting and books the next one; units with an annual inspection or PM coming
+due and nothing booked are listed. **Driver Documents** shows one qualification file per driver (CDL, medical
+card, hazmat, TWIC, MVR and annual reviews, Clearinghouse, drug test) from the driver record; Update writes the
+new date to the driver and keeps the copy (`runtruck-<id>-driverfiles`); Request documents tracks requests
+with a due date (`runtruck-<id>-docrequests`). **Violations** logs roadside inspections, clean or with a
+violation (`runtruck-<id>-violations`), with BASIC, code, severity, out of service and fine; weighted points
+(severity, +2 out of service, times 3/2/1 by age) by BASIC and driver; DataQs challenges, outcomes, coaching and
+work orders. **Settlements** keeps cargo and accident claims (`runtruck-<id>-claims`) with the 49 CFR 370
+acknowledgment and decision deadlines, payments by insurer, company or driver deduction, recoveries, denials,
+and the 49 CFR 390.15 accident register. Companies not on 1.8 keep the read-only lists.
+
 **Customers** (CRM; `data/customers.ts`, `components/CustomerDialogs.tsx`, `lib/customerSync.ts`; release
 1.4). Customers are kept per company (`runtruck-<id>-customers`). **+ Add Customer** opens a form in five
 parts: company (name, legal name, type — shipper, broker, 3PL, forwarder, manufacturer, retailer… —

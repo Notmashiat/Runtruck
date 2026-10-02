@@ -13,6 +13,7 @@ import { BillDialog } from './BillDialogs';
 import { CustomerDialog } from './CustomerDialogs';
 import { EmployeeDialog, PayRunDialog } from './PayrollDialogs';
 import { ContractDialog, OnboardingDialog } from './HrDialogs';
+import { ClaimDialog, RequestDocDialog, ViolationDialog, WorkOrderDialog } from './SafetyDialogs';
 import { CompanyDialog } from './CompanyDialog';
 import { AccountDialog } from './AccountDialog';
 import { FacilityDialog } from './FacilityDialog';
@@ -38,7 +39,7 @@ export function Header() {
   const now = useNow(15_000);
   const [newLoadOpen, setNewLoadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | 'bill' | 'customer' | 'employee' | 'payrun' | 'contract' | 'onboarding' | null>(null);
+  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | 'bill' | 'customer' | 'employee' | 'payrun' | 'contract' | 'onboarding' | 'workorder' | 'docrequest' | 'violation' | 'claim' | null>(null);
 
   // Route matching is case-insensitive, so normalise before keying off the section.
   const segments = location.pathname.toLowerCase().split('/');
@@ -108,10 +109,11 @@ export function Header() {
     // Release 1.7: the contract and onboarding popups.
     'hr/employee-contracts': [{ label: '+ New Contract', primary: true, onClick: isLive('hr-contracts') ? () => setAdding('contract') : undefined }],
     'hr/onboarding': [{ label: '+ Start Onboarding', primary: true, onClick: isLive('hr-onboarding') ? () => setAdding('onboarding') : undefined }],
-    'safety/maintenance': [{ label: '+ Log Service', primary: true }],
-    'safety/driver-documents': [{ label: 'Request document', primary: true }],
-    'safety/violations': [{ label: '+ Log Violation', primary: true }],
-    'safety/settlements': [{ label: '+ New Claim', primary: true }],
+    // Release 1.8: the safety popups.
+    'safety/maintenance': [{ label: '+ Log Service', primary: true, onClick: isLive('safety-maintenance') ? () => setAdding('workorder') : undefined }],
+    'safety/driver-documents': [{ label: 'Request document', primary: true, onClick: isLive('safety-documents') ? () => setAdding('docrequest') : undefined }],
+    'safety/violations': [{ label: '+ Log Violation', primary: true, onClick: isLive('safety-violations') ? () => setAdding('violation') : undefined }],
+    'safety/settlements': [{ label: '+ New Claim', primary: true, onClick: isLive('safety-claims') ? () => setAdding('claim') : undefined }],
     'developer/account-manager': developer,
     'developer/clients': developer,
     'developer/accounts': developer,
@@ -174,6 +176,10 @@ export function Header() {
       {adding === 'employee' && <EmployeeDialog onClose={() => setAdding(null)} />}
       {adding === 'payrun' && <PayRunDialog onClose={() => setAdding(null)} onCreated={() => navigate(PAYROLL_PATH)} />}
       {adding === 'contract' && <ContractDialog onClose={() => setAdding(null)} />}
+      {adding === 'workorder' && <WorkOrderDialog onClose={() => setAdding(null)} />}
+      {adding === 'docrequest' && <RequestDocDialog onClose={() => setAdding(null)} />}
+      {adding === 'violation' && <ViolationDialog onClose={() => setAdding(null)} />}
+      {adding === 'claim' && <ClaimDialog onClose={() => setAdding(null)} />}
       {adding === 'onboarding' && <OnboardingDialog onClose={() => setAdding(null)} />}
       {adding === 'company' && <CompanyDialog onClose={() => setAdding(null)} />}
       {adding === 'account' && <AccountDialog onClose={() => setAdding(null)} />}

@@ -2,6 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { BATCH_SEED, INVOICE_SEED, type Batch, type InvoiceRecord } from '../data/invoicing';
 import { BILL_SEED, reviveBills, type BillRecord } from '../data/bills';
 import { CONTRACT_SEED, ONBOARDING_SEED, reviveContracts, reviveOnboarding, type ContractRecord, type OnboardingRecord } from '../data/hrRecords';
+import {
+  CLAIM_SEED, REQUEST_SEED, VIOLATION_SEED, WORK_ORDER_SEED, reviveClaims, reviveDriverFiles, reviveRequests, reviveViolations, reviveWorkOrders,
+  type ClaimRecord, type DocRequest, type DriverFile, type ViolationRecord, type WorkOrder,
+} from '../data/safetyRecords';
 import { EMPLOYEE_SEED, PAYRUN_SEED, reviveEmployees, reviveRuns, type Employee, type PayRun } from '../data/payroll';
 import { AUTO_BY, AUTO_INACTIVE_DAYS, CUSTOMER_SEED, addDays, reviveCustomers, usageOf, type CustomerRecord } from '../data/customers';
 import { todayIso } from '../lib/clock';
@@ -73,6 +77,19 @@ interface AppShellState {
   onboardings: OnboardingRecord[];
   saveOnboarding: (o: OnboardingRecord) => void;
   deleteOnboarding: (id: string) => void;
+  workOrders: WorkOrder[];
+  saveWorkOrder: (w: WorkOrder) => void;
+  deleteWorkOrder: (id: string) => void;
+  violations: ViolationRecord[];
+  saveViolation: (v: ViolationRecord) => void;
+  deleteViolation: (id: string) => void;
+  claims: ClaimRecord[];
+  saveClaim: (c: ClaimRecord) => void;
+  deleteClaim: (id: string) => void;
+  docRequests: DocRequest[];
+  saveDocRequest: (r: DocRequest) => void;
+  driverFiles: DriverFile[];
+  saveDriverFile: (f: DriverFile) => void;
   // Table filters, per page ('loads', 'fleet/drivers', …): what each page
   // offers (registered by the page) and what is chosen (kept while you move around).
   filterMeta: Record<string, FilterMeta[]>;
@@ -124,6 +141,11 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
   const [payRuns, setPayRuns] = usePersisted<PayRun[]>('runtruck-payruns', PAYRUN_SEED, reviveRuns);
   const [contracts, setContracts] = usePersisted<ContractRecord[]>('runtruck-contracts', CONTRACT_SEED, reviveContracts);
   const [onboardings, setOnboardings] = usePersisted<OnboardingRecord[]>('runtruck-onboarding', ONBOARDING_SEED, reviveOnboarding);
+  const [workOrders, setWorkOrders] = usePersisted<WorkOrder[]>('runtruck-workorders', WORK_ORDER_SEED, reviveWorkOrders);
+  const [violations, setViolations] = usePersisted<ViolationRecord[]>('runtruck-violations', VIOLATION_SEED, reviveViolations);
+  const [claims, setClaims] = usePersisted<ClaimRecord[]>('runtruck-claims', CLAIM_SEED, reviveClaims);
+  const [docRequests, setDocRequests] = usePersisted<DocRequest[]>('runtruck-docrequests', REQUEST_SEED, reviveRequests);
+  const [driverFiles, setDriverFiles] = usePersisted<DriverFile[]>('runtruck-driverfiles', [], reviveDriverFiles);
   // The pickers and invoice billing details follow the CRM.
   useMemo(() => syncCustomers(customers), [customers]);
   const [filterMeta, setFilterMeta] = useState<Record<string, FilterMeta[]>>({});
@@ -155,7 +177,8 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
   // Stored files that no bill or customer points to any more are removed
   // once, as the app opens (deleted records, cancelled forms).
   useEffect(() => {
-    const keep = [...bills.flatMap((b) => b.documents), ...customers.flatMap((c) => c.documents), ...employees.flatMap((e) => e.documents), ...contracts.flatMap((c) => c.documents), ...onboardings.flatMap((o) => o.documents)].filter((d) => d.stored).map((d) => d.id);
+    const keep = [...bills.flatMap((b) => b.documents), ...customers.flatMap((c) => c.documents), ...employees.flatMap((e) => e.documents), ...contracts.flatMap((c) => c.documents), ...onboardings.flatMap((o) => o.documents),
+      ...workOrders.flatMap((w) => w.documents), ...violations.flatMap((v) => v.documents), ...claims.flatMap((c) => c.documents), ...driverFiles.flatMap((f) => f.files)].filter((d) => d.stored).map((d) => d.id);
     pruneFiles(keep).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -294,6 +317,19 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
     onboardings,
     saveOnboarding: (o) => setOnboardings((list) => upsert(list, o)),
     deleteOnboarding: (id) => setOnboardings((list) => list.filter((o) => o.id !== id)),
+    workOrders,
+    saveWorkOrder: (w) => setWorkOrders((list) => upsert(list, w)),
+    deleteWorkOrder: (id) => setWorkOrders((list) => list.filter((w) => w.id !== id)),
+    violations,
+    saveViolation: (v) => setViolations((list) => upsert(list, v)),
+    deleteViolation: (id) => setViolations((list) => list.filter((v) => v.id !== id)),
+    claims,
+    saveClaim: (c) => setClaims((list) => upsert(list, c)),
+    deleteClaim: (id) => setClaims((list) => list.filter((c) => c.id !== id)),
+    docRequests,
+    saveDocRequest: (r) => setDocRequests((list) => upsert(list, r)),
+    driverFiles,
+    saveDriverFile: (f) => setDriverFiles((list) => upsert(list, f)),
     filterMeta,
     registerFilters,
     filterValues,

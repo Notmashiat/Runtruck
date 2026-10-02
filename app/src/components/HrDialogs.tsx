@@ -197,7 +197,7 @@ export function ContractDialog({ contract, prefill, onboardingId, onSaved, onClo
 }
 
 // A small confirm-style popup with a few fields.
-function SmallDialog({ label, title, intro, children, confirm, danger, disabled, onConfirm, onClose }: {
+export function SmallDialog({ label, title, intro, children, confirm, danger, disabled, onConfirm, onClose }: {
   label: string;
   title: string;
   intro?: string;
