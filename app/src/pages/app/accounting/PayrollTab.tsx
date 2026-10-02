@@ -94,6 +94,14 @@ function Payroll() {
   };
   const stubs = (r: PayRun, lines: PayLine[]) => downloadPdf(payStubDoc(r, lines, employees, ytdOf), lines.length === 1 ? `Pay statement ${lines[0].name} ${r.id}.pdf` : `Pay statements ${r.id}.pdf`);
 
+  // Held pay stays on its run; releasing it pays it as part of that run (off-cycle).
+  const releaseHeld = (r: PayRun, l: PayLine) => {
+    if (l.net < 0) { window.alert(`${l.name}: deductions are more than pay, so there is nothing to release.`); return; }
+    if (!window.confirm(`Release ${l.name}'s held pay of ${usd(l.net)} from ${r.id}${r.status === 'Paid' ? ' and record it as paid today' : ''}?`)) return;
+    const stamp = `Held pay released ${fmtDate(todayIso())} by ${USER.name}.`;
+    savePayRun({ ...r, lines: r.lines.map((x) => (x.employeeId === l.employeeId ? { ...x, hold: false, note: [x.note, stamp].filter(Boolean).join(' ') } : x)) });
+  };
+
   // Newest pay date first until a column is sorted.
   const runSort = useSort([...payRuns].sort((a, b) => (a.payDate < b.payDate ? 1 : -1)).filter((r) => matchesQuery({ id: r.id, names: r.lines.map((l) => l.name).join(' ') }, query)), {
     net: (r) => runTotals(r).net, gross: (r) => runTotals(r).gross, people: (r) => r.lines.length,
@@ -130,6 +138,7 @@ function Payroll() {
         <td className="num">
           <span className="pay-actions">
             {r.status === 'Draft' && <button type="button" className="ui-link" onClick={() => setAdjusting({ run: r, line: l })}>Adjust</button>}
+            {r.status !== 'Draft' && l.hold && <button type="button" className="ui-link" onClick={() => releaseHeld(r, l)}>Release &amp; pay</button>}
             <button type="button" className="ui-link" onClick={() => stubs(r, [l])}>Pay stub</button>
           </span>
         </td>
