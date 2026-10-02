@@ -12,6 +12,7 @@ import { BatchDialog } from './BatchDialog';
 import { BillDialog } from './BillDialogs';
 import { CustomerDialog } from './CustomerDialogs';
 import { EmployeeDialog, PayRunDialog } from './PayrollDialogs';
+import { ContractDialog, OnboardingDialog } from './HrDialogs';
 import { CompanyDialog } from './CompanyDialog';
 import { AccountDialog } from './AccountDialog';
 import { FacilityDialog } from './FacilityDialog';
@@ -37,7 +38,7 @@ export function Header() {
   const now = useNow(15_000);
   const [newLoadOpen, setNewLoadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | 'bill' | 'customer' | 'employee' | 'payrun' | null>(null);
+  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | 'bill' | 'customer' | 'employee' | 'payrun' | 'contract' | 'onboarding' | null>(null);
 
   // Route matching is case-insensitive, so normalise before keying off the section.
   const segments = location.pathname.toLowerCase().split('/');
@@ -104,8 +105,9 @@ export function Header() {
       : [{ label: 'Run settlements', primary: true, onClick: () => approveAll() }],
     // Release 1.3: Add Bill opens the new bill form.
     'accounting/bills': [{ label: '+ Add Bill', primary: true, onClick: isLive('bills-manage') ? () => setAdding('bill') : undefined }],
-    'hr/employee-contracts': [{ label: '+ New Contract', primary: true }],
-    'hr/onboarding': [{ label: '+ Start Onboarding', primary: true }],
+    // Release 1.7: the contract and onboarding popups.
+    'hr/employee-contracts': [{ label: '+ New Contract', primary: true, onClick: isLive('hr-contracts') ? () => setAdding('contract') : undefined }],
+    'hr/onboarding': [{ label: '+ Start Onboarding', primary: true, onClick: isLive('hr-onboarding') ? () => setAdding('onboarding') : undefined }],
     'safety/maintenance': [{ label: '+ Log Service', primary: true }],
     'safety/driver-documents': [{ label: 'Request document', primary: true }],
     'safety/violations': [{ label: '+ Log Violation', primary: true }],
@@ -171,6 +173,8 @@ export function Header() {
       {adding === 'customer' && <CustomerDialog onClose={() => setAdding(null)} />}
       {adding === 'employee' && <EmployeeDialog onClose={() => setAdding(null)} />}
       {adding === 'payrun' && <PayRunDialog onClose={() => setAdding(null)} onCreated={() => navigate(PAYROLL_PATH)} />}
+      {adding === 'contract' && <ContractDialog onClose={() => setAdding(null)} />}
+      {adding === 'onboarding' && <OnboardingDialog onClose={() => setAdding(null)} />}
       {adding === 'company' && <CompanyDialog onClose={() => setAdding(null)} />}
       {adding === 'account' && <AccountDialog onClose={() => setAdding(null)} />}
       {filtersOpen && <FilterPanel page={page} title={pageTitle} onClose={() => setFiltersOpen(false)} />}

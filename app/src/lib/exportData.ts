@@ -7,6 +7,8 @@ import { driverDocuments } from '../data/compliance';
 import type { Facility } from '../data/facilities';
 import type { FleetDriver, FleetTrailer, FleetTruck, FormValues } from '../data/fleet';
 import { CONTRACTS, ONBOARDING } from '../data/hr';
+import { contractPay, contractState, currentEnd, progressOf, stageOf, type ContractRecord, type OnboardingRecord } from '../data/hrRecords';
+import { isLive } from './releases';
 import { batchStatus, batchTotal, billableLoads, invoiceTotal, statusOf, usd, type Batch, type InvoiceRecord } from '../data/invoicing';
 import { PAYROLL_IN_HR, type Load } from '../data/mock';
 import { payLabel, runTotals, type Employee, type PayRun } from '../data/payroll';
@@ -57,6 +59,8 @@ export interface ExportSources {
   bills: BillRecord[];
   customers: CustomerRecord[];
   employees: Employee[];
+  contracts: ContractRecord[];
+  onboardings: OnboardingRecord[];
   payRuns: PayRun[];
 }
 
@@ -138,7 +142,7 @@ function plannerEvents(): PlannerEvent[] {
 }
 
 export function buildExportSets(s: ExportSources): ExportSet[] {
-  const { loads, drivers, trucks, trailers, facilities, invoices, batches, bills, customers, employees, payRuns } = s;
+  const { loads, drivers, trucks, trailers, facilities, invoices, batches, bills, customers, employees, payRuns, contracts, onboardings } = s;
   return [
     makeSet({ key: 'loads', label: 'Loads', group: 'Loads', perm: 'loads', dateLabel: 'pickup date' }, loads, [
       ['id', 'Load', (l) => l.id], ['status', 'Status', (l) => l.status], ['customer', 'Customer', (l) => l.customer], ['ref', 'Reference', (l) => l.ref],
@@ -235,15 +239,32 @@ export function buildExportSets(s: ExportSources): ExportSet[] {
       ['vendorAccount', 'Account with vendor', (b) => b.vendorAccount, false], ['documents', 'Documents', (b) => b.documents.map((d) => d.name), false], ['notes', 'Notes', (b) => b.notes, false],
     ], (b) => ({ date: b.due, drivers: [b.driver], trucks: [b.truck, b.trailer].filter(Boolean) })),
 
-    makeSet({ key: 'contracts', label: 'Employee contracts', group: 'HR', perm: 'hr/employee-contracts', dateLabel: 'start date' }, CONTRACTS, [
+    // Release 1.7: the managed contracts and onboarding.
+    ...(isLive('hr-contracts') ? [makeSet({ key: 'contracts', label: 'Employee contracts', group: 'HR', perm: 'hr/employee-contracts', dateLabel: 'start date' }, contracts, [
+      ['person', 'Person', (c) => c.person], ['agreement', 'Agreement', (c) => c.agreement], ['role', 'Role', (c) => c.role], ['start', 'Start', (c) => c.start],
+      ['end', 'Ends / renews', (c) => currentEnd(c)], ['pay', 'Pay', (c) => contractPay(c)], ['status', 'Status', (c) => contractState(c)],
+      ['id', 'Contract', (c) => c.id, false], ['employment', 'Employment', (c) => c.employment, false], ['renewal', 'At the end', (c) => c.renewal, false],
+      ['noticeDays', 'Notice (days)', (c) => c.noticeDays, false], ['benefits', 'Benefits', (c) => c.benefits, false], ['truck', 'Truck', (c) => c.truck, false],
+      ['leasePayment', 'Lease payment', (c) => c.leasePayment, false], ['escrow', 'Escrow', (c) => c.escrow, false], ['clauses', 'Clauses', (c) => c.clauses, false],
+      ['personSigned', 'Signed by person', (c) => c.personSigned, false], ['companySigned', 'Signed by company', (c) => c.companySigned, false],
+      ['endedOn', 'Ended on', (c) => c.endedOn, false], ['endReason', 'Why ended', (c) => c.endReason, false], ['documents', 'Documents', (c) => c.documents.map((d) => d.name), false],
+    ], (c) => ({ date: c.start, drivers: [c.person], trucks: [c.truck].filter(Boolean) }))] : [makeSet({ key: 'contracts', label: 'Employee contracts', group: 'HR', perm: 'hr/employee-contracts', dateLabel: 'start date' }, CONTRACTS, [
       ['employee', 'Employee', (c) => c.employee], ['role', 'Role', (c) => c.role], ['type', 'Type', (c) => c.type], ['start', 'Start', (c) => c.start],
       ['renews', 'Renews', (c) => c.renews], ['payBasis', 'Pay basis', (c) => c.payBasis], ['status', 'Status', (c) => c.status],
-    ], (c) => ({ date: toIso(c.start), drivers: [c.employee] })),
+    ], (c) => ({ date: toIso(c.start), drivers: [c.employee] }))]),
 
-    makeSet({ key: 'onboarding', label: 'Onboarding', group: 'HR', perm: 'hr/onboarding', dateLabel: 'start date' }, ONBOARDING, [
+    ...(isLive('hr-onboarding') ? [makeSet({ key: 'onboarding', label: 'Onboarding', group: 'HR', perm: 'hr/onboarding', dateLabel: 'applied date' }, onboardings, [
+      ['name', 'Candidate', (o) => o.name], ['role', 'Role', (o) => o.role], ['stage', 'Stage', (o) => stageOf(o)], ['applied', 'Applied', (o) => o.applied],
+      ['targetStart', 'Start', (o) => o.targetStart], ['manager', 'Hiring manager', (o) => o.manager], ['progress', 'Required steps done', (o) => `${progressOf(o).done}/${progressOf(o).total}`],
+      ['id', 'Onboarding', (o) => o.id, false], ['workerType', 'Worker type', (o) => o.workerType, false], ['source', 'Source', (o) => o.source, false],
+      ['email', 'Email', (o) => o.email, false], ['phone', 'Phone', (o) => o.phone, false], ['payOffer', 'Pay offered', (o) => o.payOffer, false],
+      ['cdl', 'CDL', (o) => [o.cdlClass, o.cdlState, o.cdlExpiry].filter(Boolean).join(' '), false], ['medicalExpiry', 'Medical certificate expires', (o) => o.medicalExpiry, false],
+      ['open', 'Open steps', (o) => o.steps.filter((x) => !x.done).map((x) => x.label), false], ['closedReason', 'Why closed', (o) => o.closedReason, false],
+      ['documents', 'Documents', (o) => o.documents.map((d) => d.name), false],
+    ], (o) => ({ date: o.applied, drivers: [o.name] }))] : [makeSet({ key: 'onboarding', label: 'Onboarding', group: 'HR', perm: 'hr/onboarding', dateLabel: 'start date' }, ONBOARDING, [
       ['candidate', 'Candidate', (o) => o.candidate], ['role', 'Role', (o) => o.role], ['stage', 'Stage', (o) => o.stage], ['started', 'Started', (o) => o.started],
       ['owner', 'Owner', (o) => o.owner], ['progress', 'Progress', (o) => `${o.progress}%`], ['nextStep', 'Next step', (o) => o.nextStep], ['docsPending', 'Documents pending', (o) => o.docsPending],
-    ], (o) => ({ date: toIso(o.started), drivers: [o.candidate] })),
+    ], (o) => ({ date: toIso(o.started), drivers: [o.candidate] }))]),
 
     makeSet({ key: 'maintenance', label: 'Maintenance', group: 'Safety', perm: 'safety/maintenance', dateLabel: 'due date' }, MAINTENANCE, [
       ['unit', 'Unit', (w) => w.unit], ['item', 'Work', (w) => w.item], ['due', 'Due', (w) => w.due], ['shop', 'Shop', (w) => w.shop],

@@ -125,13 +125,14 @@ function employeeSections(drivers: string[], taken: string[]): SectionSpec[] {
   ];
 }
 
-// Add employee and Edit employee (which also archives or restores).
-export function EmployeeDialog({ employee, onClose }: { employee?: Employee; onClose: () => void }) {
+// Add employee and Edit employee (which also archives or restores). `prefill`
+// starts a new employee from what is already known (onboarding, a contract).
+export function EmployeeDialog({ employee, prefill, onSaved, onClose }: { employee?: Employee; prefill?: FormValues; onSaved?: (id: string) => void; onClose: () => void }) {
   const { employees, saveEmployee, deleteEmployee, drivers, payRuns } = useAppShell();
   const [id] = useState(() => employee?.id ?? nextEmployeeId(employees));
   const [recurring, setRecurring] = useState<PayItem[]>(employee?.recurring ?? []);
   const [docs, setDocs] = useState<BillDocument[]>(employee?.documents ?? []);
-  const [initial] = useState<FormValues>(() => (employee ? employeeToForm(employee) : blankEmployeeForm(todayIso())));
+  const [initial] = useState<FormValues>(() => (employee ? employeeToForm(employee) : { ...blankEmployeeForm(todayIso()), ...prefill }));
   const [archiving, setArchiving] = useState(false);
   const taken = employees.filter((e) => e.id !== id).map((e) => e.name.toLowerCase());
   const everPaid = Boolean(employee && payRuns.some((r) => r.lines.some((l) => l.employeeId === employee.id)));
@@ -163,7 +164,10 @@ export function EmployeeDialog({ employee, onClose }: { employee?: Employee; onC
             ? <button type="button" className="ui-btn ui-btn-danger" onClick={() => setArchiving(true)}>Archive</button>
             : <button type="button" className="ui-btn" onClick={restore}>Restore</button>)
         }
-        onSave={(v) => saveEmployee(employeeFromForm(v, id, recurring.filter((i) => i.label.trim() && i.amount), docs, USER.name, employee))}
+        onSave={(v) => {
+          saveEmployee(employeeFromForm(v, id, recurring.filter((i) => i.label.trim() && i.amount), docs, USER.name, employee));
+          onSaved?.(id);
+        }}
         onDelete={employee && !everPaid ? () => deleteEmployee(employee.id) : undefined}
         onClose={onClose}
       />

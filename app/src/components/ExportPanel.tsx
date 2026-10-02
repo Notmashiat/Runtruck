@@ -165,10 +165,10 @@ function ReviewDialog({ results, filters, format, name, landscape, onDownloaded,
 // Settings › Export data: choose what (only what this account may open),
 // narrow it down, pick a file type, review, then download.
 export function ExportPanel() {
-  const { loads, drivers, trucks, trailers, facilities, invoices, batches, bills, customers, employees, payRuns } = useAppShell();
+  const { loads, drivers, trucks, trailers, facilities, invoices, batches, bills, customers, employees, payRuns, contracts, onboardings } = useAppShell();
   const sets = useMemo(
-    () => buildExportSets({ loads, drivers, trucks, trailers, facilities, invoices, batches, bills, customers, employees, payRuns }).filter((s) => can(s.perm)),
-    [loads, drivers, trucks, trailers, facilities, invoices, batches, bills, customers, employees, payRuns],
+    () => buildExportSets({ loads, drivers, trucks, trailers, facilities, invoices, batches, bills, customers, employees, payRuns, contracts, onboardings }).filter((s) => can(s.perm)),
+    [loads, drivers, trucks, trailers, facilities, invoices, batches, bills, customers, employees, payRuns, contracts, onboardings],
   );
   const [picked, setPicked] = useState<string[]>(() => sets.map((s) => s.key));
   const [cols, setCols] = useState<Record<string, string[]>>(() => Object.fromEntries(sets.map((s) => [s.key, s.columns.filter((c) => c.main).map((c) => c.key)])));

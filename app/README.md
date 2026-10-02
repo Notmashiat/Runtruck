@@ -200,6 +200,21 @@ Employees show year-to-date gross, last paid, pay history and a log; **Archived*
 people who left (with why, when and who) and Edit employee restores them; people who were paid can be
 archived but not deleted. Companies not on 1.5 keep the driver settlements list.
 
+**Employee contracts and onboarding** (HR; `data/hrRecords.ts`, `components/HrDialogs.tsx`, `lib/contractDoc.ts`;
+release 1.7). Contracts (`runtruck-<id>-contracts`) hold the agreement (W-2 employment, 1099 contractor,
+owner-operator lease under 49 CFR 376, lease-purchase, offer letter), term (ongoing or fixed, with renewal
+by itself, by hand or ending at term), notice and introductory period, pay and benefits, driver equipment,
+lease payment, escrow, fuel and insurance, clauses, signers, documents and a log. Each row opens to
+Download PDF (`lib/contractDoc.ts`), Send for signature, Record signatures, Renew, End and Add to payroll;
+the page flags renewals and endings within 60 days, unsigned contracts, introductory-period reviews and
+people on payroll with no contract. Onboarding (`runtruck-<id>-onboarding`) builds a checklist from the
+role (`checklistFor`): drivers get the DOT qualification file (application, MVR, previous employers,
+Clearinghouse, drug test, medical certificate, road test), owner-operators the lease, insurance and truck
+paperwork, office and shop staff their own. Steps are ticked with who and when; CDL and medical
+certificates that run out near the start date are flagged. Mark hired, then Add to payroll, Add to Fleet ›
+Drivers (with the qualification dates) and Create contract; Not hired / withdrawn closes it with a reason.
+Companies not on 1.7 keep the read-only lists.
+
 **Customers** (CRM; `data/customers.ts`, `components/CustomerDialogs.tsx`, `lib/customerSync.ts`; release
 1.4). Customers are kept per company (`runtruck-<id>-customers`). **+ Add Customer** opens a form in five
 parts: company (name, legal name, type — shipper, broker, 3PL, forwarder, manufacturer, retailer… —

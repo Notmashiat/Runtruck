@@ -130,6 +130,21 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.7',
+    date: '2026-10-02',
+    title: 'HR contracts and onboarding',
+    changes: [
+      {
+        id: 'hr-contracts', kind: 'Updated', section: 'HR', title: 'Employee contracts you can draft, sign, renew and end',
+        details: '+ New Contract opens a form for the agreement (W-2 employment, 1099 contractor, owner-operator lease, lease-purchase, offer letter), term and renewal, notice and introductory period, pay and benefits, equipment, lease payment, escrow, fuel and insurance for drivers, and clauses. Each contract opens to its terms, documents and log, with Download PDF, Send for signature, Record signatures, Renew, End and Add to payroll. The page flags renewals and endings in the next 60 days, unsigned contracts, introductory-period reviews and people on payroll with no contract.',
+      },
+      {
+        id: 'hr-onboarding', kind: 'Updated', section: 'HR', title: 'Onboarding checklists from application to first day',
+        details: '+ Start Onboarding opens a form for the candidate, position, start date, pay offered and, for drivers, CDL, medical certificate, endorsements and experience. Each hire gets a checklist for their role (drivers: the DOT qualification file, Clearinghouse query, drug test and road test; owner-operators: lease, insurance and truck paperwork; office and shop staff: their own), ticked off with who and when. Hired people go to payroll, Fleet › Drivers (with their qualification dates) and a contract in a click; candidates who do not join are closed with a reason.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);
