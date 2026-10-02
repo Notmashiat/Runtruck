@@ -9,7 +9,7 @@ import {
   BILL_CATEGORIES, BILL_STATUSES, BILL_TAG, addDaysIso, billStatus, isOpen, monthlyCost, nextDate, type BillRecord,
 } from '../../../data/bills';
 import { fmtDate, usd, usd0 } from '../../../data/invoicing';
-import { todayIso } from '../../../lib/clock';
+import { isoDateAt, todayIso } from '../../../lib/clock';
 import { isLive } from '../../../lib/releases';
 import { matchesQuery } from '../../../lib/search';
 import { isoOf, numberOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../../lib/tableTools';
@@ -117,7 +117,7 @@ function BillManager() {
                         <div className="ui-batch">
                           <div className="ui-batch-head">
                             <div className="ui-stop-meta" style={{ marginTop: 0 }}>
-                              Added {fmtDate(b.created.slice(0, 10))}{b.updated ? ` · changed ${fmtDate(b.updated.slice(0, 10))}` : ''}
+                              Added {fmtDate(isoDateAt(new Date(b.created)))}{b.updated ? ` · changed ${fmtDate(isoDateAt(new Date(b.updated)))}` : ''}
                             </div>
                             <div style={{ flex: 1 }} />
                             {isOpen(b) && <button type="button" className="ui-btn ui-btn-sm ui-btn-primary" onClick={() => { setMessage(''); setPaying(b); }}>Mark paid</button>}

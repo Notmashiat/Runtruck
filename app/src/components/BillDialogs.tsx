@@ -7,7 +7,7 @@ import {
 } from '../data/bills';
 import { TERMINALS, type FormValues } from '../data/fleet';
 import { fmtDate, usd } from '../data/invoicing';
-import { todayIso } from '../lib/clock';
+import { isoDateAt, todayIso } from '../lib/clock';
 import { PHONE } from '../lib/rules';
 import { Field, useModal } from './FormBits';
 import { RecordDialog, type SectionSpec } from './RecordDialog';
@@ -88,7 +88,7 @@ export function BillDocuments({ docs, onChange }: { docs: BillDocument[]; onChan
               <span className="bill-doc-icon" aria-hidden="true">{d.type === 'application/pdf' ? 'PDF' : d.type.startsWith('image/') ? 'IMG' : 'DOC'}</span>
               <span className="bill-doc-name">
                 <strong>{d.name}</strong>
-                <span className="ui-stop-meta" style={{ marginTop: 0 }}>{fileSize(d.size)} · added {fmtDate(d.added.slice(0, 10))}</span>
+                <span className="ui-stop-meta" style={{ marginTop: 0 }}>{fileSize(d.size)} · added {fmtDate(isoDateAt(new Date(d.added)))}</span>
               </span>
               <button type="button" className="ui-link" onClick={() => { void openDocument(d); }}>Open</button>
               <button type="button" className="ui-link" onClick={() => downloadDocument(d)}>Download</button>
