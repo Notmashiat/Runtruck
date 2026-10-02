@@ -202,8 +202,11 @@ and can reactivate them; reactivating counts as use. Companies not on 1.4 keep t
 
 **Attaching documents** (`components/AttachDialog.tsx`, `lib/attachments.ts`). Every Attach / Replace /
 Attach document button in the app opens the same popup: drag and drop files onto it or browse for them,
-say what each file is when the place has document types (guessed from the file name), see size problems
-before saving, then Attach. New attach buttons must use it too.
+say what each file is when the place has document types (guessed from the file name), then Attach. There
+is no size limit: the files are kept in the browser's IndexedDB (`lib/fileStore.ts`, keyed by Company ID),
+not with the records, which keep each file's name, type, size and id; files no record uses any more are
+removed when the app opens. Settings › Data backups do not include the files. New attach buttons must
+use the popup too.
 
 **Bills** (Accounting › Bills; `data/bills.ts`, `components/BillDialogs.tsx`; release 1.3). Bills are kept
 per company (`runtruck-<id>-bills`). **+ Add Bill** opens a form in five parts: the bill (vendor, vendor

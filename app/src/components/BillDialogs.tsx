@@ -28,7 +28,7 @@ export function BillDocuments({ docs, onChange, owner = 'Documents', hint = 'The
     <div className="bill-docs">
       <div className="bill-docs-head">
         <span className="ui-label">Documents</span>
-        <span className="ui-stop-meta" style={{ marginTop: 0 }}>{hint} · PDF, images, Word or Excel, up to 2 MB each</span>
+        <span className="ui-stop-meta" style={{ marginTop: 0 }}>{hint} · PDF, images, Word or Excel, any size</span>
         <div style={{ flex: 1 }} />
         <button type="button" className="ui-btn ui-btn-sm" onClick={() => setAttaching(true)}>Attach document</button>
       </div>

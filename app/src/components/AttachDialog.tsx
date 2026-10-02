@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent } from 'react';
-import { MAX_DOC_BYTES, type BillDocument } from '../data/bills';
+import type { BillDocument } from '../data/bills';
 import { fileSize, readAttachment } from '../lib/attachments';
 import { useModal } from './FormBits';
 
@@ -55,18 +55,27 @@ export function AttachDialog({ title, kinds = [], only, accept = 'application/pd
     setOver(false);
     add(e.dataTransfer.files);
   };
-  const tooBig = picked.filter((p) => p.file.size > MAX_DOC_BYTES);
-  const ok = picked.filter((p) => p.file.size <= MAX_DOC_BYTES);
+  const ok = picked;
+  const total = picked.reduce((n, p) => n + p.file.size, 0);
+  const [failed, setFailed] = useState<string[]>([]);
 
   const attach = async () => {
     setBusy(true);
     const docs: BillDocument[] = [];
+    const problems: string[] = [];
     for (const p of ok) {
       const d = await readAttachment(p.file, p.kind === OTHER ? undefined : p.kind);
-      if (typeof d !== 'string') docs.push(d);
+      if (typeof d === 'string') problems.push(d);
+      else docs.push(d);
     }
     setBusy(false);
-    onAttach(docs);
+    if (docs.length) onAttach(docs);
+    if (problems.length) {
+      // Keep the popup open with what did not go through.
+      setFailed(problems);
+      setPicked(picked.filter((p) => !docs.some((d) => d.name === p.file.name)));
+      return;
+    }
     closeNow();
   };
 
@@ -93,24 +102,21 @@ export function AttachDialog({ title, kinds = [], only, accept = 'application/pd
             <span className="attach-drop-icon" aria-hidden="true">⤒</span>
             <strong>{only ? 'Drag and drop the file here' : 'Drag and drop files here'}</strong>
             <span>or <span className="attach-browse">browse your computer</span></span>
-            <span className="ui-stop-meta" style={{ marginTop: 0 }}>{accept.includes('.doc') ? 'PDF, images, Word or Excel' : 'PDF or images'} · up to 2 MB each</span>
+            <span className="ui-stop-meta" style={{ marginTop: 0 }}>{accept.includes('.doc') ? 'PDF, images, Word or Excel' : 'PDF or images'} · any size</span>
           </div>
           <input ref={input} type="file" multiple={!only} hidden accept={accept} onChange={(e) => add(e.target.files)} />
 
           {picked.length > 0 && (
             <ul className="bill-doc-list">
               {picked.map((p, i) => {
-                const big = p.file.size > MAX_DOC_BYTES;
                 return (
-                  <li key={`${p.file.name}-${i}`} className={big ? 'is-missing' : ''}>
+                  <li key={`${p.file.name}-${i}`}>
                     <span className="bill-doc-icon" aria-hidden="true">{p.file.type === 'application/pdf' ? 'PDF' : p.file.type.startsWith('image/') ? 'IMG' : 'DOC'}</span>
                     <span className="bill-doc-name">
                       <strong>{p.file.name}</strong>
-                      <span className="ui-stop-meta" style={{ marginTop: 0, color: big ? 'var(--ui-red)' : undefined }}>
-                        {fileSize(p.file.size)}{big ? ' · over 2 MB, will not be attached' : ''}
-                      </span>
+                      <span className="ui-stop-meta" style={{ marginTop: 0 }}>{fileSize(p.file.size)}</span>
                     </span>
-                    {!big && !only && kinds.length > 0 && (
+                    {!only && kinds.length > 0 && (
                       <select
                         className="ui-input attach-kind" aria-label={`What ${p.file.name} is`} value={p.kind}
                         onChange={(e) => setPicked(picked.map((x, j) => (j === i ? { ...x, kind: e.target.value } : x)))}
@@ -124,13 +130,14 @@ export function AttachDialog({ title, kinds = [], only, accept = 'application/pd
               })}
             </ul>
           )}
+          {failed.length > 0 && <div className="ui-errors" role="alert">{failed.join(' · ')}</div>}
           {ok.some((p, i) => p.kind !== OTHER && ok.findIndex((q) => q.kind === p.kind) !== i) && (
             <div className="ui-note">Two files are marked as the same document; the last one is kept.</div>
           )}
         </section>
         <footer className="ui-dialog-foot">
           <div className="ui-stop-meta" style={{ marginTop: 0 }}>
-            {picked.length === 0 ? 'No files chosen yet.' : `${ok.length} file${ok.length === 1 ? '' : 's'} ready${tooBig.length ? ` · ${tooBig.length} too big` : ''}`}
+            {picked.length === 0 ? 'No files chosen yet.' : `${ok.length} file${ok.length === 1 ? '' : 's'} ready · ${fileSize(total)}`}
           </div>
           <div style={{ flex: 1 }} />
           <button type="button" className="ui-btn" onClick={closeNow}>Cancel</button>

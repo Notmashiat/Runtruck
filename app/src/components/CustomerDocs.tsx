@@ -64,7 +64,7 @@ export function CustomerDocs({ docs, onFile, onChange, owner = 'Customer' }: { d
       </ul>
       <div className="bill-docs-head">
         <span className="ui-label">Other documents</span>
-        <span className="ui-stop-meta" style={{ marginTop: 0 }}>PDF, images, Word or Excel, up to 2 MB each</span>
+        <span className="ui-stop-meta" style={{ marginTop: 0 }}>PDF, images, Word or Excel, any size</span>
         <div style={{ flex: 1 }} />
         <button type="button" className="ui-btn ui-btn-sm" onClick={() => setAttaching(OTHER)}>Attach document</button>
       </div>

@@ -4,6 +4,7 @@ import { BILL_SEED, reviveBills, type BillRecord } from '../data/bills';
 import { AUTO_BY, AUTO_INACTIVE_DAYS, CUSTOMER_SEED, addDays, reviveCustomers, usageOf, type CustomerRecord } from '../data/customers';
 import { todayIso } from '../lib/clock';
 import { syncCustomers } from '../lib/customerSync';
+import { pruneFiles } from '../lib/fileStore';
 import { isLive } from '../lib/releases';
 import { FACILITY_SEED, renameInLoad, sameName, type Facility } from '../data/facilities';
 import { DRIVER_SEED, TRAILER_SEED, TRUCK_SEED, type FleetDriver, type FleetTrailer, type FleetTruck } from '../data/fleet';
@@ -132,6 +133,14 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
         return t;
       }),
     );
+
+  // Stored files that no bill or customer points to any more are removed
+  // once, as the app opens (deleted records, cancelled forms).
+  useEffect(() => {
+    const keep = [...bills.flatMap((b) => b.documents), ...customers.flatMap((c) => c.documents)].filter((d) => d.stored).map((d) => d.id);
+    pruneFiles(keep).catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Release 1.4: a customer with no loads or invoices for over a year moves to
   // inactive by itself, logged on the day it passed the year.

@@ -16,15 +16,16 @@ export const BILL_KINDS = ['One-time', 'Recurring'];
 export const FREQUENCIES = ['Weekly', 'Every 2 weeks', 'Monthly', 'Quarterly', 'Twice a year', 'Yearly'] as const;
 export type Frequency = (typeof FREQUENCIES)[number];
 export const ENDS = ['Never', 'On a date'];
-export const MAX_DOC_BYTES = 2 * 1024 * 1024;
 
 export interface BillDocument {
   id: string;
   name: string;
   type: string;
   size: number;
-  // The file itself, kept with the bill (a data: URL).
-  data: string;
+  // The file itself is in IndexedDB under the id (lib/fileStore.ts) when
+  // `stored`; files attached before that carry it here as a data: URL.
+  stored?: boolean;
+  data?: string;
   added: string;
   // Which required document it is (customers: 'W-9', 'Credit application'…).
   kind?: string;
