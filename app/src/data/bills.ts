@@ -1,6 +1,8 @@
 // Accounting › Bills: what the company owes its vendors (fuel, repairs,
 // insurance, leases, permits…), one-time or recurring, with the documents
 // that came with each bill. Stored per company (runtruck-<id>-bills).
+import { nextSerial } from '../lib/ids';
+import { reviveList } from '../lib/persist';
 import { IS_DEMO } from '../lib/account';
 import { shiftIso, todayIso } from '../lib/clock';
 import type { FormValues } from './fleet';
@@ -150,8 +152,7 @@ export function nextInSeries(b: BillRecord, id: string): BillRecord | null {
 }
 
 export function nextBillId(list: BillRecord[]): string {
-  const n = Math.max(1000, ...list.map((b) => Number(b.id.replace(/\D/g, '')) || 0)) + 1;
-  return `BILL-${n}`;
+  return `BILL-${nextSerial('BILL', list.map((b) => b.id), 1000)}`;
 }
 
 // — the form —
@@ -221,9 +222,9 @@ export function billFromForm(v: FormValues, id: string, documents: BillDocument[
 }
 
 export function reviveBills(raw: unknown): BillRecord[] | null {
-  return Array.isArray(raw) && raw.every((b) => b && typeof b.id === 'string' && typeof b.vendor === 'string' && typeof b.due === 'string')
-    ? (raw as BillRecord[]).map((b) => ({ ...b, documents: Array.isArray(b.documents) ? b.documents : [] }))
-    : null;
+  return reviveList<BillRecord>('bills', raw, (b) => typeof b.id === 'string' && typeof b.vendor === 'string' && typeof b.due === 'string', (b) => ({
+    ...b, documents: Array.isArray(b.documents) ? b.documents : [], amount: Number(b.amount) || 0,
+  }));
 }
 
 // — demo bills (RunTruck's own workspace only) —

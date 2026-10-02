@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import { currentSession, lockedFor, logIn, sessionChanged } from '../lib/auth';
+import { reportError } from '../lib/errorLog';
 
 // /login: email and password for the RunTruck account.
 // Signed-in people go straight to the app.
@@ -39,8 +40,18 @@ export function LoginPage() {
       return;
     }
     setBusy(true);
-    const result = await logIn(email, password, remember);
-    setBusy(false);
+    let result: Awaited<ReturnType<typeof logIn>>;
+    try {
+      result = await logIn(email, password, remember);
+    } catch (err) {
+      // The check itself failed (e.g. the browser has no secure crypto on a
+      // plain http page): say so rather than staying on "Checking…".
+      reportError(err, { kind: 'promise', where: 'Log in' });
+      setError('RunTruck could not check the password in this browser. Reload the page and try again.');
+      return;
+    } finally {
+      setBusy(false);
+    }
     if (result.ok) {
       // A full reload opens the app with this account's company and nothing else.
       window.location.replace(target);
@@ -54,6 +65,8 @@ export function LoginPage() {
       setError('No RunTruck account uses that email. Check it, or ask a RunTruck super admin.');
     } else if (result.reason === 'disabled') {
       setError('This account has been deactivated. Ask a RunTruck super admin to reactivate it.');
+    } else if (result.reason === 'storage') {
+      setError('This browser is blocking site data, so RunTruck cannot keep you signed in. Allow cookies and site data for this site, then try again.');
     } else if (result.reason === 'company') {
       setError(`${result.company ?? 'This company'} can’t sign in right now. Contact RunTruck.`);
     } else {

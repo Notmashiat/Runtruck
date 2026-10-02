@@ -6,6 +6,8 @@
 // role — for drivers, the driver qualification file the FMCSA requires
 // (49 CFR 391 and 382) — then puts them on payroll, the fleet and a contract.
 // Stored per company (runtruck-<id>-contracts, runtruck-<id>-onboarding).
+import { nextSerial } from '../lib/ids';
+import { reviveList } from '../lib/persist';
 import { IS_DEMO } from '../lib/account';
 import { shiftIso, todayIso } from '../lib/clock';
 import type { BillDocument } from './bills';
@@ -176,7 +178,7 @@ export function parseOffer(text: string): { payBasis: PayBasis; rate: number } |
 export const isLease = (agreement: string) => agreement.startsWith('Owner-operator') || agreement.startsWith('Lease-purchase');
 
 export function nextContractId(all: { id: string }[]): string {
-  return `CT-${Math.max(1000, ...all.map((c) => Number(c.id.replace(/\D/g, '')) || 0)) + 1}`;
+  return `CT-${nextSerial('CT', all.map((c) => c.id), 1000)}`;
 }
 
 // The agreement that usually goes with a role and worker type.
@@ -263,9 +265,9 @@ export function contractFromForm(v: FormValues, id: string, documents: BillDocum
 }
 
 export function reviveContracts(raw: unknown): ContractRecord[] | null {
-  return Array.isArray(raw) && raw.every((c) => c && typeof c.id === 'string' && typeof c.person === 'string' && Array.isArray(c.log))
-    ? (raw as ContractRecord[]).map((c) => ({ ...c, documents: c.documents ?? [], benefits: c.benefits ?? [], insurance: c.insurance ?? [], clauses: c.clauses ?? [] }))
-    : null;
+  return reviveList<ContractRecord>('contracts', raw, (c) => typeof c.id === 'string' && typeof c.person === 'string' && Array.isArray(c.log), (c) => ({
+    ...c, documents: c.documents ?? [], benefits: c.benefits ?? [], insurance: c.insurance ?? [], clauses: c.clauses ?? [],
+  }));
 }
 
 // — onboarding —
@@ -437,7 +439,7 @@ export function credentialWarnings(o: Pick<OnboardingRecord, 'role' | 'cdlExpiry
 }
 
 export function nextOnboardingId(all: { id: string }[]): string {
-  return `ON-${Math.max(1000, ...all.map((c) => Number(c.id.replace(/\D/g, '')) || 0)) + 1}`;
+  return `ON-${nextSerial('ON', all.map((c) => c.id), 1000)}`;
 }
 
 export function blankOnboardingForm(today: string, manager: string): FormValues {
@@ -477,9 +479,9 @@ export function onboardingFromForm(v: FormValues, id: string, steps: Step[], doc
 }
 
 export function reviveOnboarding(raw: unknown): OnboardingRecord[] | null {
-  return Array.isArray(raw) && raw.every((o) => o && typeof o.id === 'string' && typeof o.name === 'string' && Array.isArray(o.steps))
-    ? (raw as OnboardingRecord[]).map((o) => ({ ...o, documents: o.documents ?? [], endorsements: o.endorsements ?? [], experience: o.experience ?? [], log: o.log ?? [] }))
-    : null;
+  return reviveList<OnboardingRecord>('onboarding', raw, (o) => typeof o.id === 'string' && typeof o.name === 'string' && Array.isArray(o.steps), (o) => ({
+    ...o, documents: o.documents ?? [], endorsements: o.endorsements ?? [], experience: o.experience ?? [], log: o.log ?? [],
+  }));
 }
 
 // — demo records (RunTruck's own workspace only) —

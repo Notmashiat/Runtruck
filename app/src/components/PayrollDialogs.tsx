@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import type { BillDocument } from '../data/bills';
-import { isoOfShort } from '../data/customers';
 import type { FormValues } from '../data/fleet';
 import { fmtDate, usd } from '../data/invoicing';
-import { USER } from '../data/mock';
+import { deliveryIso, isDelivered, lineHaulOf } from '../data/loads';
+import { USER, type Load } from '../data/mock';
 import {
   ARCHIVE_REASONS, COMMON_ADDITIONS, COMMON_DEDUCTIONS, DRIVER_ROLES, EMPLOYEE_ROLES, ITEM_KINDS, PAY_BASES, PAY_FREQUENCIES, PAYOUT_METHODS, WORKER_TYPES,
   blankEmployeeForm, defaultPeriod, earns, employeeFromForm, employeeToForm, itemId, lineFor, nextEmployeeId, nextRunId, payLabel, settle, unitLabel, unitsText,
@@ -18,14 +18,15 @@ import { RecordDialog, type SectionSpec } from './RecordDialog';
 
 const val = (v: FormValues, k: string) => (typeof v[k] === 'string' ? (v[k] as string).trim() : '');
 
-// Delivered loads, as payroll counts them (by delivery date and driver).
-export function deliveredLoads(loads: { id: string; driver: string; status: string; delivery: string; miles: string; rate: string }[]): DeliveredLoad[] {
-  const year = todayIso().slice(0, 4);
+// Delivered loads, as payroll counts them: by the day each was delivered
+// (the real date, with its year) and its driver. Percentage pay is on the
+// line haul, not on fuel or accessorials.
+export function deliveredLoads(loads: Load[]): DeliveredLoad[] {
   return loads
-    .filter((l) => l.status === 'Delivered' || l.status === 'Needs POD')
+    .filter((l) => isDelivered(l.status))
     .map((l) => ({
-      id: l.id, driver: l.driver, delivered: isoOfShort(l.delivery, year),
-      miles: Number(l.miles.replace(/[^\d.]/g, '')) || 0, linehaul: Number(l.rate.replace(/[^\d.]/g, '')) || 0,
+      id: l.id, driver: l.driver, delivered: deliveryIso(l),
+      miles: Number(l.miles.replace(/[^\d.]/g, '')) || 0, linehaul: lineHaulOf(l),
     }))
     .filter((l) => l.delivered);
 }

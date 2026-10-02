@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { reviveCompany, type ClientCompany } from '../data/companies';
 import { OWNER_COMPANY_ID, OWNER_COMPANY_NAME, readRegistry, registryKey } from './account';
+import { onStorageChange, writeJson } from './storage';
 
 // The client companies (runtruck-1-companies) and every Company ID ever
 // issued (runtruck-1-company-ids). An ID stays issued when its company is
@@ -21,23 +22,35 @@ function load(): ClientCompany[] {
   return Array.isArray(raw) ? raw.map(reviveCompany).filter((c): c is ClientCompany => c !== null) : [];
 }
 
-let companies: ClientCompany[] = load();
-let issued: string[] = (() => {
+function loadIssued(list: ClientCompany[]): string[] {
   const saved = read<unknown[]>(IDS_KEY, []);
   const ids = Array.isArray(saved) ? saved.filter((x): x is string => typeof x === 'string') : [];
-  return [...new Set([...ids, ...companies.map((c) => c.companyId)])];
-})();
+  return [...new Set([...ids, ...list.map((c) => c.companyId)])];
+}
+
+let companies: ClientCompany[] = load();
+let issued: string[] = loadIssued(companies);
 const listeners = new Set<() => void>();
 
+// Take what storage holds now (another tab may have changed it): see
+// lib/accountStore.ts for why this runs before every change.
+function refresh() {
+  companies = load();
+  issued = [...new Set([...issued, ...loadIssued(companies)])];
+}
+
 function persist() {
-  try {
-    localStorage.setItem(registryKey(KEY), JSON.stringify(companies));
-    localStorage.setItem(registryKey(IDS_KEY), JSON.stringify(issued));
-  } catch {
-    // Storage blocked: the companies last for this visit.
-  }
+  writeJson(registryKey(KEY), companies);
+  writeJson(registryKey(IDS_KEY), issued);
   listeners.forEach((l) => l());
 }
+
+// Re-read the saved companies (and tell anything showing them).
+export function reloadCompanies() {
+  refresh();
+  listeners.forEach((l) => l());
+}
+onStorageChange(registryKey(KEY), reloadCompanies);
 
 export function getCompanies(): ClientCompany[] {
   return companies;
@@ -76,6 +89,7 @@ export function newCompanyId(): string {
 
 // Add or update a company. A new company's ID is recorded as issued for good.
 export function saveCompany(c: ClientCompany) {
+  refresh();
   const exists = companies.some((x) => x.companyId === c.companyId);
   companies = exists ? companies.map((x) => (x.companyId === c.companyId ? c : x)) : [...companies, c];
   if (!issued.includes(c.companyId)) issued = [...issued, c.companyId];
@@ -84,6 +98,7 @@ export function saveCompany(c: ClientCompany) {
 
 // Remove a company. Its ID stays issued and is never reused.
 export function deleteCompany(id: string) {
+  refresh();
   companies = companies.filter((c) => c.companyId !== id);
   persist();
 }

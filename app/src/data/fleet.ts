@@ -2,6 +2,7 @@
 // the summary fields the tables show plus `details` — every field of its Add /
 // Edit form, as strings (lists for multi-choice fields). The demo fleet below is
 // complete and consistent with Safety, HR and the load board.
+import { nextSerial } from '../lib/ids';
 import { DRIVERS, TRAILERS, TRUCKS, type Driver, type Trailer, type Truck } from './mock';
 import { shiftDemo } from '../lib/clock';
 
@@ -132,10 +133,9 @@ export function trailerFromForm(v: FormValues, id: string, prev?: FleetTrailer):
   };
 }
 
-// Next free id: 'DRV-106' → 'DRV-107'.
+// Next free id: 'DRV-106' → 'DRV-107'. Never one that was used before (lib/ids.ts).
 export function nextId(prefix: string, ids: string[]) {
-  const n = Math.max(100, ...ids.map((id) => Number(id.split('-')[1]) || 0)) + 1;
-  return `${prefix}-${n}`;
+  return `${prefix}-${nextSerial(prefix, ids, 100)}`;
 }
 
 // — the demo fleet (Sunridge Freight, Modesto CA) —

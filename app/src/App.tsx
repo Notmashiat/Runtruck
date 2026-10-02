@@ -1,17 +1,18 @@
-import { lazy, type ReactNode } from 'react';
+import { Suspense, type ComponentType, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { AppLayout } from './components/AppLayout';
 import { TabbedSection } from './components/TabbedSection';
 import { PAYROLL_IN_HR, PAYROLL_PATH, SECTION_TABS, type ViewKey } from './data/mock';
 import { LandingPage } from './pages/marketing/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { can } from './lib/auth';
+import { lazyNamed as page } from './lib/lazyPage';
 import { getSettings } from './lib/settingsStore';
 
 // Each screen is its own download, fetched the first time it is opened, so
-// an account never loads the code of a section it may not open.
-const page = <K extends string>(load: () => Promise<Record<NoInfer<K>, () => ReactNode>>, name: K) =>
-  lazy(() => load().then((m) => ({ default: m[name] })));
+// an account never loads the code of a section it may not open, and the
+// public site does not load the app. lazyNamed (lib/lazyPage.ts) reloads once
+// if a screen will not download because RunTruck was updated meanwhile.
+const AppLayout = page(() => import('./components/AppLayout'), 'AppLayout');
 
 const DashboardPage = page(() => import('./pages/app/DashboardPage'), 'DashboardPage');
 const LoadsPage = page(() => import('./pages/app/LoadsPage'), 'LoadsPage');
@@ -41,6 +42,7 @@ const ClientsTab = page(() => import('./pages/app/developer/ClientsTab'), 'Clien
 const AccountsTab = page(() => import('./pages/app/developer/AccountsTab'), 'AccountsTab');
 const ReleasesTab = page(() => import('./pages/app/developer/ReleasesTab'), 'ReleasesTab');
 const DeactivatedTab = page(() => import('./pages/app/developer/DeactivatedTab'), 'DeactivatedTab');
+const ErrorLogTab = page(() => import('./pages/app/developer/ErrorLogTab'), 'ErrorLogTab');
 
 // A section or tab the signed-in account may not open sends it to the
 // Dashboard (which every account has). The check runs on every visit, so
@@ -69,12 +71,12 @@ function ToPayroll() {
 }
 
 // A tabbed section: its own permission, then one per tab.
-function section(key: ViewKey, tabs: [string, ReactNode][]) {
+function section(key: ViewKey, tabs: [string, ComponentType][]) {
   return (
     <Route path={key} element={<Allow perm={key}><TabbedSection /></Allow>}>
       <Route index element={<FirstTab section={key} />} />
-      {tabs.map(([tab, el]) => (
-        <Route key={tab} path={tab} element={<Allow perm={`${key}/${tab}`}>{el}</Allow>} />
+      {tabs.map(([tab, Tab]) => (
+        <Route key={tab} path={tab} element={<Allow perm={`${key}/${tab}`}><Tab /></Allow>} />
       ))}
     </Route>
   );
@@ -82,6 +84,7 @@ function section(key: ViewKey, tabs: [string, ReactNode][]) {
 
 export default function App() {
   return (
+    <Suspense fallback={<div className="ui-empty">Loading…</div>}>
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
@@ -91,25 +94,25 @@ export default function App() {
         <Route path="loads" element={<Allow perm="loads"><LoadsPage /></Allow>} />
         <Route path="loads/:id" element={<Allow perm="loads"><LoadDetailPage /></Allow>} />
         <Route path="planner" element={<Allow perm="planner"><PlannerPage /></Allow>} />
-        {section('fleet', [['drivers', <DriversTab />], ['trucks', <TrucksTab />], ['trailers', <TrailersTab />]])}
+        {section('fleet', [['drivers', DriversTab], ['trucks', TrucksTab], ['trailers', TrailersTab]])}
         <Route path="crm" element={<Allow perm="crm"><CustomersPage /></Allow>} />
         <Route path="facilities" element={<Allow perm="facilities"><FacilitiesPage /></Allow>} />
         <Route path="settings" element={<Navigate to="profile" replace />} />
         <Route path="settings/:section" element={<SettingsPage />} />
         {section('accounting', [
-          ['uninvoiced', <UninvoicedTab />], ['invoiced', <InvoicedTab />], ['batches', <BatchesTab />], ['past-due', <PastDueTab />],
-          ['paid', <PaidTab />], ...(PAYROLL_IN_HR ? [] : [['payroll', <PayrollTab />] as [string, ReactNode]]), ['bills', <BillsTab />],
+          ['uninvoiced', UninvoicedTab], ['invoiced', InvoicedTab], ['batches', BatchesTab], ['past-due', PastDueTab],
+          ['paid', PaidTab], ...(PAYROLL_IN_HR ? [] : [['payroll', PayrollTab] as [string, ComponentType]]), ['bills', BillsTab],
         ])}
         {PAYROLL_IN_HR && <Route path="accounting/payroll" element={<ToPayroll />} />}
         {section('hr', [
-          ...(PAYROLL_IN_HR ? [['payroll', <PayrollTab />] as [string, ReactNode]] : []),
-          ['employee-contracts', <EmployeeContractsTab />], ['onboarding', <OnboardingTab />],
+          ...(PAYROLL_IN_HR ? [['payroll', PayrollTab] as [string, ComponentType]] : []),
+          ['employee-contracts', EmployeeContractsTab], ['onboarding', OnboardingTab],
         ])}
         {section('safety', [
-          ['maintenance', <MaintenanceTab />], ['driver-documents', <DriverDocumentsTab />], ['violations', <ViolationsTab />], ['settlements', <ClaimSettlementsTab />],
+          ['maintenance', MaintenanceTab], ['driver-documents', DriverDocumentsTab], ['violations', ViolationsTab], ['settlements', ClaimSettlementsTab],
         ])}
         {/* Developer is RunTruck's own console: super admins under Company ID 1 only. */}
-        {section('developer', [['account-manager', <AccountManagerTab />], ['clients', <ClientsTab />], ['accounts', <AccountsTab />], ['deactivated', <DeactivatedTab />], ['releases', <ReleasesTab />]])}
+        {section('developer', [['account-manager', AccountManagerTab], ['clients', ClientsTab], ['accounts', AccountsTab], ['deactivated', DeactivatedTab], ['releases', ReleasesTab], ['errors', ErrorLogTab]])}
       </Route>
       {/* Section URLs from before the sidebar was reorganised, so old links still land. They
           sit outside the /app layout on purpose: the tab bar and top bar key off the section
@@ -122,5 +125,6 @@ export default function App() {
       <Route path="/app/accounting/settlements" element={<ToPayroll />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   );
 }

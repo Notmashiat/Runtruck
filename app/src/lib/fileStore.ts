@@ -33,12 +33,23 @@ function run<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<
 export const putFile = (id: string, blob: Blob) => run('readwrite', (s) => s.put(blob, key(id))).then(() => undefined);
 export const getFile = (id: string) => run<Blob | undefined>('readonly', (s) => s.get(key(id)) as IDBRequest<Blob | undefined>);
 
+// When a file was attached: its id is 'DOC-<time in base 36><4 random characters>'
+// (lib/attachments.ts). 0 if the id is not in that form.
+const addedAt = (k: string): number => {
+  const m = /:DOC-([0-9a-z]+)[0-9a-z]{4}$/.exec(k);
+  return m ? parseInt(m[1], 36) || 0 : 0;
+};
+const KEEP_NEW_FOR_MS = 24 * 3_600_000;
+
 // Remove this company's files that no record points to any more (files of
-// deleted bills or customers, or attached in a form that was cancelled).
+// deleted records, or attached in a form that was cancelled). A file added
+// in the last day is kept either way: it may belong to a form that is still
+// open in another tab and not saved yet.
 export async function pruneFiles(keep: string[]): Promise<void> {
   const keys = (await run('readonly', (s) => s.getAllKeys())) as string[];
   const mine = keys.filter((k) => typeof k === 'string' && k.startsWith(`${COMPANY_ID}:`));
   const wanted = new Set(keep.map(key));
-  const gone = mine.filter((k) => !wanted.has(k));
+  const cutoff = Date.now() - KEEP_NEW_FOR_MS;
+  const gone = mine.filter((k) => !wanted.has(k) && addedAt(k) < cutoff);
   if (gone.length) await run('readwrite', (s) => { gone.forEach((k) => s.delete(k)); return s.count(); });
 }

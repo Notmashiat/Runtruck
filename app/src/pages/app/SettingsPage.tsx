@@ -2,7 +2,8 @@ import { useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Field, isEmail, launch, mailtoHref } from '../../components/FormBits';
 import { useAppShell } from '../../context/AppShellContext';
-import { TERMS, fmtDate, invoiceTotal, senderVars, usd } from '../../data/invoicing';
+import { reportError } from '../../lib/errorLog';
+import { TERMS, fmtDate, invoiceTotal, nextInvoiceId, senderVars, usd } from '../../data/invoicing';
 import { USER } from '../../data/mock';
 import {
   ALERTS, DEFAULT_SETTINGS, ROLE_ABOUT, START_PAGES, TEAM_ROLES, TIME_ZONES, structuredCopy,
@@ -268,10 +269,8 @@ function Invoicing() {
     d.accountLast4 !== '' && !/^\d{4}$/.test(d.accountLast4) && 'Account: last 4 digits',
     d.factoringEmail.trim() !== '' && !isEmail(d.factoringEmail) && 'Factoring email is not valid',
   ].filter(Boolean) as string[];
-  const nextNo = (() => {
-    const n = Math.max((Number(d.startAt) || 1) - 1, ...invoices.map((i) => Number(i.id.replace(/\D/g, '')) || 0)) + 1;
-    return `${d.prefix}${n}`;
-  })();
+  // What the next invoice would be numbered with the prefix and start typed here.
+  const nextNo = nextInvoiceId(invoices, d.prefix, d.startAt);
   const sample = invoices.find((i) => !i.draft) ?? invoices[0];
   return (
     <>
@@ -617,6 +616,7 @@ function Security() {
     const result = await changePassword(current, next);
     setBusy(false);
     if (result === 'wrong-current') { setWrong(true); return; }
+    if (result === 'not-saved') { setDone('The new password could not be saved: this browser is blocking or out of storage. Your password is unchanged.'); return; }
     if (result === 'ok') {
       setCurrent(''); setNext(''); setAgain(''); setTried(false);
       setDone('Password changed. Use it the next time you log in on this browser.');
@@ -685,6 +685,8 @@ function LoginEmail({ when }: { when: (iso?: string) => string }) {
     const result = await changeLoginEmail(current, email);
     setBusy(false);
     if (result === 'wrong-current') { setWrong(true); return; }
+    if (result === 'not-saved') { setDone('The new login email could not be saved: this browser is blocking or out of storage. Your login email is unchanged.'); return; }
+    if (result === 'taken') { setDone('Another account already logs in with that email.'); return; }
     if (result === 'ok') {
       setDone(`Login email changed. Log in with ${email.trim()} from now on.`);
       setEmail(''); setCurrent(''); setTried(false);
@@ -753,9 +755,11 @@ function DataSection() {
   const [, update] = useSettings();
   const fileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState('');
-  // Logins (session, passwords, accounts) and RunTruck's client register are
-  // never backed up, restored or reset here; nor is any other company's data.
-  const isLogin = (k: string) => k === 'runtruck-session' || /-(auth|login-email|accounts|account-ids|companies|company-ids)$/.test(k);
+  // Logins (session, passwords, accounts), RunTruck's client register and
+  // which release each client runs are never backed up, restored or reset
+  // here; nor is any other company's data, or this device's error log.
+  const isLogin = (k: string) => k === 'runtruck-session' || k === 'runtruck-login-fails'
+    || /-(auth|login-email|accounts|account-ids|companies|company-ids|release-state|deployments|errors)$/.test(k);
   const keys = () => Object.keys(localStorage).filter((k) => k.startsWith('runtruck-') && isOwnKey(k) && !isLogin(k));
 
   const exportAll = () => {
@@ -784,8 +788,23 @@ function DataSection() {
         return;
       }
       if (!window.confirm(`Replace what is stored in this browser with the backup (${entries.length} parts)? The page will reload.`)) return;
-      for (const k of keys()) localStorage.removeItem(k);
-      for (const [k, v] of entries) localStorage.setItem(currentKey(k), typeof v === 'string' ? v : JSON.stringify(v));
+      // Keep what is there now until the backup is fully written: if the
+      // browser runs out of room part-way, everything goes back as it was.
+      const before = keys().map((k) => [k, localStorage.getItem(k)] as const);
+      const written: string[] = [];
+      try {
+        for (const [k] of before) localStorage.removeItem(k);
+        for (const [k, v] of entries) {
+          localStorage.setItem(currentKey(k), typeof v === 'string' ? v : JSON.stringify(v));
+          written.push(currentKey(k));
+        }
+      } catch (err) {
+        for (const k of written) localStorage.removeItem(k);
+        for (const [k, v] of before) if (v !== null) localStorage.setItem(k, v);
+        reportError(err, { kind: 'storage', where: 'Restore from backup' });
+        setMessage('The backup did not fit in this browser’s storage. Nothing was changed.');
+        return;
+      }
       window.location.reload();
     } catch {
       setMessage('Could not read that file.');
@@ -793,7 +812,8 @@ function DataSection() {
   };
 
   const resetRecords = () => {
-    if (!window.confirm(`${IS_DEMO ? 'Put loads, fleet, facilities, invoices, batches and dashboard layout back to the demo data' : 'Delete every load, fleet record, facility, invoice and batch, and the dashboard layout'}? Your settings are kept. The page will reload.`)) return;
+    const everything = 'loads, fleet, facilities, customers, invoices, batches, bills, payroll, HR, safety and planner records, and the dashboard layout';
+    if (!window.confirm(`${IS_DEMO ? `Put every record (${everything}) back to the demo data` : `Delete every record: ${everything}`}? This cannot be undone${IS_DEMO ? '' : '; download a backup first if you may need them'}. Your settings are kept. The page will reload.`)) return;
     // Settings and RunTruck's client companies are not demo data: they stay.
     const keep = (k: string) => k.endsWith('-settings') || k === 'runtruck-theme' || k.endsWith('-companies') || k.endsWith('-company-ids');
     for (const k of keys()) if (!keep(k)) localStorage.removeItem(k);

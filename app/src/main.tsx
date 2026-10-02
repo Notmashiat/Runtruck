@@ -6,17 +6,40 @@ import './styles/app.css'
 import './styles/shell.css'
 import './styles/calendar.css'
 import './styles/dashboard.css'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { ErrorToast } from './components/StatusBanners'
+import { installErrorHandlers, reportError, setErrorRelease } from './lib/errorLog'
+import { currentRelease } from './lib/releases'
 import { initTheme } from './lib/theme'
 import { initSettings } from './lib/applySettings'
 import App from './App.tsx'
 
-initTheme()
-initSettings()
+// Record problems from here on (see lib/errorLog.ts).
+installErrorHandlers()
 
+// Start-up steps must not be able to stop the app from drawing: a failure
+// here is recorded and the app carries on with its defaults.
+for (const [name, step] of [
+  ['theme', initTheme],
+  ['settings', initSettings],
+  ['release', () => setErrorRelease(currentRelease().id)],
+] as const) {
+  try {
+    step()
+  } catch (error) {
+    reportError(error, { kind: 'script', where: `Start-up (${name})` })
+  }
+}
+
+// The outermost error boundary: if nothing else catches a fault, the person
+// sees a message with a Reload button rather than an empty window.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <ErrorBoundary where="RunTruck" variant="app">
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+      <ErrorToast />
+    </ErrorBoundary>
   </StrictMode>,
 )

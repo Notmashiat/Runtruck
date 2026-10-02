@@ -1,6 +1,7 @@
 import { COMPANY_ID, IS_DEMO, MEMBER_ID } from '../lib/account';
 import { shiftDemo } from '../lib/clock';
 import { isLive } from '../lib/releases';
+import { normalizeLoad, type LoadCharges, type LoadDocument, type LoadEvent } from './loads';
 
 // Release 1.6: Payroll is HR's first tab instead of an Accounting tab. Fixed for
 // the page load (a company's release only changes on the next login).
@@ -64,7 +65,10 @@ export interface LoadStop {
   kind: 'Pickup' | 'Delivery';
   name: string;
   address: string;
+  // As shown: 'Oct 1 · 08:00–12:00'. Rebuilt from `date` when loads are read.
   when: string;
+  // The stop's day, ISO 'YYYY-MM-DD'.
+  date?: string;
 }
 
 export interface Load {
@@ -94,13 +98,24 @@ export interface Load {
   carrier: string;
   carrierMc: string;
   carrierDot: string;
+  // The real dates behind `pickup` and `delivery` (ISO 'YYYY-MM-DD'); the
+  // short text is rebuilt from them (data/loads.ts). `deliveredOn` is the day
+  // it was actually delivered, set when the status becomes Delivered.
+  pickupDate?: string;
+  deliveryDate?: string;
+  deliveredOn?: string;
+  // What the customer pays, as entered: `rate` shows the line haul only.
+  charges?: LoadCharges;
   // Only on loads entered with the New Load form.
   mode?: string;
   ltl?: string;
   stops?: LoadStop[];
-  documents?: { name: string; file: string }[];
+  documents?: LoadDocument[];
   carrierRate?: string;
   notes?: string;
+  // Who did what and when (created, edited, status changes).
+  history?: LoadEvent[];
+  // Loads saved before `history` existed carry these as text.
   createdAt?: string;
   updatedAt?: string;
   // The load form's full entry, kept so Edit load reopens exactly what was typed.
@@ -338,6 +353,7 @@ export const SECTION_TABS: Partial<Record<ViewKey, SectionTab[]>> = {
     { key: 'accounts', label: 'Accounts' },
     { key: 'deactivated', label: 'Deactivated' },
     { key: 'releases', label: 'Releases' },
+    { key: 'errors', label: 'Error log' },
   ],
 };
 
@@ -358,5 +374,5 @@ export const REVENUE_BARS = [42, 58, 51, 66, 74, 38, 29];
 export const REVENUE_DAYS = ['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'];
 
 // The demo loads and drivers, moved to today's date (lib/clock.ts).
-export const LOADS: Load[] = !IS_DEMO ? [] : shiftDemo(LOADS_2026);
+export const LOADS: Load[] = !IS_DEMO ? [] : shiftDemo(LOADS_2026).map(normalizeLoad);
 export const DRIVERS: Driver[] = !IS_DEMO ? [] : shiftDemo(DRIVERS_2026);

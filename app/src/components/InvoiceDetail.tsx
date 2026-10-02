@@ -113,7 +113,7 @@ export function InvoiceDetail({ inv, actions }: { inv: InvoiceRecord; actions: A
           {inv.internal && <div className="ui-stop-meta" style={{ marginTop: 0 }}><strong>Internal:</strong> {inv.internal}</div>}
           <div className="ui-link-stack" style={{ marginTop: 6 }}>
             <button type="button" className="ui-link" onClick={stop(() => actions.edit(inv))}>Edit invoice</button>
-            <button type="button" className="ui-link" onClick={stop(() => actions.email(inv))}>{inv.sentOn ? 'Email again' : 'Email invoice'}</button>
+            {!inv.draft && <button type="button" className="ui-link" onClick={stop(() => actions.email(inv))}>{inv.sentOn ? 'Email again' : 'Email invoice'}</button>}
             <button type="button" className="ui-link" onClick={stop(() => downloadPdf(invoiceDoc(inv), invoiceFileName(inv)))}>Download PDF</button>
             {status === 'Overdue' && <button type="button" className="ui-link" onClick={stop(() => actions.remind([inv.id]))}>Send reminder / add late fee</button>}
             {!inv.paid && !inv.draft && <button type="button" className="ui-link" onClick={stop(() => actions.pay(inv))}>Record payment</button>}

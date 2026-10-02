@@ -5,6 +5,8 @@
 // staff from hours or salary — then recurring and one-off additions and
 // deductions and estimated tax withholding. Stored per company
 // (runtruck-<id>-employees, runtruck-<id>-payruns).
+import { nextSerial } from '../lib/ids';
+import { reviveList } from '../lib/persist';
 import { IS_DEMO } from '../lib/account';
 import { shiftIso, todayIso } from '../lib/clock';
 import type { BillDocument } from './bills';
@@ -117,7 +119,8 @@ export interface PayRun {
 
 // — money and dates —
 
-export const round2 = (n: number) => Math.round(n * 100) / 100;
+// To the cent, with an exact half-cent rounding up (see round2 in data/invoicing.ts).
+export const round2 = (n: number) => Math.round(n * 100 + Math.sign(n) * 1e-6) / 100;
 
 export function addDays(iso: string, n: number): string {
   const d = new Date(`${iso}T12:00:00Z`);
@@ -236,10 +239,10 @@ export const runTotals = (r: PayRun) => {
 };
 
 export function nextRunId(list: PayRun[]): string {
-  return `PR-${Math.max(1000, ...list.map((r) => Number(r.id.replace(/\D/g, '')) || 0)) + 1}`;
+  return `PR-${nextSerial('PR', list.map((r) => r.id), 1000)}`;
 }
 export function nextEmployeeId(list: Employee[]): string {
-  return `EMP-${Math.max(1000, ...list.map((e) => Number(e.id.replace(/\D/g, '')) || 0)) + 1}`;
+  return `EMP-${nextSerial('EMP', list.map((e) => e.id), 1000)}`;
 }
 export const itemId = () => `PI-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 
@@ -282,13 +285,15 @@ export function employeeFromForm(v: FormValues, id: string, recurring: PayItem[]
 }
 
 export function reviveEmployees(raw: unknown): Employee[] | null {
-  return Array.isArray(raw) && raw.every((e) => e && typeof e.id === 'string' && typeof e.name === 'string' && Array.isArray(e.log))
-    ? (raw as Employee[]).map((e) => ({ ...e, recurring: e.recurring ?? [], documents: e.documents ?? [] }))
-    : null;
+  return reviveList<Employee>('employees', raw, (e) => typeof e.id === 'string' && typeof e.name === 'string' && Array.isArray(e.log), (e) => ({
+    ...e, recurring: e.recurring ?? [], documents: e.documents ?? [], rate: Number(e.rate) || 0, ytdBefore: Number(e.ytdBefore) || 0,
+  }));
 }
 
 export function reviveRuns(raw: unknown): PayRun[] | null {
-  return Array.isArray(raw) && raw.every((r) => r && typeof r.id === 'string' && Array.isArray(r.lines)) ? (raw as PayRun[]) : null;
+  return reviveList<PayRun>('pay runs', raw, (r) => typeof r.id === 'string' && Array.isArray(r.lines) && typeof r.payDate === 'string', (r) => ({
+    ...r, lines: r.lines.filter(Boolean).map((l) => ({ ...l, items: Array.isArray(l.items) ? l.items : [], loads: Array.isArray(l.loads) ? l.loads : [] })),
+  }));
 }
 
 // — demo payroll (RunTruck's own workspace only) —

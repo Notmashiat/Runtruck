@@ -5,7 +5,7 @@
 // Super admins (Company ID 1 only) have everything, including Developer.
 import type { FormValues } from './fleet';
 import { NAV, PAYROLL_IN_HR, SECTION_TABS, type ViewKey } from './mock';
-import type { PasswordRecord } from '../lib/password';
+import { ITERATIONS, type PasswordRecord } from '../lib/password';
 
 export type AccountType =
   | 'Super admin' | 'Company admin' | 'Dispatcher' | 'Broker / sales agent' | 'Accounting & billing'
@@ -85,7 +85,8 @@ export const ACCOUNT_TYPES: { type: AccountType; about: string; preset: string[]
   { type: 'Accounting & billing', about: 'Invoices, collections, payroll and bills.', preset: ['loads', 'crm', ...every('accounting'), ...(PAYROLL_IN_HR ? some('hr', 'payroll') : []), ...some('settings', 'invoicing', 'messages')] },
   { type: 'Safety & compliance', about: 'Driver files, maintenance, violations and claims.', preset: [...every('fleet'), ...every('safety')] },
   { type: 'Fleet manager', about: 'Trucks, trailers and their upkeep.', preset: [...every('fleet'), ...some('safety', 'maintenance'), 'facilities'] },
-  { type: 'HR & recruiting', about: 'Hiring, onboarding and driver contracts.', preset: [...every('hr'), ...some('fleet', 'drivers'), ...some('safety', 'driver-documents')] },
+  // Pay details are not part of recruiting: Payroll is granted separately.
+  { type: 'HR & recruiting', about: 'Hiring, onboarding and driver contracts.', preset: [...every('hr').filter((p) => p !== 'hr/payroll'), ...some('fleet', 'drivers'), ...some('safety', 'driver-documents')] },
   { type: 'Custom', about: 'Start from the Dashboard only and tick exactly what they need.', preset: [] },
 ];
 export const TYPE_NAMES = ACCOUNT_TYPES.map((t) => t.type);
@@ -175,8 +176,11 @@ export function reviveAccount(raw: unknown): Account | null {
     title: typeof r.title === 'string' ? r.title : '',
     phone: typeof r.phone === 'string' ? r.phone : '',
     email: r.email,
-    password: r.password,
-    perms: Array.isArray(r.perms) ? r.perms.filter((p) => ALL_PERMS.includes(p)) : [],
+    password: { ...r.password, iterations: typeof r.password.iterations === 'number' && r.password.iterations > 0 ? r.password.iterations : ITERATIONS },
+    // Kept as saved, whatever release this page runs. Payroll is 'accounting/payroll'
+    // before release 1.6 and 'hr/payroll' from it; filtering to this page's own list
+    // would drop the other one and then save the loss back for every company.
+    perms: Array.isArray(r.perms) ? r.perms.filter((p): p is string => typeof p === 'string') : [],
     // 'Disabled' is what deactivated accounts were saved as before.
     status: r.status === 'Active' || r.status === undefined ? 'Active' : 'Deactivated',
     notes: typeof r.notes === 'string' ? r.notes : '',

@@ -11,7 +11,7 @@ import {
 import {
   addDays, addMonths, formatTime, fromIso, iso, MONTHS, shortLabel, startOfWeek, toHhmm, toMinutes, WEEKDAYS,
 } from '../../lib/dates';
-import { usePersisted } from '../../lib/persist';
+import { reviveList, usePersisted } from '../../lib/persist';
 import { matchesQuery } from '../../lib/search';
 
 const VIEWS: CalView[] = ['Day', 'Week', 'Month'];
@@ -96,7 +96,7 @@ function valueOf(ev: PlannerEvent, by: ColorBy): string {
 }
 
 function reviveEvents(raw: unknown): PlannerEvent[] | null {
-  return Array.isArray(raw) && raw.every((e) => e && typeof e.id === 'string' && typeof e.date === 'string') ? raw : null;
+  return reviveList<PlannerEvent>('planner events', raw, (e) => typeof e.id === 'string' && typeof e.date === 'string');
 }
 
 function revivePrefs(raw: unknown): Prefs | null {

@@ -1,5 +1,5 @@
 import { STANDING_TAG, type CustomerRecord } from '../data/customers';
-import { BILLING } from '../data/invoicing';
+import { BILLING, CUSTOMER_TERMS } from '../data/invoicing';
 import { CUSTOMERS } from '../data/mock';
 
 // The customer pickers (New Load, invoices, batches, facilities) and the
@@ -26,6 +26,7 @@ export function syncCustomers(list: CustomerRecord[]) {
       })),
   );
   for (const c of list) {
+    CUSTOMER_TERMS[c.name] = c.terms;
     BILLING[c.name] = {
       name: c.billTo || c.name, attn: c.attn, street: c.street, city: c.city, state: c.state, zip: c.zip, email: c.billingEmail, phone: c.billingPhone,
     };

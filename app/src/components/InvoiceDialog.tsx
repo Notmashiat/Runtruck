@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import {
-  CHARGE_TYPES, PAY_METHODS, TERMS, TODAY, addDays, billToFor, billableLoads, draftForLoads, fmtDate, invoiceEmail, invoiceTotal,
-  lineAmount, nextInvoiceId, rateLines, shipmentFor, statusOf, termDays, termsFor, usd, type BillTo, type BillableLoad, type InvoiceLine,
+  CHARGE_TYPES, PAY_METHODS, TERMS, TODAY, addDays, billToFor, billableLoads, draftForLoads, fmtDate, invoiceEmail, invoiceTotal, isLineOfLoad,
+  lineAmount, loadLines, nextInvoiceId, shipmentFor, statusOf, termDays, termsFor, usd, type BillTo, type BillableLoad, type InvoiceLine,
   type InvoiceRecord,
 } from '../data/invoicing';
 import { CUSTOMERS } from '../data/mock';
@@ -93,7 +93,7 @@ export function InvoiceDialog({ invoice, loadIds, onClose }: { invoice?: Invoice
       customer: c,
       billTo: billToFor(c),
       loads: [],
-      lines: p.lines.filter((l) => !p.loads.some((id) => l.description.startsWith(id))),
+      lines: p.lines.filter((l) => !p.loads.some((id) => isLineOfLoad(l, id))),
     }));
 
   // Ticking a load adds its rate lines; the shipment block is rebuilt from
@@ -106,7 +106,7 @@ export function InvoiceDialog({ invoice, loadIds, onClose }: { invoice?: Invoice
         ...p,
         ...(picked.length ? shipmentFor(picked) : {}),
         loads: ids,
-        lines: on ? [...p.lines, ...rateLines(l.amount, `${l.id} · ${l.route}`, l.miles)] : p.lines.filter((x) => !x.description.startsWith(l.id)),
+        lines: on ? [...p.lines, ...loadLines(l)] : p.lines.filter((x) => !isLineOfLoad(x, l.id)),
       };
     });
 
@@ -118,7 +118,12 @@ export function InvoiceDialog({ invoice, loadIds, onClose }: { invoice?: Invoice
       return null;
     }
     const text = issuedAlready ? 'Invoice edited' : 'Invoice created';
-    return { ...d, draft: false, history: [...d.history, { date: TODAY, text }] };
+    // A draft started on an earlier day goes out dated today (and due from
+    // today), unless the dates were set by hand here: otherwise the customer
+    // would lose the days the draft sat unsent.
+    const stale = !issuedAlready && d.issued === start.issued && d.issued < TODAY;
+    const dated = stale ? { issued: TODAY, due: d.due === start.due ? addDays(TODAY, termDays(d.terms)) : d.due } : {};
+    return { ...d, ...dated, draft: false, history: [...d.history, { date: TODAY, text }] };
   };
 
   const saveDraft = () => {
@@ -160,7 +165,7 @@ export function InvoiceDialog({ invoice, loadIds, onClose }: { invoice?: Invoice
             <div className="ui-pick-list">
               {attachedElsewhere.map((id) => (
                 <label key={id} className="ui-check">
-                  <input type="checkbox" checked onChange={() => setD((p) => ({ ...p, loads: p.loads.filter((x) => x !== id), lines: p.lines.filter((x) => !x.description.startsWith(id)) }))} />
+                  <input type="checkbox" checked onChange={() => setD((p) => ({ ...p, loads: p.loads.filter((x) => x !== id), lines: p.lines.filter((x) => !isLineOfLoad(x, id)) }))} />
                   <strong>{id}</strong><span className="muted"> · already on this invoice</span>
                 </label>
               ))}
@@ -403,7 +408,8 @@ export function EmailInvoiceDialog({ invoice, onClose }: { invoice: InvoiceRecor
 
   const send = () => {
     setTried(true);
-    if (toError || ccError) return;
+    // A draft is not an invoice yet: it has to be created (and checked) first.
+    if (toError || ccError || invoice.draft) return;
     if (attach) downloadPdf(invoiceDoc(invoice), invoiceFileName(invoice));
     launch(mailtoHref(to, subject, body, cc));
     saveInvoice({
@@ -444,12 +450,13 @@ export function EmailInvoiceDialog({ invoice, onClose }: { invoice: InvoiceRecor
             Download <strong>{invoiceFileName(invoice)}</strong> to attach
             <button type="button" className="ui-link" style={{ marginLeft: 8 }} onClick={() => openPdf(invoiceDoc(invoice))}>Preview ↗</button>
           </label>
+          {invoice.draft && <div className="ui-errors">{invoice.id} is still a draft. Open it with Edit invoice and choose Create invoice (which checks it), then email it.</div>}
           <div className="ui-note">RunTruck does not send email itself yet: Send opens your email app with this message filled in and downloads the PDF for you to attach. The invoice is marked as sent.</div>
         </section>
         <footer className="ui-dialog-foot">
           <button type="button" className="ui-btn" onClick={closeNow}>Cancel</button>
           <div style={{ flex: 1 }} />
-          <button type="button" className="ui-btn ui-btn-primary" onClick={send}>Send</button>
+          <button type="button" className="ui-btn ui-btn-primary" onClick={send} disabled={invoice.draft}>Send</button>
         </footer>
       </div>
     </dialog>

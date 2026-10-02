@@ -1,6 +1,8 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { ErrorBoundary } from './ErrorBoundary';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { StorageBanner } from './StatusBanners';
 import { AppShellProvider } from '../context/AppShellContext';
 import { Suspense, useEffect } from 'react';
 import { TODAY } from '../data/planner';
@@ -38,16 +40,26 @@ export function AppLayout() {
 
   // Not signed in: log in first, then come back here.
   if (!currentSession()) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  // Each part has its own error boundary, so a fault in the page leaves the
+  // menu and top bar working (and the other way round). Moving to another
+  // address clears a page fault by itself.
   return (
     <AppShellProvider>
       <div className="ui-shell">
-        <Sidebar />
+        <ErrorBoundary where="Menu" variant="strip">
+          <Sidebar />
+        </ErrorBoundary>
         <div className="ui-column">
-          <Header />
+          <ErrorBoundary where="Top bar" variant="strip" resetKey={location.pathname}>
+            <Header />
+          </ErrorBoundary>
+          <StorageBanner />
           <main className="ui-main">
-            <Suspense fallback={<div className="ui-empty">Loading…</div>}>
-              <Outlet />
-            </Suspense>
+            <ErrorBoundary where="Page" resetKey={location.pathname}>
+              <Suspense fallback={<div className="ui-empty">Loading…</div>}>
+                <Outlet />
+              </Suspense>
+            </ErrorBoundary>
           </main>
         </div>
       </div>

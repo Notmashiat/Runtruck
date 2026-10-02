@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppShell } from '../context/AppShellContext';
 import { NAV, PAYROLL_PATH, PAYROLL_SECTION, SECTION_TABS, type ViewKey } from '../data/mock';
@@ -7,20 +7,61 @@ import { isActive, pageKeyOf } from '../lib/tableTools';
 import { can } from '../lib/auth';
 import { downloadCsv } from '../lib/csv';
 import { isLive } from '../lib/releases';
+import { lazyNamed } from '../lib/lazyPage';
+import { ErrorBoundary } from './ErrorBoundary';
 import { describe, FilterPanel } from './FilterPanel';
-import { BatchDialog } from './BatchDialog';
-import { BillDialog } from './BillDialogs';
-import { CustomerDialog } from './CustomerDialogs';
-import { EmployeeDialog, PayRunDialog } from './PayrollDialogs';
-import { ContractDialog, OnboardingDialog } from './HrDialogs';
-import { ClaimDialog, RequestDocDialog, ViolationDialog, WorkOrderDialog } from './SafetyDialogs';
-import { CompanyDialog } from './CompanyDialog';
-import { AccountDialog } from './AccountDialog';
-import { FacilityDialog } from './FacilityDialog';
-import { InvoiceDialog } from './InvoiceDialog';
-import { ReminderDialog } from './ReminderDialog';
-import { DriverDialog, TrailerDialog, TruckDialog } from './FleetDialogs';
-import { NewLoadDialog } from './NewLoadDialog';
+
+// The forms the top bar opens. Each is downloaded when it is first needed
+// (not with the app), and fetched ahead of time for the page that is open so
+// its button responds at once.
+const forms = {
+  load: () => import('./NewLoadDialog'),
+  fleet: () => import('./FleetDialogs'),
+  facility: () => import('./FacilityDialog'),
+  invoice: () => import('./InvoiceDialog'),
+  batch: () => import('./BatchDialog'),
+  reminders: () => import('./ReminderDialog'),
+  bill: () => import('./BillDialogs'),
+  customer: () => import('./CustomerDialogs'),
+  payroll: () => import('./PayrollDialogs'),
+  hr: () => import('./HrDialogs'),
+  safety: () => import('./SafetyDialogs'),
+  company: () => import('./CompanyDialog'),
+  account: () => import('./AccountDialog'),
+};
+const NewLoadDialog = lazyNamed(forms.load, 'NewLoadDialog');
+const DriverDialog = lazyNamed(forms.fleet, 'DriverDialog');
+const TruckDialog = lazyNamed(forms.fleet, 'TruckDialog');
+const TrailerDialog = lazyNamed(forms.fleet, 'TrailerDialog');
+const FacilityDialog = lazyNamed(forms.facility, 'FacilityDialog');
+const InvoiceDialog = lazyNamed(forms.invoice, 'InvoiceDialog');
+const BatchDialog = lazyNamed(forms.batch, 'BatchDialog');
+const ReminderDialog = lazyNamed(forms.reminders, 'ReminderDialog');
+const BillDialog = lazyNamed(forms.bill, 'BillDialog');
+const CustomerDialog = lazyNamed(forms.customer, 'CustomerDialog');
+const EmployeeDialog = lazyNamed(forms.payroll, 'EmployeeDialog');
+const PayRunDialog = lazyNamed(forms.payroll, 'PayRunDialog');
+const ContractDialog = lazyNamed(forms.hr, 'ContractDialog');
+const OnboardingDialog = lazyNamed(forms.hr, 'OnboardingDialog');
+const WorkOrderDialog = lazyNamed(forms.safety, 'WorkOrderDialog');
+const RequestDocDialog = lazyNamed(forms.safety, 'RequestDocDialog');
+const ViolationDialog = lazyNamed(forms.safety, 'ViolationDialog');
+const ClaimDialog = lazyNamed(forms.safety, 'ClaimDialog');
+const CompanyDialog = lazyNamed(forms.company, 'CompanyDialog');
+const AccountDialog = lazyNamed(forms.account, 'AccountDialog');
+
+// Which forms each page's buttons open (the keys match actionsFor below).
+const FORMS_FOR: Record<string, (keyof typeof forms)[]> = {
+  dashboard: ['load'], loads: ['load'], loadDetail: ['load'],
+  'fleet/drivers': ['fleet'], 'fleet/trucks': ['fleet'], 'fleet/trailers': ['fleet'],
+  crm: ['customer'], facilities: ['facility'],
+  'accounting/uninvoiced': ['invoice'], 'accounting/invoiced': ['invoice'], 'accounting/batches': ['batch'], 'accounting/past-due': ['reminders'],
+  'accounting/payroll': ['payroll'], 'hr/payroll': ['payroll'], 'accounting/bills': ['bill'],
+  'hr/employee-contracts': ['hr'], 'hr/onboarding': ['hr'],
+  'safety/maintenance': ['safety'], 'safety/driver-documents': ['safety'], 'safety/violations': ['safety'], 'safety/settlements': ['safety'],
+  'developer/account-manager': ['account', 'company'], 'developer/clients': ['account', 'company'], 'developer/accounts': ['account', 'company'],
+};
+const PREFETCH_AFTER_MS = 600;
 
 interface HeadAction {
   label: string;
@@ -34,7 +75,7 @@ const NO_FILTERS: ViewKey[] = ['dashboard', 'planner'];
 export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { query, setQuery, approveAll, loads, filterMeta, filterValues, setFilter, clearFilters } = useAppShell();
+  const { searchText, setQuery, approveAll, loads, filterMeta, filterValues, setFilter, clearFilters } = useAppShell();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const now = useNow(15_000);
   const [newLoadOpen, setNewLoadOpen] = useState(false);
@@ -118,7 +159,18 @@ export function Header() {
     'developer/clients': developer,
     'developer/accounts': developer,
   };
-  const headActions = actionsFor[onLoadDetail ? 'loadDetail' : tab ? `${view}/${tab}` : view] ?? [];
+  const actionKey = onLoadDetail ? 'loadDetail' : tab ? `${view}/${tab}` : view;
+  const headActions = actionsFor[actionKey] ?? [];
+  // Fetch this page's forms once it has settled, so the buttons open them at once.
+  useEffect(() => {
+    const wanted = FORMS_FOR[actionKey];
+    if (!wanted) return;
+    const t = window.setTimeout(() => {
+      // A failed prefetch is not an error: the form is fetched again when opened.
+      for (const f of wanted) forms[f]().catch(() => undefined);
+    }, PREFETCH_AFTER_MS);
+    return () => window.clearTimeout(t);
+  }, [actionKey]);
   const page = pageKeyOf(location.pathname);
   const meta = filterMeta[page] ?? [];
   const values = filterValues[page] ?? {};
@@ -137,7 +189,7 @@ export function Header() {
       ) : (
         <input
           className="ui-search"
-          value={query}
+          value={searchText}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search"
           aria-label="Search"
@@ -158,6 +210,9 @@ export function Header() {
           {a.label}
         </button>
       ))}
+      {/* A form that fails closes into a one-line notice; the top bar stays. */}
+      <ErrorBoundary where="Form" variant="strip" resetKey={`${adding}${newLoadOpen}${editOpen}`} onDismiss={() => { setAdding(null); setNewLoadOpen(false); setEditOpen(false); }}>
+      <Suspense fallback={null}>
       {newLoadOpen && (
         <NewLoadDialog onClose={() => setNewLoadOpen(false)} onSaved={(id) => navigate(`/app/loads/${id}`)} />
       )}
@@ -183,6 +238,8 @@ export function Header() {
       {adding === 'onboarding' && <OnboardingDialog onClose={() => setAdding(null)} />}
       {adding === 'company' && <CompanyDialog onClose={() => setAdding(null)} />}
       {adding === 'account' && <AccountDialog onClose={() => setAdding(null)} />}
+      </Suspense>
+      </ErrorBoundary>
       {filtersOpen && <FilterPanel page={page} title={pageTitle} onClose={() => setFiltersOpen(false)} />}
     </header>
     {showFilters && activeFilters.length > 0 && (

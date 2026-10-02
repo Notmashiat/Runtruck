@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { BASELINE, RELEASES, releaseIndex, releaseOf, type Change, type Release } from '../data/releases';
 import { COMPANY_ID, IS_DEMO, readRegistry, registryKey } from './account';
+import { onStorageChange, writeJson } from './storage';
 
 // Which version each company runs, and how versions are put together.
 //
@@ -100,13 +101,17 @@ const listeners = new Set<() => void>();
 
 function commit(next: State) {
   state = next;
-  try {
-    localStorage.setItem(registryKey(KEY), JSON.stringify(state));
-  } catch {
-    // Storage blocked: the change lasts for this visit.
-  }
+  writeJson(registryKey(KEY), state);
   listeners.forEach((l) => l());
 }
+
+// Another tab deployed, rolled back or merged: show it here too. Which
+// release this page itself runs (ownIndex below) stays as it was worked out
+// when the page loaded; a company gets a new release on its next page load.
+onStorageChange(registryKey(KEY), () => {
+  state = load();
+  listeners.forEach((l) => l());
+});
 
 function subscribe(fn: () => void): () => void {
   listeners.add(fn);
@@ -197,6 +202,7 @@ const eventId = () => `REL-${Date.now().toString(36).toUpperCase()}${Math.random
 // Send a version (and everything before it) to companies. New companies
 // start on it too unless told otherwise.
 export function deployVersion(v: Version, companies: string[], newCompanies: boolean, by: string, byName: string) {
+  state = load();
   const s = state;
   const release = RELEASES[v.last].id;
   const assignments = { ...s.assignments };
@@ -221,6 +227,7 @@ export function setVersionCompanies(
   by: string,
   byName: string,
 ) {
+  state = load();
   const s = state;
   const release = RELEASES[v.last].id;
   const before = RELEASES[v.first - 1]?.id ?? BASELINE.id;
@@ -252,6 +259,7 @@ export function setVersionCompanies(
 // order, so anything between the chosen ones is merged in too.
 export function mergeVersions(chosen: Version[], id: string, title: string, byName: string): Merge | null {
   if (chosen.length < 2) return null;
+  state = load();
   const first = Math.min(...chosen.map((v) => v.first));
   const last = Math.max(...chosen.map((v) => v.last));
   if (first <= latestDeployedIndex(state)) return null;
@@ -264,5 +272,7 @@ export function mergeVersions(chosen: Version[], id: string, title: string, byNa
 // Undo a merge that has not gone out yet.
 export function splitVersion(v: Version) {
   if (!v.merge || v.first <= latestDeployedIndex(state)) return;
-  commit({ ...state, merges: state.merges.filter((m) => m !== v.merge) });
+  const id = v.merge.id;
+  state = load();
+  commit({ ...state, merges: state.merges.filter((m) => m.id !== id) });
 }

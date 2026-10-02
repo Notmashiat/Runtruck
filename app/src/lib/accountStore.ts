@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { reviveAccount, type Account } from '../data/accounts';
 import { OWNER_MEMBER_ID, readRegistry, registryKey } from './account';
+import { onStorageChange, writeJson } from './storage';
 
 // Every login account made in Developer (runtruck-1-accounts) and every
 // Account ID ever issued (runtruck-1-account-ids). An ID stays issued when
@@ -15,23 +16,37 @@ function load(): Account[] {
   return Array.isArray(raw) ? raw.map(reviveAccount).filter((a): a is Account => a !== null) : [];
 }
 
-let accounts: Account[] = load();
-let issued: string[] = (() => {
+function loadIssued(list: Account[]): string[] {
   const saved = readRegistry<unknown[]>(IDS_KEY);
   const ids = Array.isArray(saved) ? saved.filter((x): x is string => typeof x === 'string') : [];
-  return [...new Set([...ids, ...accounts.map((a) => a.accountId)])];
-})();
+  return [...new Set([...ids, ...list.map((a) => a.accountId)])];
+}
+
+let accounts: Account[] = load();
+let issued: string[] = loadIssued(accounts);
 const listeners = new Set<() => void>();
 
+// Take what storage holds now. Another tab may have added, changed or
+// deactivated accounts since this one loaded, so this runs when that tab
+// saves and again just before this tab changes anything: a tab left open
+// never writes an old copy of the list over a newer one.
+function refresh() {
+  accounts = load();
+  issued = [...new Set([...issued, ...loadIssued(accounts)])];
+}
+
 function persist() {
-  try {
-    localStorage.setItem(registryKey(KEY), JSON.stringify(accounts));
-    localStorage.setItem(registryKey(IDS_KEY), JSON.stringify(issued));
-  } catch {
-    // Storage blocked: the accounts last for this visit.
-  }
+  writeJson(registryKey(KEY), accounts);
+  writeJson(registryKey(IDS_KEY), issued);
   listeners.forEach((l) => l());
 }
+
+// Re-read the saved accounts (and tell anything showing them).
+export function reloadAccounts() {
+  refresh();
+  listeners.forEach((l) => l());
+}
+onStorageChange(registryKey(KEY), reloadAccounts);
 
 export function getAccounts(): Account[] {
   return accounts;
@@ -67,6 +82,7 @@ export function newAccountId(): string {
 
 // Add or update an account. A new account's ID is recorded as issued for good.
 export function saveAccount(a: Account) {
+  refresh();
   const exists = accounts.some((x) => x.accountId === a.accountId);
   accounts = exists ? accounts.map((x) => (x.accountId === a.accountId ? a : x)) : [...accounts, a];
   if (!issued.includes(a.accountId)) issued = [...issued, a.accountId];
@@ -75,6 +91,7 @@ export function saveAccount(a: Account) {
 
 // Remove an account. Its ID stays issued and is never reused.
 export function deleteAccount(id: string) {
+  refresh();
   accounts = accounts.filter((a) => a.accountId !== id);
   persist();
 }

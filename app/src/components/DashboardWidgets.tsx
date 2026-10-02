@@ -311,7 +311,8 @@ function Upcoming({ d }: { d: DashData }) {
   const until = addDays(TODAY, 7);
   const events = d.loads
     .filter((l) => l.status !== 'Delivered' && l.status !== 'Needs POD')
-    .flatMap((l) => stopsOf(l).map((s) => ({ load: l, stop: s, date: isoFromShort((/^[A-Z][a-z]{2} \d{1,2}/.exec(s.when) ?? [''])[0]) })))
+    // The stop's own date; older stops only carry it as text ('Oct 1 · 08:00', 'Jan 4, 2027 · …').
+    .flatMap((l) => stopsOf(l).map((s) => ({ load: l, stop: s, date: s.date || isoFromShort(s.when.split(' · ')[0]) })))
     .filter((e) => e.date && e.date >= TODAY && e.date <= until)
     .sort((a, b) => a.date.localeCompare(b.date));
   if (events.length === 0) return <div className="dash-empty">No pickups or deliveries in the next 7 days.</div>;

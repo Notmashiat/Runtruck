@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { mergeSettings, startingSettings, type Settings, type StartingCompany, type StartingPerson } from '../data/settings';
 import { COMPANY_ID, IS_DEMO, MEMBER_ID, OWNER_MEMBER_ID, readRegistry, readScoped, scopedKey } from './account';
+import { onStorageChange, readText, writeJson } from './storage';
 
 // The saved settings, readable anywhere with getSettings() and in components
 // with useSettings(). lib/applySettings.ts carries changes into the rest of
@@ -38,7 +39,7 @@ function load(): Settings {
   const personal = parse(readScoped(PERSONAL_KEY)) ?? (MEMBER_ID === OWNER_MEMBER_ID && shared ? { profile: shared.profile, appearance: shared.appearance } : null);
   const s = mergeSettings({ ...(shared ?? {}), profile: personal?.profile, appearance: personal?.appearance }, defaultSettings());
   // Before Settings existed, dark mode was saved on its own.
-  if (!personal && localStorage.getItem('runtruck-theme') === 'dark') s.appearance.theme = 'Dark';
+  if (!personal && readText('runtruck-theme') === 'dark') s.appearance.theme = 'Dark';
   return s;
 }
 
@@ -49,17 +50,31 @@ export function getSettings(): Settings {
   return current;
 }
 
+// The two halves as they are saved: the company's, and this account's own.
+const split = (s: Settings) => {
+  const { profile, appearance, ...shared } = s;
+  return { shared: JSON.stringify(shared), personal: JSON.stringify({ profile, appearance }) };
+};
+
+// Only the half that changed is written. An account changing its own theme
+// therefore never rewrites the company settings (which someone else may have
+// just edited in another tab), and the other way round.
 export function setSettings(next: Settings) {
+  const before = split(current);
+  const after = split(next);
   current = next;
-  try {
-    const { profile, appearance, ...shared } = next;
-    localStorage.setItem(scopedKey(KEY), JSON.stringify(shared));
-    localStorage.setItem(scopedKey(PERSONAL_KEY), JSON.stringify({ profile, appearance }));
-  } catch {
-    // Storage blocked: the settings last for this visit.
-  }
+  if (after.shared !== before.shared) writeJson(scopedKey(KEY), JSON.parse(after.shared));
+  if (after.personal !== before.personal) writeJson(scopedKey(PERSONAL_KEY), JSON.parse(after.personal));
   listeners.forEach((l) => l(next));
 }
+
+// Saved in another tab: take it here too.
+const reload = () => {
+  current = load();
+  listeners.forEach((l) => l(current));
+};
+onStorageChange(scopedKey(KEY), reload);
+onStorageChange(scopedKey(PERSONAL_KEY), reload);
 
 export function subscribeSettings(fn: (s: Settings) => void): () => void {
   listeners.add(fn);
@@ -83,10 +98,14 @@ export function numSetting(value: string, fallback: number): number {
 // '{invoice} is due {due}' with { invoice: 'INV-1', due: 'Oct 3' }. A line
 // that ends up as just a label ('Your reference:') is dropped.
 export function fillTemplate(template: string, vars: Record<string, string>): string {
-  const filled = template.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? vars[k] : m));
-  return filled
+  const fill = (line: string) => line.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? vars[k] : m));
+  // Only a label whose placeholder came out empty is dropped. A line the
+  // person wrote themselves ('Dear Accounts Payable:') stays.
+  const emptied = (line: string) => [...line.matchAll(/\{(\w+)\}/g)].some((m) => m[1] in vars && vars[m[1]].trim() === '');
+  return template
     .split('\n')
-    .filter((line) => !/^[^:\n]{1,40}:\s*$/.test(line))
+    .filter((line) => !(emptied(line) && /^[^:\n]{1,40}:\s*$/.test(fill(line))))
+    .map(fill)
     .join('\n')
     .replace(/\n{3,}/g, '\n\n');
 }

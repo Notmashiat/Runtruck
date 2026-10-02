@@ -1,16 +1,21 @@
 import { Suspense } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
+import { ErrorBoundary } from './ErrorBoundary';
 import { SectionTabs } from './SectionTabs';
 
 // Layout for a sidebar section that is split into tabs: the pill bar, then
-// whichever tab route is active.
+// whichever tab route is active. A tab that fails keeps the pill bar, so the
+// other tabs are one click away.
 export function TabbedSection() {
+  const { pathname } = useLocation();
   return (
     <>
       <SectionTabs />
-      <Suspense fallback={<div className="ui-empty">Loading…</div>}>
-        <Outlet />
-      </Suspense>
+      <ErrorBoundary where="Tab" resetKey={pathname}>
+        <Suspense fallback={<div className="ui-empty">Loading…</div>}>
+          <Outlet />
+        </Suspense>
+      </ErrorBoundary>
     </>
   );
 }

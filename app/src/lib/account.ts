@@ -52,10 +52,28 @@ function moveFormerKeys() {
 }
 moveFormerKeys();
 
+// Where a session may be kept: this tab only (sessionStorage) or the browser
+// (localStorage, "keep me signed in"). A browser set to block site data
+// throws on merely touching them, so each is taken on its own.
+export function sessionStores(): Storage[] {
+  const out: Storage[] = [];
+  try {
+    out.push(sessionStorage);
+  } catch {
+    // Blocked.
+  }
+  try {
+    out.push(localStorage);
+  } catch {
+    // Blocked.
+  }
+  return out;
+}
+
 // The account and company in the saved session (checked properly by
 // lib/auth.ts; this only decides whose storage to open).
 export function storedSession(): { companyId: string; memberId: string } | null {
-  for (const store of [sessionStorage, localStorage]) {
+  for (const store of sessionStores()) {
     try {
       const s = JSON.parse(store.getItem(SESSION_KEY) ?? 'null') as { companyId?: unknown; memberId?: unknown; expires?: unknown } | null;
       if (s && typeof s.companyId === 'string' && /^\d+$/.test(s.companyId) && typeof s.memberId === 'string' && Date.parse(String(s.expires)) > Date.now()) {

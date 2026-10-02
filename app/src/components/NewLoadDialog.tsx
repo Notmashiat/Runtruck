@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import { money } from '../data/accounting';
+import type { BillDocument } from '../data/bills';
 import { facilityFor, isRoad, stopHint, type Facility } from '../data/facilities';
+import { LOAD_TAG, normalizeLoad } from '../data/loads';
 import { CARRIERS, CUSTOMERS, stopsOf, USER, type Load } from '../data/mock';
-import { formatNow, isoFromText } from '../lib/clock';
+import { isoFromText, shortDate } from '../lib/clock';
+import { nextSerial } from '../lib/ids';
 import { isLive } from '../lib/releases';
 import { AttachDialog } from './AttachDialog';
 
@@ -18,7 +21,6 @@ const FREIGHT_CLASSES = ['50', '55', '60', '65', '70', '77.5', '85', '92.5', '10
 const LTL_SERVICES = ['Liftgate at pickup', 'Liftgate at delivery', 'Residential delivery', 'Inside delivery', 'Delivery appointment', 'Limited access'];
 const TERMS = ['Net 15', 'Net 30', 'Net 45', 'Net 60', 'Quick pay'];
 const DOCUMENTS = ['Rate confirmation', 'Customer load tender', 'Bill of lading', 'Proof of delivery', 'Lumper receipt'];
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 interface StopDraft {
   kind: 'Pickup' | 'Delivery';
@@ -61,6 +63,8 @@ interface Draft {
   services: string[];
   brokered: boolean;
   carrier: string;
+  carrierMc: string;
+  carrierDot: string;
   carrierContact: string;
   carrierPhone: string;
   carrierRate: string;
@@ -73,7 +77,10 @@ interface Draft {
   miles: string;
   driverPay: string;
   terms: string;
+  // Document name → file name, and the stored file when it was attached
+  // through the attach popup (so it can be opened from the load later).
   docs: Record<string, string>;
+  files: Record<string, BillDocument>;
   instructions: string;
   internal: string;
 }
@@ -87,10 +94,10 @@ const INITIAL: Draft = {
   stops: [emptyStop('Pickup'), emptyStop('Delivery')],
   commodity: '', weight: '', pieces: '', packaging: 'Pallets', value: '', temp: '', hazmat: false, unNumber: '',
   freightClass: '', nmfc: '', handlingUnits: '', length: '', width: '', height: '', stackable: false, services: [],
-  brokered: false, carrier: '', carrierContact: '', carrierPhone: '', carrierRate: '',
+  brokered: false, carrier: '', carrierMc: '', carrierDot: '', carrierContact: '', carrierPhone: '', carrierRate: '',
   driver: '', truck: '', trailer: '',
   lineHaul: '', fuel: '', accessorials: '', miles: '', driverPay: '', terms: 'Net 30',
-  docs: {}, instructions: '', internal: '',
+  docs: {}, files: {}, instructions: '', internal: '',
 };
 
 type Errors = Partial<Record<Section, string[]>>;
@@ -123,16 +130,11 @@ function validate(d: Draft): Errors {
     if (!positive(d.handlingUnits)) add('LTL', 'Handling units');
   }
   if (d.brokered) {
-    if (!d.carrier) add('Carrier', 'Carrier');
+    if (!d.carrier.trim()) add('Carrier', 'Carrier');
     if (!positive(d.carrierRate)) add('Carrier', 'Carrier rate');
   }
   if (!positive(d.lineHaul)) add('Rates', 'Line haul rate');
   return e;
-}
-
-function shortDate(iso: string) {
-  const [, m, d] = iso.split('-').map(Number);
-  return `${MONTHS[m - 1]} ${d}`;
 }
 
 function signedMoney(n: number) {
@@ -153,23 +155,32 @@ function toLoad(d: Draft, id: string, prev?: Load): Load {
   const miles = num(d.miles);
   const total = lineHaul + num(d.fuel) + num(d.accessorials);
   const cost = d.brokered ? num(d.carrierRate) : num(d.driverPay);
-  const carrier = d.brokered ? CARRIERS.find((c) => c.name === d.carrier) ?? CARRIERS[0] : CARRIERS[0];
+  // A partner carrier from the list, or one typed in (with its MC / DOT numbers).
+  const carrier = d.brokered
+    ? CARRIERS.slice(1).find((c) => c.name === d.carrier.trim()) ?? { name: d.carrier.trim(), mc: d.carrierMc.trim() || '—', dot: d.carrierDot.trim() || '—' }
+    : CARRIERS[0];
   const covered = d.brokered || Boolean(d.driver);
   const kept = prev && !PLANNED.includes(prev.status) ? prev : undefined;
   const reefer = d.equipment.startsWith('Reefer');
-  const stamp = `Today ${formatNow(new Date(), { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`;
+  const status = kept ? kept.status : covered ? 'Dispatched' : 'Needs driver';
+  const now = new Date().toISOString();
 
-  return {
+  // normalizeLoad writes the short date text from the real dates.
+  return normalizeLoad({
     id,
     customer: d.customer,
     route: `${place(first)} → ${place(last)}`,
     pickup: shortDate(first.date),
     delivery: shortDate(last.date),
+    pickupDate: first.date,
+    deliveryDate: last.date,
+    deliveredOn: prev?.deliveredOn,
+    charges: { lineHaul, fuel: num(d.fuel), accessorials: num(d.accessorials) },
     driver: d.driver.trim() || 'Unassigned',
     unit: [d.truck.trim(), d.trailer.trim()].filter(Boolean).join(' / ') || '—',
     rate: money(lineHaul),
-    status: kept ? kept.status : covered ? 'Dispatched' : 'Needs driver',
-    tagClass: kept ? kept.tagClass : covered ? 'tag-neutral' : 'tag-outline',
+    status,
+    tagClass: kept ? kept.tagClass : LOAD_TAG[status],
     miles: miles > 0 ? miles.toLocaleString('en-US') : '—',
     rpm: miles > 0 ? `$${(lineHaul / miles).toFixed(2)}` : '—',
     pay: cost > 0 ? money(cost) : '—',
@@ -195,14 +206,21 @@ function toLoad(d: Draft, id: string, prev?: Load): Load {
       name: s.facility.trim(),
       address: `${street(s)} ${s.zip.trim()}`.trim(),
       when: `${shortDate(s.date)} · ${s.from && s.to ? `${s.from}–${s.to}` : s.from || s.to || 'Any time'}`,
+      date: s.date,
     })),
-    documents: DOCUMENTS.map((name) => ({ name, file: d.docs[name] ?? '' })),
+    documents: DOCUMENTS.map((name) => {
+      const file = d.docs[name] ?? '';
+      const doc = d.files[name];
+      // The stored file goes with the slot only while it is the file named there.
+      return { name, file, ...(file && doc && doc.name === file ? { doc } : {}) };
+    }),
     carrierRate: d.brokered ? money(num(d.carrierRate)) : undefined,
     notes: d.instructions.trim() || undefined,
-    createdAt: prev ? prev.createdAt : stamp,
-    updatedAt: prev ? stamp : undefined,
+    history: [...(prev?.history ?? []), { at: now, by: USER.name, what: prev ? 'Load edited' : 'Load created' }],
+    createdAt: prev?.createdAt,
+    updatedAt: prev?.updatedAt,
     form: d,
-  };
+  });
 }
 
 function isDraft(x: unknown): x is Draft {
@@ -240,6 +258,8 @@ function draftFromLoad(l: Load): Draft {
     temp: digits(l.temp),
     brokered: Boolean(partner),
     carrier: partner?.name ?? '',
+    carrierMc: partner?.mc ?? '',
+    carrierDot: partner?.dot ?? '',
     carrierRate: partner ? digits(l.carrierRate ?? l.pay) : '',
     driver: l.driver === 'Unassigned' ? '' : l.driver,
     truck,
@@ -248,12 +268,15 @@ function draftFromLoad(l: Load): Draft {
     miles: digits(l.miles),
     driverPay: partner ? '' : digits(l.pay),
     docs: Object.fromEntries((l.documents ?? []).filter((x) => x.file).map((x) => [x.name, x.file])),
+    files: Object.fromEntries((l.documents ?? []).flatMap((x) => (x.file && x.doc ? [[x.name, x.doc]] : []))),
     instructions: l.notes ?? '',
   };
 }
 
+// The next load number: one more than the highest ever used, so a deleted
+// load's number is never given to a different load (lib/ids.ts).
 function nextId(loads: Load[]) {
-  return `L-${Math.max(0, ...loads.map((l) => Number(l.id.slice(2)) || 0)) + 1}`;
+  return `L-${nextSerial('L', loads.map((l) => l.id))}`;
 }
 
 interface FieldProps {
@@ -628,16 +651,30 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
           <Choice
             options={['Own fleet', 'Partner carrier']}
             value={d.brokered ? 'Partner carrier' : 'Own fleet'}
-            onChange={(v) => setD((prev) => ({ ...prev, brokered: v === 'Partner carrier', driver: '', truck: '', trailer: '' }))}
+            // Switching who hauls it clears the assignment; clicking the choice it already has changes nothing.
+            onChange={(v) => setD((prev) => (prev.brokered === (v === 'Partner carrier') ? prev : { ...prev, brokered: v === 'Partner carrier', driver: '', truck: '', trailer: '' }))}
           />
         </Field>
         {d.brokered ? (
           <div className="ui-form-grid">
             <Field label="Carrier" required invalid={missing('Carrier', 'Carrier')}>
-              <select className="ui-input" value={d.carrier} onChange={(e) => set('carrier', e.target.value)}>
-                <option value="">Select a carrier</option>
-                {CARRIERS.slice(1).map((c) => <option key={c.name} value={c.name}>{c.name} · {c.mc}</option>)}
-              </select>
+              <input
+                className="ui-input" list="ui-carrier-options" value={d.carrier} placeholder="Carrier name"
+                onChange={(e) => {
+                  // A carrier used before fills in its MC and DOT numbers.
+                  const known = CARRIERS.slice(1).find((c) => c.name === e.target.value);
+                  setD((prev) => ({ ...prev, carrier: e.target.value, ...(known ? { carrierMc: known.mc, carrierDot: known.dot } : {}) }));
+                }}
+              />
+              <datalist id="ui-carrier-options">
+                {CARRIERS.slice(1).map((c) => <option key={c.name} value={c.name}>{c.mc}</option>)}
+              </datalist>
+            </Field>
+            <Field label="MC #">
+              <input className="ui-input" value={d.carrierMc} onChange={(e) => set('carrierMc', e.target.value)} placeholder="e.g. MC 604117" />
+            </Field>
+            <Field label="DOT #">
+              <input className="ui-input" value={d.carrierDot} onChange={(e) => set('carrierDot', e.target.value)} placeholder="e.g. DOT 1780342" />
             </Field>
             <Field label="Carrier rate ($)" required invalid={missing('Carrier', 'Carrier rate')}>
               <input className="ui-input" type="number" min={0} value={d.carrierRate} onChange={(e) => set('carrierRate', e.target.value)} />
@@ -760,7 +797,7 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
                   <div className="ui-setting-help" style={{ overflowWrap: 'anywhere' }}>{file || 'Not attached'}</div>
                 </div>
                 {file && (
-                  <button type="button" className="ui-link" onClick={() => set('docs', { ...d.docs, [name]: '' })}>
+                  <button type="button" className="ui-link" onClick={() => setD((prev) => { const { [name]: _gone, ...files } = prev.files; return { ...prev, docs: { ...prev.docs, [name]: '' }, files }; })}>
                     Remove
                   </button>
                 )}
@@ -784,7 +821,7 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
         {attachingDoc && (
           <AttachDialog
             title={load ? `Load ${load.id}` : 'New load'} only={attachingDoc} accept=".pdf,image/*"
-            onAttach={(docs) => { if (docs[0]) set('docs', { ...d.docs, [attachingDoc]: docs[0].name }); }}
+            onAttach={(docs) => { const doc = docs[0]; if (doc) setD((prev) => ({ ...prev, docs: { ...prev.docs, [attachingDoc]: doc.name }, files: { ...prev.files, [attachingDoc]: doc } })); }}
             onClose={() => setAttachingDoc(null)}
           />
         )}

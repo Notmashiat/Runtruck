@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppShell } from '../context/AppShellContext';
 import {
-  TODAY, billToFor, daysFrom, fmtDate, rateLines, termsFor, usd, type BillableLoad,
+  TODAY, billToFor, daysFrom, fmtDate, lineAmount, loadLines, termsFor, usd, type BillableLoad,
 } from '../data/invoicing';
 import { stopsOf } from '../data/mock';
 import { useModal } from './FormBits';
@@ -24,7 +24,10 @@ export function LoadInfoDialog({ load, onInvoice, onClose }: { load: BillableLoa
   const { loads } = useAppShell();
   const { ref, closeNow, ownEvent } = useModal(onClose);
   const board = loads.find((l) => l.id === load.id);
-  const [haul, fsc] = rateLines(load.amount, load.route, load.miles);
+  // Line haul, then the fuel surcharge when there is one (it can be 0%).
+  const lines = loadLines(load);
+  const haul = lines[0];
+  const extras = lines.slice(1);
   const miles = Number(load.miles.replace(/[^\d.]/g, '')) || 0;
   const bill = billToFor(load.customer);
   const waiting = load.delivered ? daysFrom(load.delivered, TODAY) : 0;
@@ -85,8 +88,8 @@ export function LoadInfoDialog({ load, onInvoice, onClose }: { load: BillableLoa
           <div className="ui-panel">
             <div className="ui-label" style={{ marginBottom: 10 }}>Rate</div>
             <div className="ui-rate-rows">
-              <span>Line haul</span><span>{usd(Number(haul.rate))}</span>
-              <span>Fuel surcharge</span><span>{usd(Number(fsc.rate))}</span>
+              <span>Line haul</span><span>{usd(lineAmount(haul))}</span>
+              {extras.map((x) => <Fragment key={x.kind}><span>{x.kind}</span><span>{usd(lineAmount(x))}</span></Fragment>)}
               <strong>Total to bill</strong><strong>{usd(load.amount)}</strong>
             </div>
             {miles > 0 && <div className="ui-stop-meta">{usd(load.amount / miles)} per mile</div>}

@@ -2,6 +2,8 @@
 // updates and requests, roadside inspections and violations, and cargo and
 // accident claims. Stored per company (runtruck-<id>-workorders,
 // -violations, -claims, -docrequests, -driverfiles).
+import { nextSerial } from '../lib/ids';
+import { reviveList } from '../lib/persist';
 import { IS_DEMO } from '../lib/account';
 import { shiftIso, todayIso } from '../lib/clock';
 import type { BillDocument } from './bills';
@@ -19,7 +21,7 @@ const str = (v: FormValues, k: string) => (typeof v[k] === 'string' ? (v[k] as s
 const num = (v: FormValues, k: string) => Number(str(v, k).replace(/[$,]/g, '')) || 0;
 const made = (iso: string) => `${iso}T12:00:00.000Z`;
 export const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86_400_000);
-const nextNum = (prefix: string, ids: string[], start = 1000) => `${prefix}-${Math.max(start, ...ids.map((id) => Number(id.replace(/\D/g, '')) || 0)) + 1}`;
+const nextNum = (prefix: string, ids: string[], start = 1000) => `${prefix}-${nextSerial(prefix, ids, start)}`;
 const logNow = (by: string, action: string, note = ''): SafetyLog => ({ at: new Date().toISOString(), by, action, note });
 
 // — maintenance —
@@ -361,12 +363,16 @@ export function claimFromForm(v: FormValues, id: string, documents: BillDocument
 
 // — revivers —
 
-const ok = (raw: unknown, check: (x: Record<string, unknown>) => boolean) => Array.isArray(raw) && raw.every((x) => x && typeof x === 'object' && check(x as Record<string, unknown>));
-export const reviveWorkOrders = (raw: unknown) => (ok(raw, (x) => typeof x.id === 'string' && typeof x.unit === 'string') ? (raw as WorkOrder[]).map((w) => ({ ...w, documents: w.documents ?? [], log: w.log ?? [] })) : null);
-export const reviveViolations = (raw: unknown) => (ok(raw, (x) => typeof x.id === 'string' && typeof x.basic === 'string') ? (raw as ViolationRecord[]).map((v) => ({ ...v, documents: v.documents ?? [], log: v.log ?? [] })) : null);
-export const reviveClaims = (raw: unknown) => (ok(raw, (x) => typeof x.id === 'string' && Array.isArray(x.payments)) ? (raw as ClaimRecord[]).map((c) => ({ ...c, documents: c.documents ?? [], log: c.log ?? [] })) : null);
-export const reviveRequests = (raw: unknown) => (ok(raw, (x) => typeof x.id === 'string' && Array.isArray(x.documents)) ? (raw as DocRequest[]) : null);
-export const reviveDriverFiles = (raw: unknown) => (ok(raw, (x) => typeof x.id === 'string' && Array.isArray(x.files)) ? (raw as DriverFile[]) : null);
+// One record at a time (lib/persist.ts): a damaged record is set aside, the rest are kept.
+export const reviveWorkOrders = (raw: unknown) =>
+  reviveList<WorkOrder>('work orders', raw, (x) => typeof x.id === 'string' && typeof x.unit === 'string', (w) => ({ ...w, documents: w.documents ?? [], log: w.log ?? [] }));
+export const reviveViolations = (raw: unknown) =>
+  reviveList<ViolationRecord>('violations', raw, (x) => typeof x.id === 'string' && typeof x.basic === 'string' && typeof x.date === 'string', (v) => ({ ...v, documents: v.documents ?? [], log: v.log ?? [] }));
+export const reviveClaims = (raw: unknown) =>
+  reviveList<ClaimRecord>('claims', raw, (x) => typeof x.id === 'string' && Array.isArray(x.payments), (c) => ({ ...c, documents: c.documents ?? [], log: c.log ?? [] }));
+export const reviveRequests = (raw: unknown) => reviveList<DocRequest>('document requests', raw, (x) => typeof x.id === 'string' && Array.isArray(x.documents));
+export const reviveDriverFiles = (raw: unknown) =>
+  reviveList<DriverFile>('driver files', raw, (x) => typeof x.id === 'string' && Array.isArray(x.files), (f) => ({ ...f, history: f.history ?? [] }));
 
 // — demo records (RunTruck's own workspace only) —
 

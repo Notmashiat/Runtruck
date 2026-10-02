@@ -3,6 +3,8 @@
 // account. Stored per company (runtruck-<id>-customers). A customer goes
 // inactive when someone moves it there, or by itself after a year with no
 // loads or invoices; every move is logged with when, why and by whom.
+import { nextSerial } from '../lib/ids';
+import { reviveList } from '../lib/persist';
 import { IS_DEMO } from '../lib/account';
 import { isoDateAt, shiftIso } from '../lib/clock';
 import type { BillDocument } from './bills';
@@ -127,7 +129,7 @@ export function addDays(iso: string, n: number): string {
 export const lastInactive = (c: CustomerRecord) => [...c.log].reverse().find((e) => e.action === 'Moved to inactive');
 
 export function nextCustomerId(list: CustomerRecord[]): string {
-  return `CUS-${Math.max(1000, ...list.map((c) => Number(c.id.replace(/\D/g, '')) || 0)) + 1}`;
+  return `CUS-${nextSerial('CUS', list.map((c) => c.id), 1000)}`;
 }
 
 // — the form —
@@ -211,9 +213,9 @@ export function customerFromForm(v: FormValues, id: string, documents: BillDocum
 }
 
 export function reviveCustomers(raw: unknown): CustomerRecord[] | null {
-  return Array.isArray(raw) && raw.every((c) => c && typeof c.id === 'string' && typeof c.name === 'string' && Array.isArray(c.log))
-    ? (raw as CustomerRecord[]).map((c) => ({ ...c, documents: Array.isArray(c.documents) ? c.documents : [], equipment: c.equipment ?? [], needs: c.needs ?? [], onFile: c.onFile ?? [] }))
-    : null;
+  return reviveList<CustomerRecord>('customers', raw, (c) => typeof c.id === 'string' && typeof c.name === 'string' && Array.isArray(c.log), (c) => ({
+    ...c, documents: Array.isArray(c.documents) ? c.documents : [], equipment: c.equipment ?? [], needs: c.needs ?? [], onFile: c.onFile ?? [],
+  }));
 }
 
 // — demo customers (RunTruck's own workspace only) —

@@ -2,6 +2,8 @@
 // invoice yet). Invoices are kept in AppShellContext (browser storage), so
 // what is created, edited, emailed, batched and paid survives a reload.
 // Dates are ISO strings ('2026-09-03'); "today" is the planner's.
+import { nextSerial } from '../lib/ids';
+import { deliveryIso, isDelivered, loadTotal, pickupIso, type LoadCharges } from './loads';
 import { CUSTOMERS, INVOICES, LOADS, USER, type Load } from './mock';
 import { TODAY } from './planner';
 import { isoFromText, shiftDemo } from '../lib/clock';
@@ -41,7 +43,9 @@ export function fmtDate(iso: string | undefined, short = false): string {
 
 // — money —
 
-export const round2 = (n: number) => Math.round(n * 100) / 100;
+// To the cent. The tiny nudge makes an exact half-cent round up as people expect
+// (1.005 × 100 is 100.4999… in floating point, which would otherwise round down).
+export const round2 = (n: number) => Math.round(n * 100 + Math.sign(n) * 1e-6) / 100;
 
 // 2450 → '$2,450.00'; negatives as '-$142.00'.
 export function usd(n: number): string {
@@ -106,8 +110,13 @@ export function billToFor(customer: string): BillTo {
   return BILLING[customer] ? { ...BILLING[customer] } : { ...BLANK_BILL_TO, name: customer };
 }
 
+// Every customer's payment terms, active or not, kept in step with the CRM
+// (lib/customerSync.ts): an inactive customer's unbilled loads still go out
+// on that customer's own terms.
+export const CUSTOMER_TERMS: Record<string, string> = {};
+
 export function termsFor(customer: string): string {
-  return CUSTOMERS.find((c) => c.name === customer)?.terms ?? getSettings().invoicing.defaultTerms;
+  return CUSTOMER_TERMS[customer] || (CUSTOMERS.find((c) => c.name === customer)?.terms ?? getSettings().invoicing.defaultTerms);
 }
 
 // — invoices —
@@ -125,7 +134,15 @@ export interface InvoiceLine {
   description: string;
   qty: string;
   rate: string;
+  // The load this charge came from, when a load put it on the invoice.
+  loadId?: string;
 }
+
+// Whether a charge belongs to a load. Charges added before lines carried
+// their load are matched by their description ('L-12 · Fresno → Reno'),
+// on the whole load number: 'L-1' is not the start of 'L-12 · …'.
+export const isLineOfLoad = (line: InvoiceLine, loadId: string): boolean =>
+  line.loadId !== undefined ? line.loadId === loadId : line.description === loadId || line.description.startsWith(`${loadId} · `);
 
 export interface InvoiceEvent {
   date: string;
@@ -178,22 +195,46 @@ export function statusOf(inv: InvoiceRecord): InvoiceStatus {
 
 export const daysPastDue = (inv: InvoiceRecord) => (inv.due ? Math.max(0, daysFrom(inv.due, TODAY)) : 0);
 
-// Settings › Invoicing: the prefix, and the number to start from.
-export function nextInvoiceId(invoices: InvoiceRecord[]): string {
-  const { prefix, startAt } = getSettings().invoicing;
-  const n = Math.max(numSetting(startAt, 1) - 1, ...invoices.map((i) => Number(i.id.replace(/\D/g, '')) || 0)) + 1;
+// An invoice's running number: what follows the prefix ('INV-8846' → 8846).
+// The prefix itself may contain digits ('2026-'), so it is taken off first
+// rather than reading every digit in the id.
+export function invoiceSerial(id: string, prefix: string = getSettings().invoicing.prefix): number {
+  const rest = prefix && id.startsWith(prefix) ? id.slice(prefix.length) : id;
+  return Number(/(\d+)$/.exec(rest)?.[1] ?? 0) || 0;
+}
+
+// Settings › Invoicing: the prefix, and the number to start from. A number is
+// never used twice, even after its invoice is deleted (lib/ids.ts).
+export function nextInvoiceId(invoices: InvoiceRecord[], prefix: string = getSettings().invoicing.prefix, startAt: string = getSettings().invoicing.startAt): string {
+  const n = nextSerial('INV', invoices.map((i) => i.id), numSetting(startAt, 1) - 1, (id) => invoiceSerial(id, prefix));
   return `${prefix}${n}`;
 }
 
-// A rate as line haul plus fuel surcharge (12% of line haul), the way the
-// rate confirmations quote it. Descriptions start with the load number, which
-// is how a load's charges are found again when it is taken off an invoice.
-export function rateLines(amount: number, route: string, miles: string): InvoiceLine[] {
+// An all-in rate as line haul plus fuel surcharge (Settings › Invoicing; 12%
+// of line haul to start with), the way rate confirmations quote it. With the
+// surcharge set to 0 there is only the line haul line.
+export function rateLines(amount: number, route: string, miles: string, loadId?: string): InvoiceLine[] {
   const fsc = numSetting(getSettings().invoicing.fscPct, 0);
   const haul = Math.round(amount / (1 + fsc / 100));
+  const from = loadId ? { loadId } : {};
   return [
-    { kind: 'Line haul', description: `${route}${miles ? ` · ${miles} mi` : ''}`, qty: '1', rate: String(haul) },
-    ...(fsc > 0 ? [{ kind: 'Fuel surcharge', description: `${route.split(' · ')[0]} · FSC per rate confirmation (${fsc}%)`, qty: '1', rate: String(round2(amount - haul)) }] : []),
+    { kind: 'Line haul', description: `${route}${miles ? ` · ${miles} mi` : ''}`, qty: '1', rate: String(haul), ...from },
+    ...(fsc > 0 ? [{ kind: 'Fuel surcharge', description: `${route.split(' · ')[0]} · FSC per rate confirmation (${fsc}%)`, qty: '1', rate: String(round2(amount - haul)), ...from }] : []),
+  ];
+}
+
+// The charges a delivered load puts on an invoice. A load entered with the
+// load form bills exactly what was typed on its Rates step (line haul, fuel
+// surcharge, accessorials); an older load with only an all-in rate is split
+// by rateLines.
+export function loadLines(l: BillableLoad): InvoiceLine[] {
+  const label = `${l.id} · ${l.route}`;
+  if (!l.charges) return rateLines(l.amount, label, l.miles, l.id);
+  const miles = l.miles && l.miles !== '—' ? ` · ${l.miles} mi` : '';
+  return [
+    { kind: 'Line haul', description: `${label}${miles}`, qty: '1', rate: String(round2(l.charges.lineHaul)), loadId: l.id },
+    ...(l.charges.fuel > 0 ? [{ kind: 'Fuel surcharge', description: `${l.id} · Fuel surcharge`, qty: '1', rate: String(round2(l.charges.fuel)), loadId: l.id }] : []),
+    ...(l.charges.accessorials > 0 ? [{ kind: 'Accessorial', description: `${l.id} · Accessorial charges`, qty: '1', rate: String(round2(l.charges.accessorials)), loadId: l.id }] : []),
   ];
 }
 
@@ -212,6 +253,8 @@ export interface BillableLoad {
   weight: string;
   miles: string;
   equipment: string;
+  // Line haul, fuel and accessorials as entered on the load (loads made with the load form).
+  charges?: LoadCharges;
 }
 
 // Delivered loads from before the current board; the dashboard counts on
@@ -237,9 +280,9 @@ const DEMO_QUEUE = (): BillableLoad[] => (IS_DEMO ? shiftDemo(QUEUE) : []);
 
 function fromBoard(l: Load): BillableLoad {
   return {
-    id: l.id, customer: l.customer, route: l.route, pickup: isoFromShort(l.pickup), delivered: isoFromShort(l.delivery),
-    pod: l.status === 'Needs POD' ? 'Missing' : 'Attached', amount: money(l.rate), ref: l.ref, commodity: l.commodity,
-    weight: l.weight, miles: l.miles, equipment: l.equip,
+    id: l.id, customer: l.customer, route: l.route, pickup: pickupIso(l), delivered: deliveryIso(l),
+    pod: l.status === 'Needs POD' ? 'Missing' : 'Attached', amount: loadTotal(l), ref: l.ref, commodity: l.commodity,
+    weight: l.weight, miles: l.miles, equipment: l.equip, charges: l.charges,
   };
 }
 
@@ -247,7 +290,7 @@ function fromBoard(l: Load): BillableLoad {
 // on the board, minus every load already on an invoice. Newest first.
 export function billableLoads(loads: Load[], invoices: InvoiceRecord[]): BillableLoad[] {
   const invoiced = new Set(invoices.flatMap((i) => i.loads));
-  const board = loads.filter((l) => l.status === 'Delivered' || l.status === 'Needs POD').map(fromBoard);
+  const board = loads.filter((l) => isDelivered(l.status)).map(fromBoard);
   const seen = new Set<string>();
   return [...board, ...DEMO_QUEUE()]
     .filter((l) => !invoiced.has(l.id) && !seen.has(l.id) && seen.add(l.id))
@@ -281,7 +324,7 @@ export function draftForLoads(picked: BillableLoad[], id: string): InvoiceRecord
     id, draft: true, customer, billTo: billToFor(customer), loads: picked.map((l) => l.id),
     bol: '', ...shipmentFor(picked),
     issued: TODAY, terms, due: addDays(TODAY, termDays(terms)),
-    lines: picked.flatMap((l) => rateLines(l.amount, `${l.id} · ${l.route}`, l.miles)),
+    lines: picked.flatMap(loadLines),
     memo: '', internal: '', history: [],
   };
 }
@@ -356,7 +399,7 @@ function seedInvoice(s: (typeof SEED_INVOICES)[number]): InvoiceRecord {
     equipment: board?.equip ?? extra?.equipment ?? '', commodity: board?.commodity ?? extra?.commodity ?? '',
     weight: board?.weight ?? extra?.weight ?? '', miles,
     issued, terms, due: addDays(issued, termDays(terms)),
-    lines: rateLines(money(s.amount), `${s.load} · ${route}`, miles),
+    lines: rateLines(money(s.amount), `${s.load} · ${route}`, miles, s.load),
     memo: '', internal: '',
     sentOn: sent ? issued : undefined, sentTo: sent ? email : undefined,
     paid,
@@ -398,8 +441,7 @@ export function batchTotal(b: Batch, invoices: InvoiceRecord[]): number {
 }
 
 export function nextBatchId(batches: Batch[]): string {
-  const n = Math.max(2028, ...batches.map((b) => Number(b.id.replace(/\D/g, '')) || 0)) + 1;
-  return `B-${n}`;
+  return `B-${nextSerial('B', batches.map((b) => b.id), 2028)}`;
 }
 
 const BATCHES_2026: Batch[] = [
