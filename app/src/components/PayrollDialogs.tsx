@@ -7,7 +7,7 @@ import { fmtDate, usd } from '../data/invoicing';
 import { USER } from '../data/mock';
 import {
   ARCHIVE_REASONS, COMMON_ADDITIONS, COMMON_DEDUCTIONS, DRIVER_ROLES, EMPLOYEE_ROLES, ITEM_KINDS, PAY_BASES, PAY_FREQUENCIES, PAYOUT_METHODS, WORKER_TYPES,
-  blankEmployeeForm, defaultPeriod, employeeFromForm, employeeToForm, itemId, lineFor, nextEmployeeId, nextRunId, payLabel, settle, unitLabel,
+  blankEmployeeForm, defaultPeriod, earns, employeeFromForm, employeeToForm, itemId, lineFor, nextEmployeeId, nextRunId, payLabel, settle, unitLabel, unitsText,
   type DeliveredLoad, type Employee, type ItemKind, type PayFrequency, type PayItem, type PayLine, type PayRun,
 } from '../data/payroll';
 import { todayIso } from '../lib/clock';
@@ -206,10 +206,18 @@ export function PayRunDialog({ onClose, onCreated }: { onClose: () => void; onCr
   const { ref, closeNow, ownEvent } = useModal(onClose);
   const active = employees.filter((e) => e.status === 'Active');
   const firstFreq = (PAY_FREQUENCIES.find((f) => active.some((e) => e.frequency === f)) ?? 'Weekly') as PayFrequency;
-  const [frequency, setFrequency] = useState<PayFrequency>(firstFreq);
-  const [period, setPeriod] = useState(() => defaultPeriod(firstFreq));
-  const [picked, setPicked] = useState<string[]>(() => active.filter((e) => e.frequency === firstFreq).map((e) => e.id));
   const delivered = deliveredLoads(loads);
+  // By default, everyone in the group who earned something in the period.
+  const earners = (f: PayFrequency, p: { start: string; end: string }) =>
+    active.filter((e) => e.frequency === f).filter((e) => earns(lineFor(e, f, p.start, p.end, delivered))).map((e) => e.id);
+  const [frequency, setFrequency] = useState<PayFrequency>(firstFreq);
+  const [period, setPeriodState] = useState(() => defaultPeriod(firstFreq));
+  const [picked, setPicked] = useState<string[]>(() => earners(firstFreq, defaultPeriod(firstFreq)));
+  const setPeriod = (p: typeof period) => {
+    setPeriodState(p);
+    if (p.start && p.end) setPicked(earners(frequency, p));
+  };
+  const loadsInPeriod = delivered.filter((l) => l.delivered >= period.start && l.delivered <= period.end).length;
   const group = active.filter((e) => e.frequency === frequency);
   const preview = group.map((e) => lineFor(e, frequency, period.start, period.end, delivered));
   const chosen = preview.filter((l) => picked.includes(l.employeeId));
@@ -217,9 +225,10 @@ export function PayRunDialog({ onClose, onCreated }: { onClose: () => void; onCr
   const bad = !period.start || !period.end || period.end < period.start || !period.payDate || chosen.length === 0;
 
   const pickFrequency = (f: PayFrequency) => {
+    const p = defaultPeriod(f);
     setFrequency(f);
-    setPeriod(defaultPeriod(f));
-    setPicked(active.filter((e) => e.frequency === f).map((e) => e.id));
+    setPeriodState(p);
+    setPicked(earners(f, p));
   };
 
   const create = () => {
@@ -266,9 +275,15 @@ export function PayRunDialog({ onClose, onCreated }: { onClose: () => void; onCr
                       <td><input type="checkbox" checked={on} onChange={() => undefined} aria-label={`Include ${l.name}`} /></td>
                       <td className="strong">{l.name}<div className="ui-stop-meta">{l.role}</div></td>
                       <td>{payLabel(e)}</td>
-                      <td className="num">{l.basis === 'Salary' ? '—' : `${l.units.toLocaleString('en-US')} ${unitLabel(l.basis)}`}{l.loads.length > 0 && <div className="ui-stop-meta">{l.loads.length} load{l.loads.length === 1 ? '' : 's'}</div>}</td>
+                      <td className="num">
+                        {l.basis === 'Salary' ? 'Salary' : unitsText(l)}
+                        {l.loads.length > 0 && <div className="ui-stop-meta">{l.loads.length} load{l.loads.length === 1 ? '' : 's'}</div>}
+                        {!earns(l) && <div className="ui-stop-meta">No loads delivered in this period</div>}
+                      </td>
                       <td className="num">{usd(l.gross)}</td>
-                      <td className="num strong">{usd(l.net)}</td>
+                      <td className="num strong" style={l.net < 0 ? { color: 'var(--ui-red)' } : undefined}>
+                        {usd(l.net)}{l.net < 0 && <div className="ui-stop-meta" style={{ color: 'var(--ui-red)' }}>Deductions more than pay</div>}
+                      </td>
                     </tr>
                   );
                 })}
@@ -276,6 +291,9 @@ export function PayRunDialog({ onClose, onCreated }: { onClose: () => void; onCr
             </table>
             {preview.length === 0 && <div className="ui-empty">Nobody active is paid {frequency.toLowerCase()}.</div>}
           </div>
+          <p className="ui-stop-meta" style={{ margin: 0 }}>
+            {loadsInPeriod} load{loadsInPeriod === 1 ? '' : 's'} delivered in this period. People with nothing to pay are left out unless you tick them (their every-pay deductions would make their pay negative).
+          </p>
         </section>
         <footer className="ui-dialog-foot">
           <div className="ui-stop-meta" style={{ marginTop: 0 }}>{chosen.length} people · net {usd(chosen.reduce((s, l) => s + l.net, 0))}</div>
@@ -313,6 +331,7 @@ export function PayLineDialog({ run, line, onClose }: { run: PayRun; line: PayLi
             <div className="ui-label">{run.id} · {fmtDate(run.start)} – {fmtDate(run.end)}</div>
             <h2 className="ui-h2" style={{ margin: '2px 0 0' }}>{line.name}</h2>
             <p className="ui-p" style={{ marginTop: 4 }}>{line.role}{e ? ` · ${payLabel(e)}` : ''}{line.loads.length ? ` · loads ${line.loads.join(', ')}` : ''}</p>
+            {next.net < 0 && <div className="ui-errors" style={{ marginTop: 8 }}>Deductions are more than pay. Remove or lower a deduction, or hold this pay.</div>}
           </div>
           <div className="ui-form-grid">
             {line.basis !== 'Salary' ? (

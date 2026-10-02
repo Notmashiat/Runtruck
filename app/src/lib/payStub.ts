@@ -1,6 +1,6 @@
 // Pay statements (pay stubs) as PDF: one page per person in a pay run.
 import { COMPANY, fmtDate, usd } from '../data/invoicing';
-import { payLabel, unitLabel, type Employee, type PayLine, type PayRun } from '../data/payroll';
+import { payLabel, unitsText, type Employee, type PayLine, type PayRun } from '../data/payroll';
 import { PAGE_W, PdfDoc } from './pdf';
 
 const M = 48;
@@ -45,7 +45,7 @@ function statement(p: PdfDoc, run: PayRun, line: PayLine, e: Employee | undefine
   };
 
   head('Earnings');
-  const units = line.basis === 'Salary' ? '' : line.basis === '% of line haul' ? `${line.rate}% of ${usd(line.units)} line haul` : `${line.units.toLocaleString('en-US')} ${unitLabel(line.basis)} × ${usd(line.rate)}`;
+  const units = line.basis === 'Salary' ? '' : unitsText(line);
   row(`${line.basis}${e ? ` (${payLabel(e)})` : ''}`, usd(line.gross), [units, line.loads.length ? `Loads: ${line.loads.join(', ')}` : ''].filter(Boolean).join(' · '));
   for (const i of line.items.filter((x) => x.kind !== 'Deduction')) row(`${i.label} (${i.kind.toLowerCase()})`, usd(i.amount));
   y += 6;
@@ -63,7 +63,7 @@ function statement(p: PdfDoc, run: PayRun, line: PayLine, e: Employee | undefine
   p.text(M, y, 'Year to date', { size: 10, bold: true });
   y += 16;
   row('Gross pay', usd(ytd.gross));
-  row('Net pay', usd(ytd.net));
+  row('Net pay (RunTruck pay runs)', usd(ytd.net));
   if (line.note) {
     y += 6;
     p.text(M, y, `Note: ${line.note}`, { size: 9, color: '#374151' });

@@ -163,6 +163,22 @@ export function payLabel(e: Pick<Employee, 'payBasis' | 'rate'>): string {
   }
 }
 
+// '2,140 miles × $0.62', '$5,820 line haul × 25%', '82 hours × $34.50', 'Salary'.
+export function unitsText(l: Pick<PayLine, 'basis' | 'units' | 'rate'>): string {
+  const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
+  const n = l.units.toLocaleString('en-US');
+  switch (l.basis) {
+    case 'Per mile': return `${n} miles × ${money(l.rate)}`;
+    case '% of line haul': return `${money(l.units)} line haul × ${l.rate}%`;
+    case 'Flat per load': return `${n} load${l.units === 1 ? '' : 's'} × ${money(l.rate)}`;
+    case 'Hourly': return `${n} hours × ${money(l.rate)}`;
+    default: return l.units === 1 ? 'Salary' : `Salary × ${l.units}`;
+  }
+}
+
+// Whether a line has anything to pay (no loads and no extra pay = nothing).
+export const earns = (l: PayLine) => l.gross + l.items.filter((i) => i.kind !== 'Deduction').reduce((s, i) => s + i.amount, 0) > 0;
+
 export const unitLabel = (b: PayBasis) => (b === 'Per mile' ? 'miles' : b === '% of line haul' ? 'line haul $' : b === 'Flat per load' ? 'loads' : b === 'Hourly' ? 'hours' : 'salary');
 
 // — working out a line —

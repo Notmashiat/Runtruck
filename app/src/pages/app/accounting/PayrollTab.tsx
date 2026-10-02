@@ -11,7 +11,7 @@ import { fmtDate, TODAY, usd, usd0 } from '../../../data/invoicing';
 import { mondayOf } from '../../../data/metrics';
 import { SETTLE_TAG, SETTLEMENTS, USER } from '../../../data/mock';
 import {
-  DRIVER_ROLES, EMPLOYEE_ROLES, PAY_BASES, PAY_FREQUENCIES, RUN_TAG, payLabel, runTotals, unitLabel,
+  DRIVER_ROLES, EMPLOYEE_ROLES, PAY_BASES, PAY_FREQUENCIES, RUN_TAG, payLabel, runTotals, unitsText,
   type Employee, type PayLine, type PayRun,
 } from '../../../data/payroll';
 import { isoDateAt, shortDate, todayIso } from '../../../lib/clock';
@@ -122,11 +122,11 @@ function Payroll() {
     return (
       <tr key={l.employeeId} className={l.hold ? 'is-off' : ''}>
         <td className="strong">{l.name}<div className="ui-stop-meta">{l.role}</div></td>
-        <td>{l.basis === 'Salary' ? `Salary${l.units !== 1 ? ` × ${l.units}` : ''}` : `${l.units.toLocaleString('en-US')} ${unitLabel(l.basis)} × ${l.basis === '% of line haul' ? `${l.rate}%` : usd(l.rate)}`}{l.loads.length > 0 && <div className="ui-stop-meta">{l.loads.join(', ')}</div>}</td>
+        <td>{unitsText(l)}{l.loads.length > 0 && <div className="ui-stop-meta">{l.loads.join(', ')}</div>}</td>
         <td className="num">{usd(l.gross)}</td>
         <td className="num">{plus ? `+${usd(plus)}` : '—'}</td>
         <td className="num">{minus || l.tax ? `-${usd(minus + l.tax)}` : '—'}{l.tax > 0 && <div className="ui-stop-meta">tax {usd(l.tax)}</div>}</td>
-        <td className="num strong">{l.hold ? <Tag label="On hold" tagClass="tag-outline" /> : usd(l.net)}</td>
+        <td className="num strong" style={!l.hold && l.net < 0 ? { color: 'var(--ui-red)' } : undefined}>{l.hold ? <Tag label="On hold" tagClass="tag-outline" /> : usd(l.net)}</td>
         <td className="num">
           <span className="pay-actions">
             {r.status === 'Draft' && <button type="button" className="ui-link" onClick={() => setAdjusting({ run: r, line: l })}>Adjust</button>}
@@ -182,7 +182,11 @@ function Payroll() {
                               {r.status === 'Draft' && (
                                 <>
                                   <button type="button" className="ui-btn ui-btn-sm ui-btn-danger" onClick={() => { if (window.confirm(`Delete draft ${r.id}?`)) deletePayRun(r.id); }}>Delete draft</button>
-                                  <button type="button" className="ui-btn ui-btn-sm ui-btn-primary" onClick={() => { if (window.confirm(`Approve ${r.id}: ${usd(t.net)} net to ${r.lines.length - t.held} people, paid ${fmtDate(r.payDate)}?`)) setStatus(r, 'Approved'); }}>Approve</button>
+                                  <button type="button" className="ui-btn ui-btn-sm ui-btn-primary" onClick={() => {
+                                    const short = r.lines.filter((l) => !l.hold && l.net < 0).map((l) => l.name);
+                                    if (short.length) { window.alert(`${short.join(', ')}: deductions are more than pay. Adjust or hold before approving.`); return; }
+                                    if (window.confirm(`Approve ${r.id}: ${usd(t.net)} net to ${r.lines.length - t.held} people, paid ${fmtDate(r.payDate)}?`)) setStatus(r, 'Approved');
+                                  }}>Approve</button>
                                 </>
                               )}
                               {r.status === 'Approved' && (
