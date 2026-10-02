@@ -716,3 +716,18 @@ label.ui-btn:focus-within { outline: 2px solid var(--ui-primary); outline-offset
 .crm-log li.is-off { border-left-color: var(--ui-red); }
 .crm-log li.is-on { border-left-color: var(--ui-green, #16a34a); }
 @media (max-width: 760px) { .crm-log li { grid-template-columns: minmax(0, 1fr); } }
+
+/* CRM documents */
+.crm-chip { font: inherit; cursor: pointer; }
+.crm-chip:hover { border-color: var(--ui-primary); }
+.crm-chip.has-file { flex-direction: row; align-items: center; gap: 6px; padding: 0; overflow: hidden; }
+.crm-chip-open { padding: 6px 4px 6px 10px; font: inherit; font-weight: 600; color: var(--ui-primary); background: none; border: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.crm-chip-dl { align-self: stretch; padding: 0 9px; font: inherit; color: var(--ui-primary); background: var(--ui-primary-soft); border: 0; cursor: pointer; }
+.crm-chip-dl:hover { background: var(--ui-primary); color: var(--ui-on-primary); }
+.crm-viewall { margin-left: 4px; }
+.crm-doc-open { padding: 0; font: inherit; font-weight: 600; text-align: left; color: var(--ui-primary); background: none; border: 0; cursor: pointer; }
+.crm-doc-open:hover { text-decoration: underline; }
+.bill-doc-list li.is-missing { border-style: dashed; }
+.bill-doc-list li.is-missing .bill-doc-icon { color: var(--ui-muted); background: var(--ui-expand); }
+.crm-paper { font-size: 12px; }
+.ui-dialog.is-compact.crm-docs-dialog { width: min(760px, calc(100vw - 32px)); }

@@ -1,8 +1,9 @@
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { BillDocuments } from '../../components/BillDialogs';
+import { downloadDocument, openDocument, readAttachment } from '../../components/BillDialogs';
 import { Card } from '../../components/Card';
-import { CustomerDialog, InactivateDialog } from '../../components/CustomerDialogs';
+import { CustomerDialog } from '../../components/CustomerDialogs';
+import { CustomerDocsDialog } from '../../components/CustomerDocs';
 import { Kpis } from '../../components/Kpis';
 import { Tag } from '../../components/Tag';
 import { useAppShell } from '../../context/AppShellContext';
@@ -45,7 +46,10 @@ function CustomerManager() {
   const showInactive = params.get('view') === 'inactive';
   const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomerRecord | null>(null);
-  const [inactivating, setInactivating] = useState<CustomerRecord | null>(null);
+  const [viewingDocs, setViewingDocs] = useState<CustomerRecord | null>(null);
+  // Attaching straight from an On file chip: which customer and document.
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [attachFor, setAttachFor] = useState<{ id: string; kind: string } | null>(null);
   const today = todayIso();
   const year = today.slice(0, 4);
 
@@ -123,11 +127,7 @@ function CustomerManager() {
       <div className="ui-batch-head">
         <div className="ui-stop-meta" style={{ marginTop: 0 }}>{c.id} · last used {fmtDate(c.lastUsed)} ({c.lastWhy})</div>
         <div style={{ flex: 1 }} />
-        {c.status === 'Active' ? (
-          <button type="button" className="ui-btn ui-btn-sm ui-btn-danger" onClick={() => setInactivating(c)}>Move to inactive</button>
-        ) : (
-          <button type="button" className="ui-btn ui-btn-sm ui-btn-primary" onClick={() => reactivate(c)}>Reactivate</button>
-        )}
+        {c.status === 'Inactive' && <button type="button" className="ui-btn ui-btn-sm ui-btn-primary" onClick={() => reactivate(c)}>Reactivate</button>}
         <button type="button" className="ui-btn ui-btn-sm" onClick={() => setEditing(customers.find((x) => x.id === c.id) ?? null)}>Edit customer</button>
       </div>
       <div className="ui-kv-grid dev-facts">
@@ -154,12 +154,28 @@ function CustomerManager() {
       </div>
       <div className="crm-onfile">
         <span className="ui-label">On file</span>
-        {ON_FILE.map((d) => <span key={d} className={`acc-perm${c.onFile.includes(d) ? ' is-on' : ''}`}>{d}</span>)}
+        {ON_FILE.map((kind) => {
+          const doc = c.documents.find((d) => d.kind === kind);
+          const on = Boolean(doc) || c.onFile.includes(kind);
+          return doc ? (
+            <span key={kind} className="acc-perm is-on crm-chip has-file">
+              <button type="button" className="crm-chip-open" title={`Open ${doc.name}`} onClick={() => { void openDocument(doc); }}>{kind}</button>
+              <button type="button" className="crm-chip-dl" title={`Download ${doc.name}`} aria-label={`Download ${doc.name}`} onClick={() => downloadDocument(doc)}>⤓</button>
+            </span>
+          ) : (
+            <button
+              key={kind} type="button" className={`acc-perm crm-chip${on ? ' is-on' : ''}`}
+              title={on ? 'Paper copy on file. Click to attach a scan.' : 'Not on file. Click to attach it.'}
+              onClick={() => { setAttachFor({ id: c.id, kind }); setTimeout(() => fileInput.current?.click(), 0); }}
+            >
+              {kind}{on ? '' : ' +'}
+            </button>
+          );
+        })}
+        <button type="button" className="ui-btn ui-btn-sm crm-viewall" onClick={() => setViewingDocs(customers.find((x) => x.id === c.id) ?? null)}>
+          View all documents{c.documents.length ? ` (${c.documents.length})` : ''}
+        </button>
       </div>
-      <BillDocuments
-        docs={c.documents} hint="Contracts, credit applications, W-9s, rate agreements, routing guides"
-        onChange={(documents) => { const base = customers.find((x) => x.id === c.id); if (base) saveCustomer({ ...base, documents, updated: new Date().toISOString() }); }}
-      />
       <div>
         <div className="ui-label" style={{ marginBottom: 6 }}>Log</div>
         <ul className="crm-log">
@@ -260,7 +276,23 @@ function CustomerManager() {
       </Card>
 
       {editing && <CustomerDialog customer={editing} onClose={() => setEditing(null)} />}
-      {inactivating && <InactivateDialog customer={inactivating} onClose={() => setInactivating(null)} />}
+      {viewingDocs && <CustomerDocsDialog customer={viewingDocs} onClose={() => setViewingDocs(null)} />}
+      <input
+        ref={fileInput} type="file" hidden accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx,.csv,.txt"
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          const target = attachFor && customers.find((x) => x.id === attachFor.id);
+          e.target.value = '';
+          if (!f || !target || !attachFor) return;
+          const doc = await readAttachment(f, attachFor.kind);
+          if (typeof doc === 'string') { window.alert(`${doc} is over 2 MB. Attach a smaller copy.`); return; }
+          saveCustomer({
+            ...target, updated: new Date().toISOString(),
+            documents: [...target.documents.filter((d) => d.kind !== attachFor.kind), doc],
+            onFile: target.onFile.includes(attachFor.kind) ? target.onFile : [...target.onFile, attachFor.kind],
+          });
+        }}
+      />
     </>
   );
 }

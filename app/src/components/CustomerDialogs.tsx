@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAppShell } from '../context/AppShellContext';
 import type { BillDocument } from '../data/bills';
 import {
-  CUSTOMER_EQUIPMENT, CUSTOMER_NEEDS, CUSTOMER_PAY, CUSTOMER_TERMS, CUSTOMER_TYPES, INACTIVE_REASONS, INDUSTRIES, INVOICE_DELIVERY, ON_FILE, STANDINGS,
+  CUSTOMER_EQUIPMENT, CUSTOMER_NEEDS, CUSTOMER_PAY, CUSTOMER_TERMS, CUSTOMER_TYPES, INACTIVE_REASONS, INDUSTRIES, INVOICE_DELIVERY, STANDINGS,
   blankCustomerForm, customerFromForm, customerToForm, nextCustomerId, type CustomerRecord,
 } from '../data/customers';
 import type { FormValues } from '../data/fleet';
@@ -10,7 +10,7 @@ import { USER } from '../data/mock';
 import { todayIso } from '../lib/clock';
 import { PHONE, STATE, ZIP } from '../lib/rules';
 import { getSettings } from '../lib/settingsStore';
-import { BillDocuments } from './BillDialogs';
+import { CustomerDocs } from './CustomerDocs';
 import { Field, useModal } from './FormBits';
 import { RecordDialog, type SectionSpec } from './RecordDialog';
 
@@ -86,25 +86,35 @@ function customerSections(takenNames: string[], reps: string[]): SectionSpec[] {
     },
     {
       title: 'Documents',
-      help: 'What is on file for this customer, and the files themselves.',
+      help: 'Attach each required document (or mark a paper copy on file), and any other files.',
       fields: [
-        { key: 'onFile', label: 'On file', type: 'checks', options: ON_FILE },
         { key: 'notes', label: 'Notes', type: 'textarea', placeholder: 'Anything the team should know' },
       ],
     },
   ];
 }
 
-// Add Customer and Edit customer.
+// Add Customer and Edit customer. Editing also moves the customer to
+// inactive (or reactivates it).
 export function CustomerDialog({ customer, onClose }: { customer?: CustomerRecord; onClose: () => void }) {
   const { customers, saveCustomer, deleteCustomer } = useAppShell();
   const [id] = useState(() => customer?.id ?? nextCustomerId(customers));
   const [docs, setDocs] = useState<BillDocument[]>(customer?.documents ?? []);
+  const [onFile, setOnFile] = useState<string[]>(customer?.onFile ?? []);
+  const [inactivating, setInactivating] = useState(false);
   const [initial] = useState<FormValues>(() => (customer ? customerToForm(customer) : blankCustomerForm(todayIso(), USER.name)));
   const taken = customers.filter((c) => c.id !== id).map((c) => c.name.toLowerCase());
   const reps = [...new Set([USER.name, ...getSettings().team.filter((m) => m.active).map((m) => m.name)])].filter(Boolean);
 
+  const reactivate = () => {
+    if (!customer || !window.confirm(`Reactivate ${customer.name}? It goes back to the customer list and pickers.`)) return;
+    const now = new Date().toISOString();
+    saveCustomer({ ...customer, status: 'Active', updated: now, log: [...customer.log, { at: now, by: USER.name, action: 'Reactivated', reason: 'Reactivated by a user' }] });
+    onClose();
+  };
+
   return (
+    <>
     <RecordDialog
       heading={customer ? `Edit ${customer.name}` : 'New customer'}
       saveLabel={customer ? 'Save changes' : 'Add customer'}
@@ -114,16 +124,23 @@ export function CustomerDialog({ customer, onClose }: { customer?: CustomerRecor
       recordLabel={customer ? customer.name : 'customer'}
       noun="customer"
       deleteNote="The customer and its documents are removed for good; loads and invoices keep the name. To keep the record, move it to inactive instead."
-      extras={{ Documents: <BillDocuments docs={docs} onChange={setDocs} hint="Contracts, credit applications, W-9s, rate agreements, routing guides" /> }}
-      onSave={(v) => saveCustomer(customerFromForm(v, id, docs, USER.name, customer))}
+      extras={{ Documents: <CustomerDocs docs={docs} onFile={onFile} onChange={(d, f) => { setDocs(d); setOnFile(f); }} /> }}
+      footerExtra={
+        customer && (customer.status === 'Active'
+          ? <button type="button" className="ui-btn ui-btn-danger" onClick={() => setInactivating(true)}>Move to inactive</button>
+          : <button type="button" className="ui-btn" onClick={reactivate}>Reactivate</button>)
+      }
+      onSave={(v) => saveCustomer({ ...customerFromForm(v, id, docs, USER.name, customer), onFile })}
       onDelete={customer ? () => deleteCustomer(customer.id) : undefined}
       onClose={onClose}
     />
+    {inactivating && customer && <InactivateDialog customer={customer} onClose={() => setInactivating(false)} onDone={onClose} />}
+    </>
   );
 }
 
 // Move a customer to inactive, saying why.
-export function InactivateDialog({ customer, onClose }: { customer: CustomerRecord; onClose: () => void }) {
+export function InactivateDialog({ customer, onClose, onDone }: { customer: CustomerRecord; onClose: () => void; onDone?: () => void }) {
   const { saveCustomer } = useAppShell();
   const { ref, closeNow, ownEvent } = useModal(onClose);
   const [reason, setReason] = useState(INACTIVE_REASONS[0]);
@@ -136,6 +153,7 @@ export function InactivateDialog({ customer, onClose }: { customer: CustomerReco
       log: [...customer.log, { at: now, by: USER.name, action: 'Moved to inactive', reason: [reason, note.trim()].filter(Boolean).join(' · ') }],
     });
     closeNow();
+    onDone?.();
   };
 
   return (
@@ -146,7 +164,7 @@ export function InactivateDialog({ customer, onClose }: { customer: CustomerReco
           <div>
             <div className="ui-label">Move to inactive</div>
             <h2 className="ui-h2" style={{ margin: '2px 0 0' }}>{customer.name}</h2>
-            <p className="ui-p" style={{ marginTop: 4 }}>It leaves the customer lists and pickers but stays on file under Inactive customers, with this reason in its log. You can reactivate it any time.</p>
+            <p className="ui-p" style={{ marginTop: 4 }}>It leaves the customer lists and pickers but stays on file under Inactive customers, with this reason in its log. You can reactivate it any time. Unsaved changes in the edit form are not kept.</p>
           </div>
           <Field label="Why" required>
             <select className="ui-input" value={reason} onChange={(e) => setReason(e.target.value)}>{INACTIVE_REASONS.map((r) => <option key={r}>{r}</option>)}</select>

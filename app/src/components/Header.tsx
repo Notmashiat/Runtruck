@@ -31,7 +31,7 @@ const NO_FILTERS: ViewKey[] = ['dashboard', 'planner'];
 export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { query, setQuery, approveAll, loads, customers, filterMeta, filterValues, setFilter, clearFilters } = useAppShell();
+  const { query, setQuery, approveAll, loads, filterMeta, filterValues, setFilter, clearFilters } = useAppShell();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const now = useNow(15_000);
   const [newLoadOpen, setNewLoadOpen] = useState(false);
@@ -80,7 +80,7 @@ export function Header() {
       ? [
           inactiveView
             ? { label: '← Active customers', onClick: () => navigate('/app/crm') }
-            : { label: `Inactive customers (${customers.filter((c) => c.status === 'Inactive').length})`, onClick: () => navigate('/app/crm?view=inactive') },
+            : { label: 'Inactive customers', onClick: () => navigate('/app/crm?view=inactive') },
           { label: '+ Add Customer', primary: true, onClick: () => setAdding('customer') },
         ]
       : [{ label: '+ Add Customer', primary: true }],

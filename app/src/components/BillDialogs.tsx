@@ -26,6 +26,15 @@ function readFile(f: File): Promise<string> {
   });
 }
 
+// A file read into an attachment, or its name when it is too big.
+export async function readAttachment(f: File, kind?: string): Promise<BillDocument | string> {
+  if (f.size > MAX_DOC_BYTES) return f.name;
+  return {
+    id: `DOC-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name: f.name, type: f.type || 'application/octet-stream',
+    size: f.size, data: await readFile(f), added: new Date().toISOString(), ...(kind ? { kind } : {}),
+  };
+}
+
 // Open an attached file in a new tab (PDFs and images show in the browser).
 export async function openDocument(d: BillDocument) {
   const blob = await (await fetch(d.data)).blob();
@@ -87,7 +96,7 @@ export function BillDocuments({ docs, onChange, hint = 'The vendor’s invoice, 
             <li key={d.id}>
               <span className="bill-doc-icon" aria-hidden="true">{d.type === 'application/pdf' ? 'PDF' : d.type.startsWith('image/') ? 'IMG' : 'DOC'}</span>
               <span className="bill-doc-name">
-                <strong>{d.name}</strong>
+                <button type="button" className="crm-doc-open" onClick={() => { void openDocument(d); }}>{d.name}</button>
                 <span className="ui-stop-meta" style={{ marginTop: 0 }}>{fileSize(d.size)} · added {fmtDate(isoDateAt(new Date(d.added)))}</span>
               </span>
               <button type="button" className="ui-link" onClick={() => { void openDocument(d); }}>Open</button>

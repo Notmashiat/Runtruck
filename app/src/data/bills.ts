@@ -26,6 +26,8 @@ export interface BillDocument {
   // The file itself, kept with the bill (a data: URL).
   data: string;
   added: string;
+  // Which required document it is (customers: 'W-9', 'Credit application'…).
+  kind?: string;
 }
 
 export interface BillPayment {

@@ -42,6 +42,8 @@ interface RecordDialogProps {
   // Shown under every section's title (e.g. the record's ID).
   banner?: ReactNode;
   // Extra content under a section's fields, by section title (e.g. attachments).
+  // More buttons in the footer, after Cancel (e.g. Move to inactive).
+  footerExtra?: ReactNode;
   extras?: Record<string, ReactNode>;
   // Follow-on changes when a field changes (e.g. a preset filling a checklist).
   adjust?: (prev: FormValues, next: FormValues, key: string) => FormValues;
@@ -258,6 +260,7 @@ export function RecordDialog(p: RecordDialogProps) {
         </section>
         <footer className="ui-dialog-foot">
           <button type="button" className="ui-btn" onClick={requestClose}>Cancel</button>
+          {p.footerExtra}
           {!p.isNew && p.onArchive && (
             <button
               type="button"
