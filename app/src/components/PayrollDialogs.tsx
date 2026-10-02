@@ -31,6 +31,18 @@ export function deliveredLoads(loads: { id: string; driver: string; status: stri
 }
 
 // Per-pay additions and deductions: add, change, remove.
+// Money box that keeps what is typed ('12.' stays '12.') and starts empty instead of '0'.
+function AmountInput({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const [text, setText] = useState(value ? String(value) : '');
+  return (
+    <input className="ui-input num" inputMode="decimal" placeholder="0.00" value={text} aria-label="Amount" onChange={(e) => {
+      const t = e.target.value.replace(/[^0-9.]/g, '');
+      setText(t);
+      onChange(Math.round((Number(t) || 0) * 100) / 100);
+    }} />
+  );
+}
+
 export function ItemsEditor({ items, onChange }: { items: PayItem[]; onChange: (items: PayItem[]) => void }) {
   const set = (id: string, patch: Partial<PayItem>) => onChange(items.map((i) => (i.id === id ? { ...i, ...patch } : i)));
   return (
@@ -41,7 +53,7 @@ export function ItemsEditor({ items, onChange }: { items: PayItem[]; onChange: (
         <div key={i.id} className="pay-item">
           <input className="ui-input" list="pay-item-names" value={i.label} placeholder="e.g. Escrow, Detention" aria-label="What it is" onChange={(e) => set(i.id, { label: e.target.value })} />
           <select className="ui-input" value={i.kind} aria-label="Kind" onChange={(e) => set(i.id, { kind: e.target.value as ItemKind })}>{ITEM_KINDS.map((k) => <option key={k}>{k}</option>)}</select>
-          <input className="ui-input num" inputMode="decimal" value={String(i.amount)} aria-label="Amount" onChange={(e) => set(i.id, { amount: Number(e.target.value.replace(/[$,]/g, '')) || 0 })} />
+          <AmountInput value={i.amount} onChange={(amount) => set(i.id, { amount })} />
           <button type="button" className="ui-icon-btn" aria-label={`Remove ${i.label || 'item'}`} onClick={() => onChange(items.filter((x) => x.id !== i.id))}>×</button>
         </div>
       ))}
@@ -262,6 +274,7 @@ export function PayRunDialog({ onClose, onCreated }: { onClose: () => void; onCr
             <Field label="Period to"><input className="ui-input" type="date" value={period.end} onChange={(e) => setPeriod({ ...period, end: e.target.value })} /></Field>
             <Field label="Pay date"><input className="ui-input" type="date" value={period.payDate} onChange={(e) => setPeriod({ ...period, payDate: e.target.value })} /></Field>
           </div>
+          {period.payDate && period.end && period.payDate < period.end && <div className="ui-note">The pay date is before the period ends ({fmtDate(period.end)}). Pay in arrears: pick a date after the period.</div>}
           {overlap && <div className="ui-note">{overlap.id} ({overlap.status.toLowerCase()}) already covers {fmtDate(overlap.start)} – {fmtDate(overlap.end)} for this group.</div>}
           <div className="ui-table-wrap">
             <table className="ui-table">
