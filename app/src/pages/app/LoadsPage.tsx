@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Card } from '../../components/Card';
 import { Kpis } from '../../components/Kpis';
+import { DriverName } from '../../components/DriverCard';
 import { PipelineMove } from '../../components/LoadDialogs';
 import { NewLoadDialog } from '../../components/NewLoadDialog';
 import { Tag } from '../../components/Tag';
@@ -140,7 +141,7 @@ export function LoadsPage() {
                     <td className={unassigned ? 'muted' : ''}>{unassigned ? 'Unassigned' : l.unit}</td>
                     <td>{l.route}</td>
                     <td>{l.pickup}</td>
-                    <td>{l.driver}</td>
+                    <td><DriverName name={l.driver} /></td>
                     <td className="num">{l.rate}</td>
                     <td className="num"><Tag label={l.status} tagClass={l.tagClass} /></td>
                   </tr>
@@ -205,7 +206,7 @@ export function LoadsPage() {
                               </div>
                               <div>
                                 <div className="ui-label">Driver</div>
-                                <div className="ui-kv-value">{l.driver}</div>
+                                <div className="ui-kv-value"><DriverName name={l.driver} /></div>
                               </div>
                             </div>
                             <div className="ui-label" style={{ marginTop: 22 }}>Carrier</div>

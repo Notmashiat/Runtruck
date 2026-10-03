@@ -1,5 +1,6 @@
 // The rules of loads, contracts and safety records.
 import { describe, expect, it } from 'vitest';
+import { coDriverOf, drivingModeOf, type FleetDriver } from './fleet';
 import { currentEnd, parseOffer } from './hrRecords';
 import { billingByLoad, deliveryIso, isDelivered, lineHaulOf, loadTotal, pipelineSteps, stageOf, stageSlug, statusForStage, withStatus } from './loads';
 import type { Load } from './mock';
@@ -125,5 +126,24 @@ describe('load pipeline', () => {
 
   it('puts the stage in the page address', () => {
     expect(stageSlug('En route')).toBe('en-route');
+  });
+});
+
+describe('driver card', () => {
+  const d = (id: string, name: string, details: Record<string, unknown>) => ({ id, name, details }) as unknown as FleetDriver;
+
+  it('reads how a driver runs, with older drivers counted from their driver type', () => {
+    expect(drivingModeOf(d('D-1', 'A', { drivingMode: 'Strong solo' }))).toBe('Strong solo');
+    expect(drivingModeOf(d('D-2', 'B', { driverType: 'Team driver' }))).toBe('Team');
+    expect(drivingModeOf(d('D-3', 'C', { driverType: 'Company driver (W-2)' }))).toBe('Solo');
+  });
+
+  it('finds the co-driver from either side of the team', () => {
+    const a = d('D-1', 'Ana Cortez', { drivingMode: 'Team', coDriver: 'Ben Hale' });
+    const b = d('D-2', 'Ben Hale', { drivingMode: 'Team' });
+    const c = d('D-3', 'Cy Diaz', { drivingMode: 'Team' });
+    expect(coDriverOf(a, [a, b, c])?.name).toBe('Ben Hale');
+    expect(coDriverOf(b, [a, b, c])?.name).toBe('Ana Cortez');
+    expect(coDriverOf(c, [a, b, c])).toBeUndefined();
   });
 });

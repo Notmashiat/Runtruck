@@ -246,6 +246,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.15',
+    date: '2026-10-03',
+    title: 'Driver card',
+    changes: [
+      {
+        id: 'driver-card', kind: 'New', section: 'Fleet', title: 'A driver card that opens from the driver’s name',
+        details: 'Clicking a driver’s name (on Fleet › Drivers, Fleet › Trucks and the Loads page) opens a card with the driver’s name, ID, status, date of birth, CDL number and state, class, expiry, endorsements and medical card, whether they run Solo, Team or Strong solo, their phone, email and address, and their emergency contact. A team driver’s card also shows the co-driver’s details. "Edit info" at the bottom right opens the driver’s editor. The driver form gains "Runs as" (Solo, Team, Strong solo) and, for a team, "Co-driver".',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

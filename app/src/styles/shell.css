@@ -224,6 +224,18 @@
 }
 .ui-tab:hover { background: var(--ui-tab-hover); color: var(--ui-primary); }
 .ui-tab.is-active { background: var(--ui-primary-soft); color: var(--ui-primary-hover); font-weight: 600; }
+/* A driver's name that opens the driver card. */
+.drv-name { padding: 0; font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.drv-name:hover { color: var(--ui-primary-hover); text-decoration-style: solid; }
+/* The driver card. */
+.drv-head { display: flex; align-items: center; gap: 14px; padding-right: 32px; }
+.drv-avatar { width: 48px; height: 48px; font-size: 16px; }
+.drv-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+.drv-title { margin-bottom: 8px; font-size: 13px; font-weight: 700; color: var(--ui-text); }
+.drv-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 18px; }
+.drv-value { margin-top: 3px; font-size: 14px; font-weight: 600; color: var(--ui-text); overflow-wrap: anywhere; }
+.drv-expired { color: var(--ui-red); }
+.drv-partner { padding: 14px 16px; background: var(--ui-bg); border-radius: 12px; }
 /* Pipeline moves under a load (Back to … / Move to …). */
 .load-move { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
 /* A tab that is a button (the Loads pipeline) rather than a link, with its count. */

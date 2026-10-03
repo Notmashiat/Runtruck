@@ -38,6 +38,9 @@ export interface FleetTrailer extends Trailer {
 export const TERMINALS = demoOnly(['Modesto, CA — main yard', 'Fresno, CA — drop yard', 'Sacramento, CA — drop yard'], []);
 export const DISPATCHERS = demoOnly(['Rosa Medina', 'Evan Brooks'], []);
 export const DRIVER_TYPES = ['Company driver (W-2)', 'Owner-operator (1099)', 'Lease-purchase', 'Team driver'];
+// How a driver runs: alone, as one of a team of two, or alone on long runs.
+export const DRIVING_MODES = ['Solo', 'Team', 'Strong solo'] as const;
+export type DrivingMode = (typeof DRIVING_MODES)[number];
 export const DRIVER_STATUSES = ['Available', 'On duty', 'Home time', 'Off duty', 'Inactive'];
 export const CDL_CLASSES = ['A', 'B', 'C'];
 export const ENDORSEMENTS = ['H — Hazmat', 'N — Tanker', 'T — Doubles / triples', 'X — Tanker + hazmat', 'P — Passenger', 'S — School bus'];
@@ -84,6 +87,21 @@ const thousands = (s: string) => (s && Number(s) >= 0 ? Number(s).toLocaleString
 function monthYear(iso: string) {
   const [y, m] = iso.split('-');
   return y && m ? `${m}/${y}` : '—';
+}
+
+// How a driver runs. Drivers saved before this was asked count as Team when
+// their driver type is 'Team driver', otherwise Solo.
+export function drivingModeOf(d: Pick<FleetDriver, 'details'>): DrivingMode {
+  const saved = d.details.drivingMode;
+  if (typeof saved === 'string' && (DRIVING_MODES as readonly string[]).includes(saved)) return saved as DrivingMode;
+  return d.details.driverType === 'Team driver' ? 'Team' : 'Solo';
+}
+
+// A team driver's co-driver: the one chosen on this driver, or the driver
+// who chose this one.
+export function coDriverOf(d: FleetDriver, drivers: FleetDriver[]): FleetDriver | undefined {
+  const chosen = typeof d.details.coDriver === 'string' ? d.details.coDriver : '';
+  return drivers.find((x) => x.id !== d.id && x.name === chosen) ?? drivers.find((x) => x.id !== d.id && x.details.coDriver === d.name);
 }
 
 export function driverName(v: FormValues) {

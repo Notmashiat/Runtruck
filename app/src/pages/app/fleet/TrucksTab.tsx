@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Card } from '../../../components/Card';
+import { DriverName } from '../../../components/DriverCard';
 import { TruckDialog } from '../../../components/FleetDialogs';
 import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
@@ -78,7 +79,7 @@ export function TrucksTab() {
                 <td className="strong">{t.unit}</td>
                 <td>{t.make}</td>
                 <td className="muted">{t.plate}</td>
-                <td>{t.driver}</td>
+                <td><DriverName name={t.driver} /></td>
                 <td className="num">{t.odo}</td>
                 <td className="num">{t.service}</td>
                 <td className="num">{t.archived ? <Tag label="Archived" tagClass="tag-neutral" /> : <Tag label={t.status} tagClass={t.tagClass} />}</td>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '../../../components/Card';
+import { DriverName } from '../../../components/DriverCard';
 import { DriverDialog } from '../../../components/FleetDialogs';
 import { Kpis } from '../../../components/Kpis';
 import { Tag } from '../../../components/Tag';
@@ -118,7 +119,7 @@ export function DriversTab() {
           <tbody>
             {paged.rows.map((d) => (
               <tr key={d.id} className={d.archived ? 'is-archived' : ''}>
-                <td className="strong">{d.name}</td>
+                <td className="strong"><DriverName name={d.name} onEdit={(x) => setEditing(saved.find((s) => s.id === x.id) ?? x)} /></td>
                 <td>{d.archived ? <Tag label="Archived" tagClass="tag-neutral" /> : <Tag label={d.status} tagClass={d.tagClass} />}</td>
                 <td>{d.unit}</td>
                 <td className="muted">{d.load}</td>

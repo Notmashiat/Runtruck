@@ -1,6 +1,6 @@
 import { useAppShell } from '../context/AppShellContext';
 import {
-  CABS, CDL_CLASSES, DISPATCHERS, DOORS, DRIVER_STATUSES, DRIVER_TYPES, ENDORSEMENTS, FUELS, PAY_TYPES, REEFER_MAKES, SUSPENSIONS,
+  CABS, CDL_CLASSES, DISPATCHERS, DOORS, DRIVER_STATUSES, DRIVER_TYPES, DRIVING_MODES, ENDORSEMENTS, FUELS, PAY_TYPES, REEFER_MAKES, SUSPENSIONS,
   TERMINALS, TRAILER_AXLES, TRAILER_LENGTHS, TRAILER_MAKES, TRAILER_OWNERSHIP, TRAILER_STATUSES, TRAILER_TYPES, TRUCK_AXLES,
   TRUCK_MAKES, TRUCK_OWNERSHIP, TRUCK_STATUSES, YES_NO,
   driverFromForm, nextId, trailerFromForm, truckFromForm,
@@ -10,6 +10,7 @@ import { USER } from '../data/mock';
 import { NON_NEGATIVE, PHONE, POSITIVE, STATE, UNIQUE, VIN, YEAR, ZIP } from '../lib/rules';
 import { RecordDialog, type SectionSpec } from './RecordDialog';
 import { IS_DEMO } from '../lib/account';
+import { isLive } from '../lib/releases';
 
 // — form helpers —
 
@@ -18,7 +19,14 @@ const has = (v: FormValues, k: string, option: string) => Array.isArray(v[k]) &&
 
 // — driver —
 
-function driverSections(truckUnits: string[], takenIds: string[], takenNames: string[]): SectionSpec[] {
+function driverSections(truckUnits: string[], takenIds: string[], takenNames: string[], otherDrivers: string[]): SectionSpec[] {
+  // Release 1.15: how the driver runs, and a team driver's co-driver (shown on the driver card).
+  const modes = isLive('driver-card')
+    ? [
+        { key: 'drivingMode', label: 'Runs as', type: 'select' as const, required: true, options: [...DRIVING_MODES], help: 'Strong solo: a solo driver who takes long, high-mile runs.' },
+        { key: 'coDriver', label: 'Co-driver', type: 'select' as const, options: otherDrivers, show: (v: FormValues) => val(v, 'drivingMode') === 'Team', help: 'The other driver of the team.' },
+      ]
+    : [];
   return [
     {
       title: 'Personal',
@@ -48,6 +56,7 @@ function driverSections(truckUnits: string[], takenIds: string[], takenNames: st
       fields: [
         { key: 'employeeId', label: 'Employee ID', required: true, upper: true, check: UNIQUE(takenIds, 'driver') },
         { key: 'driverType', label: 'Driver type', type: 'select', required: true, options: DRIVER_TYPES },
+        ...modes,
         { key: 'status', label: 'Status', type: 'select', required: true, options: DRIVER_STATUSES },
         { key: 'hireDate', label: 'Hire date', type: 'date', required: true },
         { key: 'terminal', label: 'Home terminal', type: 'select', required: true, options: TERMINALS },
@@ -108,7 +117,7 @@ export function DriverDialog({ driver, onClose }: { driver?: FleetDriver; onClos
   const truckUnits = trucks.filter((t) => !t.archived || t.unit === driver?.unit).map((t) => t.unit);
   const takenIds = drivers.filter((d) => d.id !== id).map((d) => val(d.details, 'employeeId') || d.id);
   const initial: FormValues = driver?.details ?? {
-    employeeId: id, driverType: DRIVER_TYPES[0], status: 'Available', terminal: TERMINALS[0], dispatcher: USER.name,
+    employeeId: id, driverType: DRIVER_TYPES[0], drivingMode: 'Solo', status: 'Available', terminal: TERMINALS[0], dispatcher: USER.name,
     cdlClass: 'A', endorsements: [], payType: 'Per mile',
   };
 
@@ -116,7 +125,7 @@ export function DriverDialog({ driver, onClose }: { driver?: FleetDriver; onClos
     <RecordDialog
       heading={driver ? `Edit driver — ${driver.name}` : 'New driver'}
       saveLabel={driver ? 'Save changes' : 'Add driver'}
-      sections={driverSections(truckUnits, takenIds, drivers.filter((d) => d.id !== id).map((d) => d.name.toLowerCase()))}
+      sections={driverSections(truckUnits, takenIds, drivers.filter((d) => d.id !== id).map((d) => d.name.toLowerCase()), drivers.filter((d) => d.id !== id && !d.archived).map((d) => d.name))}
       initial={initial}
       isNew={!driver}
       archived={driver?.archived}
