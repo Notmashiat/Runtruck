@@ -3,7 +3,7 @@ import {
   CABS, CDL_CLASSES, DISPATCHERS, DOORS, DRIVER_STATUSES, DRIVER_TYPES, DRIVING_MODES, ENDORSEMENTS, FUELS, PAY_TYPES, REEFER_MAKES, SUSPENSIONS,
   TERMINALS, TRAILER_AXLES, TRAILER_LENGTHS, TRAILER_MAKES, TRAILER_OWNERSHIP, TRAILER_STATUSES, TRAILER_TYPES, TRUCK_AXLES,
   TRUCK_MAKES, TRUCK_OWNERSHIP, TRUCK_STATUSES, YES_NO,
-  driverFromForm, nextId, trailerFromForm, truckFromForm,
+  driverFromForm, drivingModeOf, nextId, trailerFromForm, truckFromForm,
   type FleetDriver, type FleetTrailer, type FleetTruck, type FormValues,
 } from '../data/fleet';
 import { USER } from '../data/mock';
@@ -116,7 +116,8 @@ export function DriverDialog({ driver, onClose }: { driver?: FleetDriver; onClos
   const id = driver?.id ?? nextId('DRV', drivers.map((d) => d.id));
   const truckUnits = trucks.filter((t) => !t.archived || t.unit === driver?.unit).map((t) => t.unit);
   const takenIds = drivers.filter((d) => d.id !== id).map((d) => val(d.details, 'employeeId') || d.id);
-  const initial: FormValues = driver?.details ?? {
+  // A driver saved before "Runs as" existed starts the form at what the card shows.
+  const initial: FormValues = driver ? (isLive('driver-card') && !driver.details.drivingMode ? { ...driver.details, drivingMode: drivingModeOf(driver) } : driver.details) : {
     employeeId: id, driverType: DRIVER_TYPES[0], drivingMode: 'Solo', status: 'Available', terminal: TERMINALS[0], dispatcher: USER.name,
     cdlClass: 'A', endorsements: [], payType: 'Per mile',
   };
