@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Card } from '../../components/Card';
 import { Kpis } from '../../components/Kpis';
+import { PipelineMove } from '../../components/LoadDialogs';
 import { NewLoadDialog } from '../../components/NewLoadDialog';
 import { Tag } from '../../components/Tag';
 import { useAppShell, type LoadTab } from '../../context/AppShellContext';
@@ -32,6 +33,8 @@ export function LoadsPage() {
   // Active / Needs POD / Delivered / All buttons. The stage is in the page
   // address (?stage=en-route), so Back and links work as on Fleet's tabs.
   const pipeline = isLive('load-pipeline');
+  // Release 1.12: move a load along the pipeline (or back) from its row.
+  const moves = isLive('load-pipeline-moves');
   const [params, setParams] = useSearchParams();
   const byStage = useMemo(() => {
     const billing = billingByLoad(invoices);
@@ -67,7 +70,9 @@ export function LoadsPage() {
 
   const countOf = (status: string) => String(loads.filter((l) => l.status === status).length);
   const kpis = [
-    { label: 'Undispatched', value: countOf('Needs driver'), note: 'No driver assigned yet' },
+    moves
+      ? { label: 'Undispatched', value: String(loads.filter((l) => l.status === 'Needs driver' || l.status === 'Booked').length), note: `${countOf('Needs driver')} without a driver yet` }
+      : { label: 'Undispatched', value: countOf('Needs driver'), note: 'No driver assigned yet' },
     { label: 'In transit', value: countOf('In transit'), note: `Loaded and rolling · ${countOf('At pickup')} at pickup` },
     { label: 'Delivered', value: countOf('Delivered'), note: 'Delivered with POD' },
     { label: 'Needs POD', value: countOf('Needs POD'), note: 'Delivered, proof of delivery not in' },
@@ -187,6 +192,7 @@ export function LoadsPage() {
                                   Edit load
                                 </button>
                               </div>
+                              {moves && <PipelineMove load={l} />}
                             </div>
                           </div>
 

@@ -44,10 +44,12 @@ const dollars = (s: string) => Number(String(s ?? '').replace(/[^0-9.-]/g, '')) 
 // — status —
 
 // The life of a load, in order. 'Delayed' can happen anywhere on the road.
-export const LOAD_STATUSES = ['Needs driver', 'Dispatched', 'At pickup', 'In transit', 'Delayed', 'Needs POD', 'Delivered'] as const;
+// 'Booked' is a load with its driver or carrier lined up that has not set
+// off yet (release 1.12); before that, covering a load made it 'Dispatched'.
+export const LOAD_STATUSES = ['Needs driver', 'Booked', 'Dispatched', 'At pickup', 'In transit', 'Delayed', 'Needs POD', 'Delivered'] as const;
 export type LoadStatus = (typeof LOAD_STATUSES)[number];
 export const LOAD_TAG: Record<string, string> = {
-  'Needs driver': 'tag-outline', Dispatched: 'tag-neutral', 'At pickup': 'tag-neutral', 'In transit': 'tag-accent',
+  'Needs driver': 'tag-outline', Booked: 'tag-neutral', Dispatched: 'tag-neutral', 'At pickup': 'tag-neutral', 'In transit': 'tag-accent',
   Delayed: 'tag-outline', 'Needs POD': 'tag-outline', Delivered: 'tag-neutral',
 };
 // Delivered, whether or not the proof of delivery is in yet.
@@ -77,6 +79,16 @@ export function billingByLoad(invoices: { loads: string[]; draft: boolean; paid?
     }
   }
   return out;
+}
+
+// The status that puts a load at one of the first four stages, when it is
+// moved there by hand ('Booked' needs a driver or carrier lined up).
+export function statusForStage(stage: LoadStage, covered: boolean): LoadStatus | null {
+  if (stage === 'Booked') return covered ? 'Booked' : 'Needs driver';
+  if (stage === 'Dispatched') return 'Dispatched';
+  if (stage === 'En route') return 'In transit';
+  if (stage === 'Delivered') return 'Delivered';
+  return null;
 }
 
 // The stage a load is at.

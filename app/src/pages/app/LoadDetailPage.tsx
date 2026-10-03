@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Card } from '../../components/Card';
 import { Kpis } from '../../components/Kpis';
-import { LoadDocuments } from '../../components/LoadDialogs';
+import { LoadDocuments, PipelineMove } from '../../components/LoadDialogs';
 import { Tag } from '../../components/Tag';
 import { useAppShell } from '../../context/AppShellContext';
 import { facilityFor, stopHint } from '../../data/facilities';
@@ -107,6 +107,8 @@ export function LoadDetailPage() {
           {tracking ? <Tag label={sel.status} tagClass={LOAD_TAG[sel.status] ?? sel.tagClass} /> : <span>· {sel.status}</span>}
           {tracking && sel.deliveredOn && <span>· delivered {sel.delivery}</span>}
         </div>
+        {/* Release 1.12: move the load along the pipeline, or back a step. */}
+        {isLive('load-pipeline-moves') && <div style={{ marginTop: 12 }}><PipelineMove load={sel} /></div>}
       </Card>
 
       <Kpis items={facts.map((f) => ({ label: f.k, value: f.v, note: f.note }))} />

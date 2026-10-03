@@ -1,11 +1,15 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppShell } from '../context/AppShellContext';
 import type { BillDocument } from '../data/bills';
 import { fmtDate } from '../data/invoicing';
-import { DOCUMENT_SLOTS, LOAD_STATUSES, isDelivered, normalizeLoad, withStatus, type LoadDocument, type LoadStatus } from '../data/loads';
+import {
+  DOCUMENT_SLOTS, LOAD_STAGES, LOAD_STATUSES, billingByLoad, isDelivered, normalizeLoad, stageOf, statusForStage, withStatus, type LoadDocument, type LoadStatus,
+} from '../data/loads';
 import { USER, type Load } from '../data/mock';
 import { downloadDocument, fileSize, openDocument } from '../lib/attachments';
 import { todayIso } from '../lib/clock';
+import { isLive } from '../lib/releases';
 import { AttachDialog } from './AttachDialog';
 import { Field } from './FormBits';
 import { SmallDialog } from './SmallDialog';
@@ -14,9 +18,13 @@ import { Tag } from './Tag';
 // Whether a load has someone to haul it: a driver, or a partner carrier.
 const covered = (l: Load) => l.driver !== 'Unassigned' || Boolean(l.carrierRate);
 
+// Statuses a load can have with nobody to haul it yet.
+const UNCOVERED_OK: string[] = ['Needs driver', 'Booked'];
+
 // What a status means, shown under the choice.
 const ABOUT: Record<LoadStatus, string> = {
   'Needs driver': 'On the board with nobody assigned.',
+  Booked: 'The driver or carrier is lined up; the load has not set off yet.',
   Dispatched: 'Assigned and waiting for the pickup date.',
   'At pickup': 'The truck is at the shipper.',
   'In transit': 'Loaded and on the road.',
@@ -27,15 +35,20 @@ const ABOUT: Record<LoadStatus, string> = {
 
 // Update status: where the load is now. Delivering it records the day, which
 // is what invoicing and driver pay go by.
-export function LoadStatusDialog({ load, onClose }: { load: Load; onClose: () => void }) {
+// `to` opens it with a new status already chosen (a pipeline move).
+export function LoadStatusDialog({ load, to, onClose }: { load: Load; to?: LoadStatus; onClose: () => void }) {
   const { updateLoad } = useAppShell();
   const today = todayIso();
+  // Release 1.12: 'Booked' exists, and Dispatched means the driver has set off.
+  const booking = isLive('load-pipeline-moves');
+  const choices = LOAD_STATUSES.filter((s) => booking || s !== 'Booked');
+  const about = (s: LoadStatus) => (booking && s === 'Dispatched' ? 'The driver is on the way to the pickup.' : ABOUT[s]);
   const current = (LOAD_STATUSES as readonly string[]).includes(load.status) ? (load.status as LoadStatus) : 'Dispatched';
-  const [status, setStatus] = useState<LoadStatus>(current);
+  const [status, setStatus] = useState<LoadStatus>(to ?? current);
   const [deliveredOn, setDeliveredOn] = useState(load.deliveredOn || (load.deliveryDate && load.deliveryDate <= today ? load.deliveryDate : today));
   const [note, setNote] = useState('');
 
-  const needsCover = status !== 'Needs driver' && !covered(load);
+  const needsCover = !UNCOVERED_OK.includes(status) && !covered(load);
   const future = isDelivered(status) && deliveredOn > today;
   const beforePickup = isDelivered(status) && Boolean(load.pickupDate) && deliveredOn < (load.pickupDate ?? '');
   const problem = needsCover ? 'Assign a driver or a partner carrier first (Edit load).'
@@ -52,9 +65,9 @@ export function LoadStatusDialog({ load, onClose }: { load: Load; onClose: () =>
       onClose={onClose}
     >
       <div className="ui-form-grid">
-        <Field label="Status" required help={ABOUT[status]}>
+        <Field label="Status" required help={about(status)}>
           <select className="ui-input" value={status} onChange={(e) => setStatus(e.target.value as LoadStatus)}>
-            {LOAD_STATUSES.map((s) => <option key={s}>{s}</option>)}
+            {choices.map((s) => <option key={s}>{s}</option>)}
           </select>
         </Field>
         {isDelivered(status) && (
@@ -68,6 +81,35 @@ export function LoadStatusDialog({ load, onClose }: { load: Load; onClose: () =>
       </div>
       {problem && <div className="ui-errors">{problem}</div>}
     </SmallDialog>
+  );
+}
+
+// Moving a load one stage along the pipeline, or back one to undo a
+// mistake (release 1.12). The first four stages follow the load's status, so
+// a move opens Update status with the new status chosen: one more click to
+// confirm, and the delivery day when it is delivered. Invoiced and Complete
+// follow the load's invoice, so those moves are made in Accounting.
+export function PipelineMove({ load }: { load: Load }) {
+  const { invoices } = useAppShell();
+  const navigate = useNavigate();
+  const [to, setTo] = useState<LoadStatus | null>(null);
+  const stage = stageOf(load, billingByLoad(invoices));
+  const at = LOAD_STAGES.indexOf(stage);
+  const back = at >= 1 && at <= 3 ? LOAD_STAGES[at - 1] : null;
+  const next = at <= 2 ? LOAD_STAGES[at + 1] : null;
+  const move = (s: (typeof LOAD_STAGES)[number]) => setTo(statusForStage(s, covered(load)));
+
+  return (
+    <div className="load-move" onClick={(e) => e.stopPropagation()}>
+      {back && <button type="button" className="ui-btn ui-btn-sm" onClick={() => move(back)}>← Back to {back}</button>}
+      {next && <button type="button" className="ui-btn ui-btn-sm ui-btn-primary" onClick={() => move(next)}>Move to {next} →</button>}
+      {stage === 'Delivered' && <button type="button" className="ui-btn ui-btn-sm ui-btn-primary" onClick={() => navigate('/app/accounting/uninvoiced')}>Create invoice →</button>}
+      {stage === 'Invoiced' && <button type="button" className="ui-btn ui-btn-sm ui-btn-primary" onClick={() => navigate('/app/accounting/invoiced')}>Record payment →</button>}
+      {(stage === 'Invoiced' || stage === 'Complete') && (
+        <span className="ui-stop-meta" style={{ marginTop: 0 }}>Billed: to move it back, change or delete its invoice in Accounting.</span>
+      )}
+      {to && <LoadStatusDialog load={load} to={to} onClose={() => setTo(null)} />}
+    </div>
   );
 }
 

@@ -213,6 +213,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.12',
+    date: '2026-10-03',
+    title: 'Load pipeline: Booked until dispatched, moves forward and back',
+    changes: [
+      {
+        id: 'load-pipeline-moves', kind: 'Updated', section: 'Loads', title: 'A load stays Booked until it is dispatched, and can be moved forward or back',
+        details: 'A load with a driver or carrier lined up is now Booked (a new status), not Dispatched: it moves to Dispatched only when someone says the driver is on the way to the pickup. Each load (in its row on the Loads page and on its own page) has "Move to …" to send it to the next stage and "← Back to …" to undo a mistake; the move opens Update status with the new status chosen, to confirm (and to enter the delivery day). From Delivered the next step is Create invoice, and from Invoiced, Record payment; Invoiced and Complete follow the invoice, so they are changed in Accounting.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

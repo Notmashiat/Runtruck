@@ -1,7 +1,7 @@
 // The rules of loads, contracts and safety records.
 import { describe, expect, it } from 'vitest';
 import { currentEnd, parseOffer } from './hrRecords';
-import { billingByLoad, deliveryIso, isDelivered, lineHaulOf, loadTotal, stageOf, stageSlug, withStatus } from './loads';
+import { billingByLoad, deliveryIso, isDelivered, lineHaulOf, loadTotal, stageOf, stageSlug, statusForStage, withStatus } from './loads';
 import type { Load } from './mock';
 import { countsAgainst, isRemoved, weightedPoints, type ViolationRecord } from './safetyRecords';
 
@@ -100,6 +100,19 @@ describe('load pipeline', () => {
   it('is not complete while any invoice for the load is unpaid', () => {
     const two = billingByLoad([{ loads: ['L-8'], draft: false, paid: { date: '2026-10-01' } }, { loads: ['L-8'], draft: false }]);
     expect(stageOf(load('L-8', 'Delivered'), two)).toBe('Invoiced');
+  });
+
+  it('keeps a booked load with its driver lined up at Booked', () => {
+    expect(stageOf(load('L-9', 'Booked'), billing)).toBe('Booked');
+  });
+
+  it('moves a load to a stage by giving it that stage’s status', () => {
+    expect(statusForStage('Booked', true)).toBe('Booked');
+    expect(statusForStage('Booked', false)).toBe('Needs driver');
+    expect(statusForStage('Dispatched', true)).toBe('Dispatched');
+    expect(statusForStage('En route', true)).toBe('In transit');
+    expect(statusForStage('Delivered', true)).toBe('Delivered');
+    expect(statusForStage('Invoiced', true)).toBeNull();
   });
 
   it('puts the stage in the page address', () => {

@@ -143,8 +143,11 @@ function signedMoney(n: number) {
 
 // Statuses a load is still "planned" in; editing its coverage there recomputes
 // the status (a driver or carrier → Dispatched, none → Needs driver). Once it is
-// moving, an edit keeps the status it has.
+// moving, an edit keeps the status it has. From release 1.12 a covered load is
+// 'Booked' until someone moves it to Dispatched (the driver has set off).
 const PLANNED = ['Needs driver', 'Dispatched'];
+const PLANNED_BOOKING = ['Needs driver', 'Booked'];
+const coveredStatus = () => (isLive('load-pipeline-moves') ? 'Booked' : 'Dispatched');
 
 function toLoad(d: Draft, id: string, prev?: Load): Load {
   const place = (s: StopDraft) => `${s.city.trim()}, ${s.state.trim().toUpperCase()}`;
@@ -160,9 +163,9 @@ function toLoad(d: Draft, id: string, prev?: Load): Load {
     ? CARRIERS.slice(1).find((c) => c.name === d.carrier.trim()) ?? { name: d.carrier.trim(), mc: d.carrierMc.trim() || '—', dot: d.carrierDot.trim() || '—' }
     : CARRIERS[0];
   const covered = d.brokered || Boolean(d.driver);
-  const kept = prev && !PLANNED.includes(prev.status) ? prev : undefined;
+  const kept = prev && !(isLive('load-pipeline-moves') ? PLANNED_BOOKING : PLANNED).includes(prev.status) ? prev : undefined;
   const reefer = d.equipment.startsWith('Reefer');
-  const status = kept ? kept.status : covered ? 'Dispatched' : 'Needs driver';
+  const status = kept ? kept.status : covered ? coveredStatus() : 'Needs driver';
   const now = new Date().toISOString();
 
   // normalizeLoad writes the short date text from the real dates.
@@ -860,7 +863,7 @@ export function NewLoadDialog({ load, onClose, onSaved, onDeleted }: NewLoadDial
           <div className="ui-note">
             {editing
               ? `Everything required is filled in. Save changes updates ${load?.id} on the board, its load page and the planner.`
-              : `Everything required is filled in. It goes on the board as ${d.brokered || d.driver ? 'Dispatched' : 'Needs driver'}.`}
+              : `Everything required is filled in. It goes on the board as ${d.brokered || d.driver ? coveredStatus() : 'Needs driver'}.`}
           </div>
         )}
         <div className="ui-summary">

@@ -321,7 +321,7 @@ export const SETTLE_TAG: Record<string, string> = {
   'Hold · fuel': 'tag-outline',
 };
 
-export const ACTIVE_STATUSES = ['In transit', 'At pickup', 'Dispatched', 'Delayed', 'Needs driver'];
+export const ACTIVE_STATUSES = ['In transit', 'At pickup', 'Dispatched', 'Delayed', 'Booked', 'Needs driver'];
 
 // Sections split into tabs; each tab is a route under /app/<section>/<key>.
 export const SECTION_TABS: Partial<Record<ViewKey, SectionTab[]>> = {
