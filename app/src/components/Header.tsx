@@ -6,6 +6,8 @@ import { formatNow, todayIso, useNow } from '../lib/clock';
 import { isActive, pageKeyOf } from '../lib/tableTools';
 import { can, isSuperAdmin } from '../lib/auth';
 import { daysFrom, invoiceTotal } from '../data/invoicing';
+import { billingByLoad, isCovered, pipelineSteps, stageOf, statusForStage, withStatus, type LoadStatus } from '../data/loads';
+import { USER } from '../data/mock';
 import { downloadCsv } from '../lib/csv';
 import { isLive } from '../lib/releases';
 import { lazyNamed } from '../lib/lazyPage';
@@ -34,6 +36,7 @@ const forms = {
 };
 const NewLoadDialog = lazyNamed(forms.load, 'NewLoadDialog');
 const LoadStatusDialog = lazyNamed(forms.loadStatus, 'LoadStatusDialog');
+const MoveBackDialog = lazyNamed(forms.loadStatus, 'MoveBackDialog');
 const MessageDriverDialog = lazyNamed(forms.message, 'MessageDriverDialog');
 const DriverDialog = lazyNamed(forms.fleet, 'DriverDialog');
 const TruckDialog = lazyNamed(forms.fleet, 'TruckDialog');
@@ -82,12 +85,14 @@ const NO_FILTERS: ViewKey[] = ['dashboard', 'planner'];
 export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { searchText, setQuery, approveAll, loads, invoices, filterMeta, filterValues, setFilter, clearFilters } = useAppShell();
+  const { searchText, setQuery, approveAll, loads, invoices, updateLoad, filterMeta, filterValues, setFilter, clearFilters } = useAppShell();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const now = useNow(15_000);
   const [newLoadOpen, setNewLoadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | 'bill' | 'customer' | 'employee' | 'payrun' | 'contract' | 'onboarding' | 'workorder' | 'docrequest' | 'violation' | 'claim' | 'loadstatus' | 'message' | null>(null);
+  const [adding, setAdding] = useState<'driver' | 'truck' | 'trailer' | 'facility' | 'invoice' | 'batch' | 'reminders' | 'company' | 'account' | 'bill' | 'customer' | 'employee' | 'payrun' | 'contract' | 'onboarding' | 'workorder' | 'docrequest' | 'violation' | 'claim' | 'loadstatus' | 'message' | 'moveback' | null>(null);
+  // The status Update status opens with (a move forward that needs a confirm).
+  const [statusTo, setStatusTo] = useState<LoadStatus | null>(null);
 
   // Route matching is case-insensitive, so normalise before keying off the section.
   const segments = location.pathname.toLowerCase().split('/');
@@ -95,6 +100,31 @@ export function Header() {
   const tab = SECTION_TABS[view] ? segments[3] : undefined;
   const onLoadDetail = view === 'loads' && Boolean(segments[3]);
   const detailLoad = onLoadDetail ? loads.find((l) => l.id.toLowerCase() === segments[3]) : undefined;
+
+  // Release 1.13: on a load's page, the top bar moves the load along its
+  // pipeline (forward on the right, back in orange on the left, after a
+  // warning) instead of Update status.
+  const detailMoves = Boolean(detailLoad) && isLive('load-detail-moves');
+  const detailStage = detailLoad && detailMoves ? stageOf(detailLoad, billingByLoad(invoices)) : null;
+  const detailSteps = detailStage ? pipelineSteps(detailStage) : { back: null, next: null };
+  const forwardLabel = detailSteps.next === 'Invoiced' ? 'Create invoice →' : detailSteps.next === 'Complete' ? 'Record payment →' : detailSteps.next ? `Move to ${detailSteps.next} →` : '';
+  const moveForward = () => {
+    const next = detailSteps.next;
+    if (!detailLoad || !next) return;
+    // Invoiced and Complete follow the invoice: they are made in Accounting.
+    if (next === 'Invoiced') return navigate('/app/accounting/uninvoiced');
+    if (next === 'Complete') return navigate('/app/accounting/invoiced');
+    const to = statusForStage(next, isCovered(detailLoad));
+    if (!to) return;
+    // Delivering asks for the day it was delivered, and a load nobody is
+    // hauling cannot set off: both open Update status to finish the move.
+    if (to === 'Delivered' || (to !== 'Needs driver' && to !== 'Booked' && !isCovered(detailLoad))) {
+      setStatusTo(to);
+      setAdding('loadstatus');
+      return;
+    }
+    updateLoad(withStatus(detailLoad, to, USER.name));
+  };
 
   // Every load as a spreadsheet.
   const exportLoads = () =>
@@ -139,7 +169,9 @@ export function Header() {
       { label: 'Message driver', onClick: detailLoad && isLive('driver-message') ? () => setAdding('message') : undefined },
       ...(detailLoad ? [{ label: 'Edit load', onClick: () => setEditOpen(true) }] : []),
       // Release 1.9: the status is changed here (it could not be changed at all before).
-      { label: 'Update status', primary: true, onClick: detailLoad && isLive('load-tracking') ? () => setAdding('loadstatus') : undefined },
+      ...(detailMoves
+        ? (forwardLabel ? [{ label: forwardLabel, primary: true, onClick: moveForward }] : [])
+        : [{ label: 'Update status', primary: true, onClick: detailLoad && isLive('load-tracking') ? () => setAdding('loadstatus') : undefined }]),
     ],
     'fleet/drivers': [{ label: '+ Add Driver', primary: true, onClick: () => setAdding('driver') }],
     // Release 1.10: Log service opens the work order form.
@@ -209,9 +241,16 @@ export function Header() {
     <>
     <header className="ui-topbar">
       {onLoadDetail ? (
-        <button onClick={() => navigate('/app/loads')} className="ui-btn" type="button">
-          ← Loads
-        </button>
+        <>
+          <button onClick={() => navigate('/app/loads')} className="ui-btn" type="button">
+            ← Loads
+          </button>
+          {detailMoves && detailSteps.back && (
+            <button onClick={() => setAdding('moveback')} className="ui-btn ui-btn-orange" type="button">
+              ← Back to {detailSteps.back}
+            </button>
+          )}
+        </>
       ) : (
         <input
           className="ui-search"
@@ -245,7 +284,8 @@ export function Header() {
       {editOpen && detailLoad && (
         <NewLoadDialog load={detailLoad} onClose={() => setEditOpen(false)} onDeleted={() => { setEditOpen(false); navigate('/app/loads'); }} />
       )}
-      {adding === 'loadstatus' && detailLoad && <LoadStatusDialog load={detailLoad} onClose={() => setAdding(null)} />}
+      {adding === 'loadstatus' && detailLoad && <LoadStatusDialog load={detailLoad} to={statusTo ?? undefined} onClose={() => { setAdding(null); setStatusTo(null); }} />}
+      {adding === 'moveback' && detailLoad && detailSteps.back && <MoveBackDialog load={detailLoad} back={detailSteps.back} onClose={() => setAdding(null)} />}
       {adding === 'message' && detailLoad && <MessageDriverDialog load={detailLoad} onClose={() => setAdding(null)} />}
       {adding === 'driver' && <DriverDialog onClose={() => setAdding(null)} />}
       {adding === 'truck' && <TruckDialog onClose={() => setAdding(null)} />}

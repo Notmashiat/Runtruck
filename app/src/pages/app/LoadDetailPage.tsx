@@ -1,8 +1,8 @@
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Card } from '../../components/Card';
 import { Kpis } from '../../components/Kpis';
-import { LoadDocuments, PipelineMove } from '../../components/LoadDialogs';
+import { LoadDocuments, LoadStatusDialog, PipelineMove } from '../../components/LoadDialogs';
 import { Tag } from '../../components/Tag';
 import { useAppShell } from '../../context/AppShellContext';
 import { facilityFor, stopHint } from '../../data/facilities';
@@ -15,6 +15,10 @@ export function LoadDetailPage() {
   const { id = '' } = useParams();
   const { loads, facilities } = useAppShell();
   const sel = loads.find((l) => l.id.toLowerCase() === id.toLowerCase());
+  // Release 1.13: the pipeline moves are in the top bar; a status between
+  // stages (At pickup, Delayed, Needs POD) is set from "Change status".
+  const topBarMoves = isLive('load-detail-moves');
+  const [changing, setChanging] = useState(false);
 
   // A deleted load, or a mistyped link.
   if (!sel) {
@@ -106,9 +110,11 @@ export function LoadDetailPage() {
           <span>Load {sel.id} · {sel.customer}</span>
           {tracking ? <Tag label={sel.status} tagClass={LOAD_TAG[sel.status] ?? sel.tagClass} /> : <span>· {sel.status}</span>}
           {tracking && sel.deliveredOn && <span>· delivered {sel.delivery}</span>}
+          {topBarMoves && <button type="button" className="ui-link" onClick={() => setChanging(true)}>Change status</button>}
         </div>
-        {/* Release 1.12: move the load along the pipeline, or back a step. */}
-        {isLive('load-pipeline-moves') && <div style={{ marginTop: 12 }}><PipelineMove load={sel} /></div>}
+        {/* Release 1.12: move the load along the pipeline, or back a step (in the top bar from 1.13). */}
+        {isLive('load-pipeline-moves') && !topBarMoves && <div style={{ marginTop: 12 }}><PipelineMove load={sel} /></div>}
+        {changing && <LoadStatusDialog load={sel} onClose={() => setChanging(false)} />}
       </Card>
 
       <Kpis items={facts.map((f) => ({ label: f.k, value: f.v, note: f.note }))} />

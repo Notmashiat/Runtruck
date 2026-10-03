@@ -24,6 +24,7 @@
   --ui-on-primary: #ffffff;
   --ui-amber: #a05a00;
   --ui-amber-soft: #fff1d6;
+  --ui-orange: #e86a10;
   --ui-green: #167a3b;
   --ui-green-soft: #dff5e6;
   --ui-gray-soft: #eef0f4;
@@ -61,6 +62,7 @@
   --ui-on-primary: #0f141c;
   --ui-amber: #f2b45c;
   --ui-amber-soft: #3a2b12;
+  --ui-orange: #f5913e;
   --ui-green: #5ccb86;
   --ui-green-soft: #12301d;
   --ui-gray-soft: #273142;
@@ -182,6 +184,11 @@
    Create company): filled like it, in teal, so the two are told apart at a glance. */
 .ui-btn-teal { color: var(--ui-on-primary); background: var(--ui-teal); border-color: var(--ui-teal); }
 .ui-btn-teal:hover { background: color-mix(in srgb, var(--ui-teal) 86%, #000); border-color: color-mix(in srgb, var(--ui-teal) 86%, #000); }
+/* Undo-type actions (moving a load back a stage): orange, so they stand apart from going forward. */
+.ui-btn-orange { color: #fff; background: var(--ui-orange); border-color: var(--ui-orange); }
+.ui-btn-orange:hover { background: color-mix(in srgb, var(--ui-orange) 86%, #000); border-color: color-mix(in srgb, var(--ui-orange) 86%, #000); }
+:root[data-theme="dark"] .ui-btn-orange { color: #1a0f05; }
+:root[data-theme="dark"] .ui-btn-orange:hover { background: color-mix(in srgb, var(--ui-orange) 82%, #fff); border-color: color-mix(in srgb, var(--ui-orange) 82%, #fff); }
 :root[data-theme="dark"] .ui-btn-teal:hover { background: color-mix(in srgb, var(--ui-teal) 82%, #fff); border-color: color-mix(in srgb, var(--ui-teal) 82%, #fff); }
 
 /* — section tabs (the centred pill bar) — */

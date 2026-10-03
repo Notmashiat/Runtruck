@@ -224,6 +224,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.13',
+    date: '2026-10-03',
+    title: 'Move a load forward or back from the top bar',
+    changes: [
+      {
+        id: 'load-detail-moves', kind: 'Updated', section: 'Loads', title: 'The load page’s top bar moves the load forward or back',
+        details: 'On a load’s page, Update status is replaced by a button that moves the load to its next stage ("Move to Delivered →" when it is en route; Create invoice and Record payment once it is delivered and invoiced). On the left of the same bar, an orange "← Back to …" button moves it back a stage after a warning asking to confirm. A status between stages (At pickup, Delayed, Needs POD) is set from "Change status" beside the load’s status. On the Loads page, the Back button in a load’s row is orange and asks first too.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);

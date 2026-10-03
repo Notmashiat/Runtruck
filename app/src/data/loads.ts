@@ -81,6 +81,16 @@ export function billingByLoad(invoices: { loads: string[]; draft: boolean; paid?
   return out;
 }
 
+// Whether a load has someone to haul it: a driver, or a partner carrier.
+export const isCovered = (l: Pick<Load, 'driver' | 'carrierRate'>) => l.driver !== 'Unassigned' || Boolean(l.carrierRate);
+
+// The stages either side of a load's stage. Only the first four can be
+// stepped back by hand (Invoiced and Complete follow the invoice).
+export function pipelineSteps(stage: LoadStage): { back: LoadStage | null; next: LoadStage | null } {
+  const at = LOAD_STAGES.indexOf(stage);
+  return { back: at >= 1 && at <= 3 ? LOAD_STAGES[at - 1] : null, next: at < LOAD_STAGES.length - 1 ? LOAD_STAGES[at + 1] : null };
+}
+
 // The status that puts a load at one of the first four stages, when it is
 // moved there by hand ('Booked' needs a driver or carrier lined up).
 export function statusForStage(stage: LoadStage, covered: boolean): LoadStatus | null {

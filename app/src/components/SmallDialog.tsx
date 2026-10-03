@@ -4,13 +4,15 @@ import { useModal } from './FormBits';
 // A small popup for one decision with a few fields: a label and title, the
 // fields, then Cancel and the action. Used for "End contract", "Record
 // payment", "Update status" and the like.
-export function SmallDialog({ label, title, intro, children, confirm, danger, disabled, onConfirm, onClose }: {
+export function SmallDialog({ label, title, intro, children, confirm, danger, warning, disabled, onConfirm, onClose }: {
   label: string;
   title: string;
   intro?: string;
   children?: ReactNode;
   confirm: string;
   danger?: boolean;
+  // An orange confirm button: for undoing something (e.g. moving a load back).
+  warning?: boolean;
   disabled?: boolean;
   onConfirm: () => void;
   onClose: () => void;
@@ -31,7 +33,7 @@ export function SmallDialog({ label, title, intro, children, confirm, danger, di
         <footer className="ui-dialog-foot">
           <div style={{ flex: 1 }} />
           <button type="button" className="ui-btn" onClick={closeNow}>Cancel</button>
-          <button type="button" className={`ui-btn ${danger ? 'ui-btn-danger-solid' : 'ui-btn-primary'}`} disabled={disabled} onClick={() => { onConfirm(); closeNow(); }}>{confirm}</button>
+          <button type="button" className={`ui-btn ${danger ? 'ui-btn-danger-solid' : warning ? 'ui-btn-orange' : 'ui-btn-primary'}`} disabled={disabled} onClick={() => { onConfirm(); closeNow(); }}>{confirm}</button>
         </footer>
       </div>
     </dialog>

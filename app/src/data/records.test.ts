@@ -1,7 +1,7 @@
 // The rules of loads, contracts and safety records.
 import { describe, expect, it } from 'vitest';
 import { currentEnd, parseOffer } from './hrRecords';
-import { billingByLoad, deliveryIso, isDelivered, lineHaulOf, loadTotal, stageOf, stageSlug, statusForStage, withStatus } from './loads';
+import { billingByLoad, deliveryIso, isDelivered, lineHaulOf, loadTotal, pipelineSteps, stageOf, stageSlug, statusForStage, withStatus } from './loads';
 import type { Load } from './mock';
 import { countsAgainst, isRemoved, weightedPoints, type ViolationRecord } from './safetyRecords';
 
@@ -113,6 +113,14 @@ describe('load pipeline', () => {
     expect(statusForStage('En route', true)).toBe('In transit');
     expect(statusForStage('Delivered', true)).toBe('Delivered');
     expect(statusForStage('Invoiced', true)).toBeNull();
+  });
+
+  it('knows the stages either side, and only steps back by hand through the first four', () => {
+    expect(pipelineSteps('Booked')).toEqual({ back: null, next: 'Dispatched' });
+    expect(pipelineSteps('En route')).toEqual({ back: 'Dispatched', next: 'Delivered' });
+    expect(pipelineSteps('Delivered')).toEqual({ back: 'En route', next: 'Invoiced' });
+    expect(pipelineSteps('Invoiced')).toEqual({ back: null, next: 'Complete' });
+    expect(pipelineSteps('Complete')).toEqual({ back: null, next: null });
   });
 
   it('puts the stage in the page address', () => {

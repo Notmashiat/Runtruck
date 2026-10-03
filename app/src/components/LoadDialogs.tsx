@@ -4,7 +4,8 @@ import { useAppShell } from '../context/AppShellContext';
 import type { BillDocument } from '../data/bills';
 import { fmtDate } from '../data/invoicing';
 import {
-  DOCUMENT_SLOTS, LOAD_STAGES, LOAD_STATUSES, billingByLoad, isDelivered, normalizeLoad, stageOf, statusForStage, withStatus, type LoadDocument, type LoadStatus,
+  DOCUMENT_SLOTS, LOAD_STATUSES, billingByLoad, isCovered, isDelivered, normalizeLoad, pipelineSteps, stageOf, statusForStage, withStatus,
+  type LoadDocument, type LoadStage, type LoadStatus,
 } from '../data/loads';
 import { USER, type Load } from '../data/mock';
 import { downloadDocument, fileSize, openDocument } from '../lib/attachments';
@@ -15,8 +16,7 @@ import { Field } from './FormBits';
 import { SmallDialog } from './SmallDialog';
 import { Tag } from './Tag';
 
-// Whether a load has someone to haul it: a driver, or a partner carrier.
-const covered = (l: Load) => l.driver !== 'Unassigned' || Boolean(l.carrierRate);
+const covered = isCovered;
 
 // Statuses a load can have with nobody to haul it yet.
 const UNCOVERED_OK: string[] = ['Needs driver', 'Booked'];
@@ -93,15 +93,23 @@ export function PipelineMove({ load }: { load: Load }) {
   const { invoices } = useAppShell();
   const navigate = useNavigate();
   const [to, setTo] = useState<LoadStatus | null>(null);
+  // Release 1.13: going back is an orange button that asks first.
+  const [goingBack, setGoingBack] = useState(false);
+  const warnBack = isLive('load-detail-moves');
   const stage = stageOf(load, billingByLoad(invoices));
-  const at = LOAD_STAGES.indexOf(stage);
-  const back = at >= 1 && at <= 3 ? LOAD_STAGES[at - 1] : null;
-  const next = at <= 2 ? LOAD_STAGES[at + 1] : null;
-  const move = (s: (typeof LOAD_STAGES)[number]) => setTo(statusForStage(s, covered(load)));
+  const steps = pipelineSteps(stage);
+  const back = steps.back;
+  const next = steps.next && steps.next !== 'Invoiced' && steps.next !== 'Complete' ? steps.next : null;
+  const move = (s: LoadStage) => setTo(statusForStage(s, covered(load)));
 
   return (
     <div className="load-move" onClick={(e) => e.stopPropagation()}>
-      {back && <button type="button" className="ui-btn ui-btn-sm" onClick={() => move(back)}>← Back to {back}</button>}
+      {back && (
+        <button type="button" className={`ui-btn ui-btn-sm${warnBack ? ' ui-btn-orange' : ''}`} onClick={() => (warnBack ? setGoingBack(true) : move(back))}>
+          ← Back to {back}
+        </button>
+      )}
+      {goingBack && back && <MoveBackDialog load={load} back={back} onClose={() => setGoingBack(false)} />}
       {next && <button type="button" className="ui-btn ui-btn-sm ui-btn-primary" onClick={() => move(next)}>Move to {next} →</button>}
       {stage === 'Delivered' && <button type="button" className="ui-btn ui-btn-sm ui-btn-primary" onClick={() => navigate('/app/accounting/uninvoiced')}>Create invoice →</button>}
       {stage === 'Invoiced' && <button type="button" className="ui-btn ui-btn-sm ui-btn-primary" onClick={() => navigate('/app/accounting/invoiced')}>Record payment →</button>}
@@ -110,6 +118,24 @@ export function PipelineMove({ load }: { load: Load }) {
       )}
       {to && <LoadStatusDialog load={load} to={to} onClose={() => setTo(null)} />}
     </div>
+  );
+}
+
+// Moving a load back one stage, after a warning (release 1.13): for when it
+// was moved forward by mistake. The load gets the earlier stage's status and
+// the move is noted in its history; moving it back from Delivered also
+// clears the delivery day.
+export function MoveBackDialog({ load, back, onClose }: { load: Load; back: LoadStage; onClose: () => void }) {
+  const { updateLoad, invoices } = useAppShell();
+  const status = statusForStage(back, covered(load));
+  const now = stageOf(load, billingByLoad(invoices));
+  return (
+    <SmallDialog
+      label={`Load ${load.id}`} title={`Move back to ${back}?`} confirm={`Move back to ${back}`} warning disabled={!status}
+      intro={`${load.customer} · ${load.route}. This load is at ${now}. Moving it back sets its status to ${status ?? back}${isDelivered(load.status) ? ' and clears the day it was delivered' : ''}. Do this only to undo a mistake; the change is noted in the load’s history.`}
+      onConfirm={() => { if (status) updateLoad(withStatus(load, status, USER.name, undefined, 'moved back')); }}
+      onClose={onClose}
+    />
   );
 }
 
