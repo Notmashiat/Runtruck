@@ -112,6 +112,28 @@
   color: var(--ui-text-2); background: transparent; border: 0; border-radius: 8px; cursor: pointer;
 }
 .ui-collapse:hover { background: var(--ui-nav-pill); color: var(--ui-text); }
+/* The notification bar at the top of the sidebar: urgent alerts only, with a red dot when one needs attention. */
+.ui-alerts { margin: 0 0 18px; }
+.ui-alert-bar {
+  position: relative; display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 9px 12px;
+  font: inherit; font-size: 12px; line-height: 1.35; text-align: left; color: var(--ui-text);
+  background: var(--ui-nav-pill); border: 1px solid var(--ui-border); border-radius: 12px; cursor: pointer;
+}
+.ui-alert-bar:hover { border-color: var(--ui-red); }
+.ui-alert-bar.is-calm { cursor: default; color: var(--ui-muted); }
+.ui-alert-bar.is-calm:hover { border-color: var(--ui-border); }
+.ui-alert-icon { flex: none; color: var(--ui-red); }
+.ui-alert-bar.is-calm .ui-alert-icon { color: var(--ui-muted); }
+.ui-alert-text { flex: 1; min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ui-alert-more { flex: none; font-size: 11px; font-weight: 700; color: var(--ui-text-2); }
+.ui-alert-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--ui-red); box-shadow: 0 0 0 3px var(--ui-red-soft); }
+.ui-alert-list { margin: 6px 0 0; padding: 6px; list-style: none; background: var(--ui-nav-pill); border: 1px solid var(--ui-border); border-radius: 12px; }
+.ui-alert-list a { display: block; padding: 8px; font-size: 12px; line-height: 1.35; color: var(--ui-text); text-decoration: none; border-radius: 8px; }
+.ui-alert-list a:hover { background: var(--ui-hover); color: var(--ui-primary-hover); }
+.ui-sidebar.is-collapsed .ui-alert-bar { justify-content: center; padding: 10px 0; min-height: 40px; }
+.ui-sidebar.is-collapsed .ui-alert-text,
+.ui-sidebar.is-collapsed .ui-alert-more { display: none; }
+.ui-sidebar.is-collapsed .ui-alert-dot { position: absolute; top: 7px; right: 9px; width: 8px; height: 8px; }
 .ui-nav { display: flex; flex-direction: column; gap: 2px; }
 .ui-nav-group { padding: 18px 12px 6px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ui-text-2); }
 .ui-sidebar .ui-nav-item {

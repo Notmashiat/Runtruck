@@ -235,6 +235,17 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  {
+    id: '1.14',
+    date: '2026-10-03',
+    title: 'Urgent alerts in the sidebar',
+    changes: [
+      {
+        id: 'sidebar-alerts', kind: 'New', section: 'Everywhere', title: 'A notification bar for urgent alerts at the top of the sidebar',
+        details: 'The sidebar starts with a notification bar that shows only urgent alerts, with a red dot at its right end when something needs attention: a truck or trailer broken down or out of service while it has a load ("Truck T-123 reported a breakdown while en route with load L-123"), a load running late, a pickup today or already missed with no driver, and a driver on a load with an expired CDL or medical card. Clicking it opens the load (or, with several alerts, lists them all). With nothing urgent it says so, without the dot. Accounts that cannot open Loads do not get load alerts.',
+      },
+    ],
+  },
 ];
 
 export const releaseIndex = (id: string) => RELEASES.findIndex((r) => r.id === id);
