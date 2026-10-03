@@ -53,6 +53,43 @@ export const LOAD_TAG: Record<string, string> = {
 // Delivered, whether or not the proof of delivery is in yet.
 export const isDelivered = (status: string) => status === 'Delivered' || status === 'Needs POD';
 
+// — the pipeline —
+
+// The stages a load moves through from booking to payment (the bar at the
+// top of the Loads page). The first four follow the load's status; the last
+// two follow its invoice.
+export const LOAD_STAGES = ['Booked', 'Dispatched', 'En route', 'Delivered', 'Invoiced', 'Complete'] as const;
+export type LoadStage = (typeof LOAD_STAGES)[number];
+
+// 'En route' → 'en-route', for the page address (?stage=en-route).
+export const stageSlug = (s: LoadStage) => s.toLowerCase().replace(/\s+/g, '-');
+
+// How each load stands with billing: on an invoice that is sent but not all
+// paid ('invoiced'), or on invoices that are all paid ('paid'). Draft
+// invoices do not count: the load is still waiting to be billed.
+export function billingByLoad(invoices: { loads: string[]; draft: boolean; paid?: unknown }[]): Map<string, 'invoiced' | 'paid'> {
+  const out = new Map<string, 'invoiced' | 'paid'>();
+  for (const inv of invoices) {
+    if (inv.draft) continue;
+    for (const id of inv.loads) {
+      if (!inv.paid) out.set(id, 'invoiced');
+      else if (!out.has(id)) out.set(id, 'paid');
+    }
+  }
+  return out;
+}
+
+// The stage a load is at.
+export function stageOf(l: Pick<Load, 'id' | 'status'>, billing: Map<string, 'invoiced' | 'paid'>): LoadStage {
+  const billed = billing.get(l.id);
+  if (billed === 'paid') return 'Complete';
+  if (billed === 'invoiced') return 'Invoiced';
+  if (isDelivered(l.status)) return 'Delivered';
+  if (l.status === 'Dispatched') return 'Dispatched';
+  if (l.status === 'At pickup' || l.status === 'In transit' || l.status === 'Delayed') return 'En route';
+  return 'Booked';
+}
+
 // — reading a load —
 
 // The day a load was picked up / delivered (ISO; '' if unknown). A delivered

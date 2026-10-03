@@ -1,7 +1,7 @@
 // The rules of loads, contracts and safety records.
 import { describe, expect, it } from 'vitest';
 import { currentEnd, parseOffer } from './hrRecords';
-import { deliveryIso, isDelivered, lineHaulOf, loadTotal, withStatus } from './loads';
+import { billingByLoad, deliveryIso, isDelivered, lineHaulOf, loadTotal, stageOf, stageSlug, withStatus } from './loads';
 import type { Load } from './mock';
 import { countsAgainst, isRemoved, weightedPoints, type ViolationRecord } from './safetyRecords';
 
@@ -72,5 +72,37 @@ describe('violations', () => {
 
   it('still counts a violation that was closed by paying the fine', () => {
     expect(countsAgainst(v({ status: 'Closed', resolution: 'Fine paid' }))).toBe(true);
+  });
+});
+
+describe('load pipeline', () => {
+  const load = (id: string, status: string) => ({ id, status });
+  const invoices = [
+    { loads: ['L-5'], draft: false, paid: undefined },
+    { loads: ['L-6'], draft: false, paid: { date: '2026-10-01' } },
+    { loads: ['L-7'], draft: true, paid: undefined },
+  ];
+  const billing = billingByLoad(invoices);
+
+  it('follows the status until the load is delivered', () => {
+    expect(stageOf(load('L-1', 'Needs driver'), billing)).toBe('Booked');
+    expect(stageOf(load('L-2', 'Dispatched'), billing)).toBe('Dispatched');
+    expect(['At pickup', 'In transit', 'Delayed'].map((s) => stageOf(load('L-3', s), billing))).toEqual(['En route', 'En route', 'En route']);
+    expect(stageOf(load('L-4', 'Needs POD'), billing)).toBe('Delivered');
+  });
+
+  it('follows the invoice after that; a draft does not count', () => {
+    expect(stageOf(load('L-5', 'Delivered'), billing)).toBe('Invoiced');
+    expect(stageOf(load('L-6', 'Delivered'), billing)).toBe('Complete');
+    expect(stageOf(load('L-7', 'Delivered'), billing)).toBe('Delivered');
+  });
+
+  it('is not complete while any invoice for the load is unpaid', () => {
+    const two = billingByLoad([{ loads: ['L-8'], draft: false, paid: { date: '2026-10-01' } }, { loads: ['L-8'], draft: false }]);
+    expect(stageOf(load('L-8', 'Delivered'), two)).toBe('Invoiced');
+  });
+
+  it('puts the stage in the page address', () => {
+    expect(stageSlug('En route')).toBe('en-route');
   });
 });

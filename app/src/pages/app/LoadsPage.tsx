@@ -1,11 +1,13 @@
-import { Fragment, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Fragment, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Card } from '../../components/Card';
 import { Kpis } from '../../components/Kpis';
 import { NewLoadDialog } from '../../components/NewLoadDialog';
 import { Tag } from '../../components/Tag';
 import { useAppShell, type LoadTab } from '../../context/AppShellContext';
+import { LOAD_STAGES, billingByLoad, stageOf, stageSlug, type LoadStage } from '../../data/loads';
 import { ACTIVE_STATUSES, stopsOf, type Load } from '../../data/mock';
+import { isLive } from '../../lib/releases';
 import { matchesQuery } from '../../lib/search';
 import { isoOf, numberOf, SortTh, useSort, usePageFilters, type FilterDef } from '../../lib/tableTools';
 import { usePaged } from '../../lib/paging';
@@ -23,11 +25,27 @@ function firstId(list: Load[]): string | null {
 }
 
 export function LoadsPage() {
-  const { query, setQuery, loadTab, setLoadTab, loads } = useAppShell();
+  const { query, setQuery, loadTab, setLoadTab, loads, invoices } = useAppShell();
   const searching = query.trim().length > 0;
 
+  // Release 1.11: the pipeline bar (Booked … Complete) replaces the
+  // Active / Needs POD / Delivered / All buttons. The stage is in the page
+  // address (?stage=en-route), so Back and links work as on Fleet's tabs.
+  const pipeline = isLive('load-pipeline');
+  const [params, setParams] = useSearchParams();
+  const byStage = useMemo(() => {
+    const billing = billingByLoad(invoices);
+    const out = new Map<LoadStage, Load[]>(LOAD_STAGES.map((s) => [s, []]));
+    for (const l of loads) out.get(stageOf(l, billing))?.push(l);
+    return out;
+  }, [loads, invoices]);
+  // No stage in the address: the first stage that has loads.
+  const stage: LoadStage = LOAD_STAGES.find((s) => stageSlug(s) === params.get('stage'))
+    ?? LOAD_STAGES.find((s) => (byStage.get(s)?.length ?? 0) > 0) ?? LOAD_STAGES[0];
+  const listed = pipeline ? (byStage.get(stage) ?? []) : listFor(loads, loadTab);
+
   // A search looks across every load, regardless of the filter.
-  const base = searching ? loads.filter((l) => matchesQuery(l, query)) : listFor(loads, loadTab);
+  const base = searching ? loads.filter((l) => matchesQuery(l, query)) : listed;
   const filters: FilterDef<Load>[] = [
     { key: 'status', label: 'Status', type: 'select', get: (l) => l.status },
     { key: 'customer', label: 'Customer', type: 'select', get: (l) => l.customer },
@@ -72,11 +90,31 @@ export function LoadsPage() {
     </div>
   );
 
+  const stages = (
+    <nav className="ui-tabs" aria-label="Load pipeline">
+      {LOAD_STAGES.map((s) => {
+        const on = !searching && s === stage;
+        return (
+          <button
+            key={s}
+            type="button"
+            className={`ui-tab ui-tab-btn${on ? ' is-active' : ''}`}
+            aria-current={on ? 'page' : undefined}
+            onClick={() => { setParams({ stage: stageSlug(s) }); setQuery(''); setOpenId(firstId(byStage.get(s) ?? [])); }}
+          >
+            {s}<span className="ui-tab-count">{byStage.get(s)?.length ?? 0}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+
   return (
     <>
+      {pipeline && stages}
       <Kpis items={kpis} />
 
-      <Card flush title={countText} action={filter}>
+      <Card flush title={countText} action={pipeline ? undefined : filter}>
         <table className="ui-table">
           <thead>
             <tr>
